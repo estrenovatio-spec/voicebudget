@@ -1,4 +1,12 @@
 export type TxType = "income" | "expense";
+
+export interface CategoryDefinition {
+  id: string;
+  type: TxType;
+  labels: { ru: string; en: string };
+  keywords: string[];
+  isSystem: boolean;
+}
 export type Currency = "RUB" | "USD" | "EUR";
 export type BudgetOwner = "me" | "partner";
 export type HouseholdFilter = "all" | BudgetOwner;

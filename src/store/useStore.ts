@@ -35,7 +35,7 @@ interface StoreState {
   addTransaction: (data: ParsedTransaction, transcript?: string) => void;
   updateTransaction: (
     id: string,
-    patch: { amount?: number; categoryId?: string; owner?: BudgetOwner },
+    patch: { amount?: number; categoryId?: string; owner?: BudgetOwner; type?: TxType },
   ) => void;
   deleteTransaction: (id: string) => void;
   setLocale: (locale: Locale) => void;
@@ -132,11 +132,14 @@ export const useStore = create<StoreState>()(
               if (tx.id !== id) return tx;
               const amount =
                 patch.amount !== undefined && patch.amount > 0 ? patch.amount : tx.amount;
+              const type = patch.type ?? tx.type;
               let categoryId = patch.categoryId ?? tx.categoryId;
-              const valid = categories.some((c) => c.id === categoryId && c.type === tx.type);
-              if (!valid) categoryId = tx.categoryId;
+              const valid = categories.some((c) => c.id === categoryId && c.type === type);
+              if (!valid) {
+                categoryId = getFallbackCategoryId(type);
+              }
               const owner = patch.owner ?? tx.owner;
-              return { ...tx, amount, categoryId, owner };
+              return { ...tx, amount, categoryId, type, owner };
             }),
           };
         }),
@@ -201,7 +204,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 4,
+      version: 5,
       migrate: (persisted) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);

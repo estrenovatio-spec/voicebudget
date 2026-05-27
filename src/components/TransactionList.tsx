@@ -2,6 +2,7 @@
 
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { TransactionEditDialog } from "@/components/TransactionEditDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export function TransactionList() {
   return (
     <>
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="space-y-3 pb-2">
           <CardTitle className="text-base">{t(locale, "transactions")}</CardTitle>
           <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | TxType)}>
             <TabsList className="w-full">
@@ -39,7 +40,11 @@ export function TransactionList() {
             </TabsList>
           </Tabs>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">{t(locale, "householdFilterLabel")}</p>
+            <HouseholdFilterTabs />
+          </div>
           <ul className="max-h-48 space-y-2 overflow-y-auto pr-1">
             {transactions.length === 0 && (
               <li className="py-6 text-center text-sm text-muted-foreground">

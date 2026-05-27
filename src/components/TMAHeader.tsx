@@ -3,7 +3,6 @@
 import { Settings } from "lucide-react";
 import { useState } from "react";
 import { CategoryManager } from "@/components/CategoryManager";
-import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,7 +42,7 @@ export function TMAHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-10 space-y-2 bg-[var(--tg-bg)]/95 pb-2 pt-1 backdrop-blur">
+    <header className="space-y-2 pb-2 pt-1">
       {userName && (
         <p className="text-sm text-muted-foreground">{t(locale, "greeting", { name: userName })}</p>
       )}
@@ -117,7 +116,6 @@ export function TMAHeader() {
           </Dialog>
         </div>
       </div>
-      <HouseholdFilterTabs />
     </header>
   );
 }

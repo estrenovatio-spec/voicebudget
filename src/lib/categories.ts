@@ -1,230 +1,9 @@
-import type { Locale, TxType } from "@/types";
+import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
+import type { CategoryDefinition, Locale, TxType } from "@/types";
 
-export interface CategoryDefinition {
-  id: string;
-  type: TxType;
-  labels: { ru: string; en: string };
-  keywords: string[];
-  isSystem: boolean;
-}
+export type { CategoryDefinition } from "@/types";
 
-export const DEFAULT_CATEGORIES: CategoryDefinition[] = [
-  {
-    id: "food",
-    type: "expense",
-    labels: { ru: "Еда", en: "Food" },
-    keywords: [
-      "еда",
-      "обед",
-      "завтрак",
-      "ужин",
-      "продукт",
-      "продукты",
-      "магазин",
-      "супермаркет",
-      "ресторан",
-      "кафе",
-      "кофе",
-      "пицц",
-      "бургер",
-      "доставк",
-      "перекус",
-      "lunch",
-      "dinner",
-      "breakfast",
-      "food",
-      "grocery",
-      "groceries",
-      "restaurant",
-      "cafe",
-      "coffee",
-      "snack",
-      "uber eats",
-      "delivery",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "transport",
-    type: "expense",
-    labels: { ru: "Транспорт", en: "Transport" },
-    keywords: [
-      "такси",
-      "метро",
-      "автобус",
-      "трамвай",
-      "бензин",
-      "азс",
-      "заправ",
-      "парков",
-      "каршер",
-      "яндекс go",
-      "uber",
-      "bolt",
-      "проезд",
-      "transport",
-      "taxi",
-      "fuel",
-      "gas",
-      "parking",
-      "metro",
-      "bus",
-      "train",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "housing",
-    type: "expense",
-    labels: { ru: "Жильё", en: "Housing" },
-    keywords: [
-      "аренд",
-      "квартир",
-      "ипотек",
-      "жкх",
-      "коммунал",
-      "электрич",
-      "вода",
-      "газ",
-      "интернет",
-      "дом",
-      "ремонт",
-      "отделк",
-      "renovation",
-      "repair",
-      "rent",
-      "mortgage",
-      "utilities",
-      "housing",
-      "landlord",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "shopping",
-    type: "expense",
-    labels: { ru: "Покупки", en: "Shopping" },
-    keywords: [
-      "одежд",
-      "обув",
-      "маркетплейс",
-      "wildberries",
-      "ozon",
-      "amazon",
-      "шопинг",
-      "покупк",
-      "shopping",
-      "clothes",
-      "shoes",
-      "mall",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "health",
-    type: "expense",
-    labels: { ru: "Здоровье", en: "Health" },
-    keywords: [
-      "аптек",
-      "врач",
-      "клиник",
-      "стоматолог",
-      "лекарств",
-      "больниц",
-      "фитнес",
-      "спортзал",
-      "health",
-      "pharmacy",
-      "doctor",
-      "medicine",
-      "gym",
-      "dental",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "entertainment",
-    type: "expense",
-    labels: { ru: "Развлечения", en: "Entertainment" },
-    keywords: [
-      "кино",
-      "театр",
-      "концерт",
-      "игр",
-      "netflix",
-      "spotify",
-      "подписк",
-      "развлеч",
-      "бар",
-      "entertainment",
-      "movie",
-      "games",
-      "concert",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "subscriptions",
-    type: "expense",
-    labels: { ru: "Подписки", en: "Subscriptions" },
-    keywords: [
-      "подписк",
-      "subscription",
-      "icloud",
-      "youtube premium",
-      "chatgpt",
-      "сервис",
-      "абонемент",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "education",
-    type: "expense",
-    labels: { ru: "Образование", en: "Education" },
-    keywords: [
-      "курс",
-      "обучен",
-      "университет",
-      "школ",
-      "книг",
-      "учеб",
-      "education",
-      "course",
-      "tuition",
-      "books",
-    ],
-    isSystem: true,
-  },
-  {
-    id: "other",
-    type: "expense",
-    labels: { ru: "Прочее", en: "Other" },
-    keywords: [],
-    isSystem: true,
-  },
-  {
-    id: "salary",
-    type: "income",
-    labels: { ru: "Зарплата", en: "Salary" },
-    keywords: ["зарплат", "оклад", "аванс", "salary", "paycheck", "wage", "payroll"],
-    isSystem: true,
-  },
-  {
-    id: "freelance",
-    type: "income",
-    labels: { ru: "Фриланс", en: "Freelance" },
-    keywords: ["фриланс", "подработ", "проект", "freelance", "contract", "invoice"],
-    isSystem: true,
-  },
-  {
-    id: "income_other",
-    type: "income",
-    labels: { ru: "Прочий доход", en: "Other income" },
-    keywords: ["доход", "получил", "зачислили", "income", "received", "refund", "возврат"],
-    isSystem: true,
-  },
-];
+export { DEFAULT_CATEGORIES };
 
 const LEGACY_LABEL_TO_ID: Record<string, string> = {
   еда: "food",
@@ -239,6 +18,24 @@ const LEGACY_LABEL_TO_ID: Record<string, string> = {
   "other income": "income_other",
   зарплата: "salary",
   salary: "salary",
+  аренда: "rent",
+  rent: "rent",
+  одежда: "clothing",
+  clothing: "clothing",
+  "банки и кредиты": "banking",
+  банк: "banking",
+  кредит: "banking",
+  отдых: "leisure",
+  отпуск: "vacation",
+  развлечения: "entertainment",
+  подарки: "gifts",
+  подарок: "gifts",
+  пожертвование: "charity",
+  пожертвования: "charity",
+  "регулярные платежи": "recurring",
+  услуги: "services",
+  хознужды: "household_supplies",
+  "хоз нужды": "household_supplies",
 };
 
 export function getDefaultCategories(): CategoryDefinition[] {
@@ -288,7 +85,16 @@ export function sanitizeCategories(input: unknown): CategoryDefinition[] {
           ? (raw as CategoryDefinition).id
           : null;
       const normalized = normalizeCategory(raw, id ? byId.get(id) : undefined);
-      if (normalized) byId.set(normalized.id, normalized);
+      if (!normalized) continue;
+      const existing = byId.get(normalized.id);
+      if (existing?.isSystem && normalized.isSystem) {
+        const keywords = [
+          ...new Set([...existing.keywords, ...normalized.keywords].map((k) => k.toLowerCase())),
+        ];
+        byId.set(normalized.id, { ...existing, ...normalized, keywords });
+      } else {
+        byId.set(normalized.id, normalized);
+      }
     }
   }
 

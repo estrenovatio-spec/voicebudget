@@ -14,7 +14,8 @@ import { t } from "@/lib/i18n";
 import { parseAmountFromTranscript } from "@/lib/parse-amount";
 import { clearCachedRecommendations } from "@/lib/storage";
 import { useCategories, useStore } from "@/store/useStore";
-import type { BudgetOwner, Transaction } from "@/types";
+import type { BudgetOwner, Transaction, TxType } from "@/types";
+import { getFallbackCategoryId } from "@/lib/categories";
 
 interface TransactionEditDialogProps {
   transaction: Transaction | null;
@@ -34,6 +35,7 @@ export function TransactionEditDialog({
   const deleteTransaction = useStore((s) => s.deleteTransaction);
 
   const [amount, setAmount] = useState("");
+  const [txType, setTxType] = useState<TxType>("expense");
   const [categoryId, setCategoryId] = useState("");
   const [owner, setOwner] = useState<BudgetOwner>("me");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -45,6 +47,7 @@ export function TransactionEditDialog({
     }
     if (!transaction) return;
     setAmount(String(transaction.amount));
+    setTxType(transaction.type);
     setCategoryId(transaction.categoryId);
     setOwner(transaction.owner ?? "me");
     setConfirmDelete(false);
@@ -52,7 +55,15 @@ export function TransactionEditDialog({
 
   if (!transaction) return null;
 
-  const typeCategories = getCategoriesByType(categories, transaction.type);
+  const typeCategories = getCategoriesByType(categories, txType);
+
+  const handleTypeChange = (next: TxType) => {
+    setTxType(next);
+    const valid = categories.some((c) => c.id === categoryId && c.type === next);
+    if (!valid) {
+      setCategoryId(getFallbackCategoryId(next));
+    }
+  };
 
   const handleSave = () => {
     const parsed = parseAmountFromTranscript(amount, locale);
@@ -60,6 +71,7 @@ export function TransactionEditDialog({
 
     updateTransaction(transaction.id, {
       amount: Math.round(parsed * 100) / 100,
+      type: txType,
       categoryId,
       owner: partnerName ? owner : undefined,
     });
@@ -91,6 +103,27 @@ export function TransactionEditDialog({
           <DialogTitle>{t(locale, "txEditTitle")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <span className="text-sm font-medium">{t(locale, "txType")}</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={txType === "expense" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => handleTypeChange("expense")}
+              >
+                {t(locale, "expense")}
+              </Button>
+              <Button
+                type="button"
+                variant={txType === "income" ? "default" : "outline"}
+                className="flex-1"
+                onClick={() => handleTypeChange("income")}
+              >
+                {t(locale, "income")}
+              </Button>
+            </div>
+          </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium" htmlFor="tx-amount">
               {t(locale, "txAmount")}

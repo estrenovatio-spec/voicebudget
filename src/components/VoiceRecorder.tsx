@@ -154,7 +154,7 @@ export function VoiceRecorder() {
   const hasText = text.trim().length > 0;
 
   return (
-    <section className="relative z-30 flex flex-col items-center gap-4 py-4">
+    <section className="flex flex-col items-center gap-4 py-4">
       {speechOk && (
         <button
           type="button"
@@ -175,8 +175,6 @@ export function VoiceRecorder() {
         </button>
       )}
 
-      <EntryOwnerToggle />
-
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-2">
         <textarea
           value={text}
@@ -186,8 +184,12 @@ export function VoiceRecorder() {
           disabled={isBusy}
           className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         />
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">{t(locale, "entryOwnerLabel")}</p>
+          <EntryOwnerToggle />
+        </div>
         <Button
-          className="relative z-30 h-11 w-full touch-manipulation text-base"
+          className="h-11 w-full touch-manipulation text-base"
           type="button"
           onClick={handleAddClick}
           aria-disabled={isBusy || !hasText}
