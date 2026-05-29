@@ -1,3 +1,4 @@
+import { roundMoneyUp } from "@/lib/format-money";
 import type { Locale } from "@/types";
 
 function normalizeNumberToken(raw: string): number {
@@ -32,7 +33,7 @@ function normalizeNumberToken(raw: string): number {
 
 function applyMultiplier(base: number, multiplier: number): number {
   if (!Number.isFinite(base)) return 0;
-  return Math.round(base * multiplier);
+  return roundMoneyUp(base * multiplier);
 }
 
 /**
@@ -64,7 +65,7 @@ export function parseAmountFromTranscript(transcript: string, _locale: Locale): 
     if (m?.[1]) {
       const base = normalizeNumberToken(m[1]);
       if (Number.isFinite(base) && base > 0) {
-        return applyMultiplier(base, mult);
+        return roundMoneyUp(applyMultiplier(base, mult));
       }
     }
   }
@@ -77,7 +78,47 @@ export function parseAmountFromTranscript(transcript: string, _locale: Locale): 
 
   if (numbers.length === 0) return 0;
 
-  return Math.max(...numbers);
+  return roundMoneyUp(Math.max(...numbers));
+}
+
+/** Все суммы из фразы (для «зарплата 10000, 2000 на отпуск»). */
+export function extractAllAmountsFromTranscript(transcript: string, locale: Locale): number[] {
+  const text = transcript.toLowerCase().replace(/−/g, "-");
+  const afterWord = String.raw`(?=\s|$|[^а-яёa-z0-9])`;
+  const found: number[] = [];
+
+  const patterns: { re: RegExp; mult: number }[] = [
+    {
+      re: new RegExp(String.raw`(\d[\d\s.,]*)\s*(?:млн|миллион[а-яё]*|million|mln)${afterWord}`, "gi"),
+      mult: 1_000_000,
+    },
+    {
+      re: new RegExp(
+        String.raw`(\d[\d\s.,]*)\s*(?:тысяч[а-яё]*|тысячи|тыс\.?|тыщ|thousand)${afterWord}`,
+        "gi",
+      ),
+      mult: 1_000,
+    },
+    { re: /(\d[\d\s.,]*)\s*k(?=\s|$|[^a-z0-9])/gi, mult: 1_000 },
+  ];
+
+  for (const { re, mult } of patterns) {
+    for (const m of text.matchAll(re)) {
+      if (!m[1]) continue;
+      const base = normalizeNumberToken(m[1]);
+      if (Number.isFinite(base) && base > 0) {
+        found.push(roundMoneyUp(applyMultiplier(base, mult)));
+      }
+    }
+  }
+
+  const plain = [...text.matchAll(/\d[\d\s.,]*/g)]
+    .map((m) => normalizeNumberToken(m[0]))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .map((n) => roundMoneyUp(n));
+
+  const unique = [...new Set([...found, ...plain])].sort((a, b) => b - a);
+  return unique;
 }
 
 /** Если AI вернул 100, а в фразе «100 тысяч» — берём из фразы */
@@ -87,7 +128,7 @@ export function resolveTransactionAmount(
   locale: Locale,
 ): number {
   const fromSpeech = parseAmountFromTranscript(transcript, locale);
-  if (fromSpeech <= 0) return aiAmount > 0 ? aiAmount : 0;
+  if (fromSpeech <= 0) return aiAmount > 0 ? roundMoneyUp(aiAmount) : 0;
   if (aiAmount <= 0) return fromSpeech;
 
   const lower = transcript.toLowerCase();
@@ -109,5 +150,5 @@ export function resolveTransactionAmount(
     return aiAmount;
   }
 
-  return fromSpeech >= aiAmount ? fromSpeech : aiAmount;
+  return roundMoneyUp(fromSpeech >= aiAmount ? fromSpeech : aiAmount);
 }

@@ -1,13 +1,46 @@
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
+import { isGarbageTranscript } from "@/lib/transcript-guard";
 import type { CategoryDefinition, Locale, TxType } from "@/types";
 
 export type { CategoryDefinition } from "@/types";
 
 export { DEFAULT_CATEGORIES };
 
+/** Старый id «Еда» → продукты; рестораны — отдельная категория */
+export const LEGACY_CATEGORY_ID_MAP: Record<string, string> = {
+  food: "groceries",
+};
+
+export function migrateCategoryId(categoryId: string): string {
+  return LEGACY_CATEGORY_ID_MAP[categoryId] ?? categoryId;
+}
+
+/** Удалённая категория «Еда» — не показывать в списке */
+export function isRetiredCategoryId(id: string): boolean {
+  return id === "food";
+}
+
+function isObsoleteFoodCategory(cat: CategoryDefinition): boolean {
+  if (isRetiredCategoryId(cat.id)) return true;
+  const ru = cat.labels?.ru?.trim().toLowerCase();
+  const en = cat.labels?.en?.trim().toLowerCase();
+  if (ru === "еда" && cat.id !== "groceries" && cat.id !== "dining_out") return true;
+  if (en === "food" && cat.id !== "groceries" && cat.id !== "dining_out") return true;
+  return false;
+}
+
 const LEGACY_LABEL_TO_ID: Record<string, string> = {
-  еда: "food",
-  food: "food",
+  еда: "groceries",
+  food: "groceries",
+  продукты: "groceries",
+  продукт: "groceries",
+  "кафе и рестораны": "dining_out",
+  ресторан: "dining_out",
+  кафе: "dining_out",
+  обед: "dining_out",
+  ужин: "dining_out",
+  завтрак: "dining_out",
+  ланч: "dining_out",
   такси: "transport",
   transport: "transport",
   прочее: "other",
@@ -80,25 +113,25 @@ export function sanitizeCategories(input: unknown): CategoryDefinition[] {
 
   if (Array.isArray(input)) {
     for (const raw of input) {
-      const id =
+      let id =
         raw && typeof raw === "object" && typeof (raw as CategoryDefinition).id === "string"
           ? (raw as CategoryDefinition).id
           : null;
+      if (id) id = migrateCategoryId(id);
       const normalized = normalizeCategory(raw, id ? byId.get(id) : undefined);
       if (!normalized) continue;
       const existing = byId.get(normalized.id);
-      if (existing?.isSystem && normalized.isSystem) {
-        const keywords = [
-          ...new Set([...existing.keywords, ...normalized.keywords].map((k) => k.toLowerCase())),
-        ];
-        byId.set(normalized.id, { ...existing, ...normalized, keywords });
-      } else {
+      const fresh = defaults.find((d) => d.id === normalized.id);
+      if (fresh?.isSystem) {
+        const keywords = [...new Set([...fresh.keywords, ...normalized.keywords])];
+        byId.set(normalized.id, { ...fresh, ...normalized, keywords, isSystem: true });
+      } else if (!isObsoleteFoodCategory(normalized)) {
         byId.set(normalized.id, normalized);
       }
     }
   }
 
-  return Array.from(byId.values());
+  return Array.from(byId.values()).filter((c) => !isObsoleteFoodCategory(c));
 }
 
 export function getCategoryLabel(
@@ -123,18 +156,51 @@ export function getFallbackCategoryId(type: TxType): string {
   return type === "income" ? "income_other" : "other";
 }
 
+/** Короткие ключи — только целое слово, чтобы не ловить «особенность» → «обед» */
+function keywordMatches(text: string, kw: string): boolean {
+  const needle = kw.trim().toLowerCase();
+  if (!needle) return false;
+  if (needle.length <= 5) {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[\\s,.;:!?()—–-])${escaped}($|[\\s,.;:!?()—–-])`, "i").test(
+      ` ${text.trim()} `,
+    );
+  }
+  return text.toLowerCase().includes(needle);
+}
+
+const EXPENSE_PHRASE_CATEGORY: { pattern: RegExp; categoryId: string }[] = [
+  { pattern: /(?:на|за|в)\s+обед/u, categoryId: "dining_out" },
+  { pattern: /(?:на|за|в)\s+ужин/u, categoryId: "dining_out" },
+  { pattern: /(?:на|за|в)\s+завтрак/u, categoryId: "dining_out" },
+  { pattern: /(?:на|за)\s+ланч/u, categoryId: "dining_out" },
+  { pattern: /пообед/u, categoryId: "dining_out" },
+  { pattern: /поужин/u, categoryId: "dining_out" },
+  { pattern: /бизнес[\s-]?ланч/u, categoryId: "dining_out" },
+  { pattern: /в\s+кафе/u, categoryId: "dining_out" },
+  { pattern: /в\s+ресторан/u, categoryId: "dining_out" },
+];
+
+function detectCategoryFromPhrases(text: string, type: TxType): string | null {
+  if (type !== "expense") return null;
+  for (const rule of EXPENSE_PHRASE_CATEGORY) {
+    if (rule.pattern.test(text)) return rule.categoryId;
+  }
+  return null;
+}
+
 function scoreCategory(text: string, category: CategoryDefinition): number {
   const lower = text.toLowerCase();
   let score = 0;
   for (const kw of category.keywords) {
-    if (kw && lower.includes(kw.toLowerCase())) {
+    if (kw && keywordMatches(lower, kw)) {
       score += kw.length >= 5 ? 3 : 2;
     }
   }
   const labelRu = category.labels?.ru?.toLowerCase() ?? "";
   const labelEn = category.labels?.en?.toLowerCase() ?? "";
-  if (labelRu.length > 2 && lower.includes(labelRu)) score += 4;
-  if (labelEn.length > 2 && lower.includes(labelEn)) score += 4;
+  if (labelRu.length > 2 && keywordMatches(lower, labelRu)) score += 4;
+  if (labelEn.length > 2 && keywordMatches(lower, labelEn)) score += 4;
   return score;
 }
 
@@ -143,7 +209,13 @@ export function detectCategoryId(
   type: TxType,
   categories: CategoryDefinition[],
 ): string {
-  const pool = getCategoriesByType(categories, type).filter((c) => c.id !== getFallbackCategoryId(type));
+  const merged = sanitizeCategories(categories);
+  const fromPhrase = detectCategoryFromPhrases(text, type);
+  if (fromPhrase && merged.some((c) => c.id === fromPhrase && c.type === type)) {
+    return fromPhrase;
+  }
+
+  const pool = getCategoriesByType(merged, type).filter((c) => c.id !== getFallbackCategoryId(type));
   let bestId = getFallbackCategoryId(type);
   let bestScore = 0;
 
@@ -158,6 +230,54 @@ export function detectCategoryId(
   return bestId;
 }
 
+/** Достаточно ли текста с микрофона, чтобы не ждать серверный STT */
+export function isTranscriptLikelyComplete(
+  text: string,
+  type: TxType,
+  categories: CategoryDefinition[] = getDefaultCategories(),
+): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 2) return false;
+  const merged = sanitizeCategories(categories);
+  if (detectCategoryId(trimmed, type, merged) !== getFallbackCategoryId(type)) return true;
+  if (trimmed.length >= 22) return true;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  return words.length >= 5;
+}
+
+export function pickBestVoiceTranscript(
+  speechText: string,
+  serverText: string,
+  locale: Locale,
+  categories: CategoryDefinition[] = getDefaultCategories(),
+): string {
+  const s = speechText.trim();
+  const t = serverText.trim();
+  const sOk = s.length >= 2 && !isGarbageTranscript(s);
+  const tOk = t.length >= 2 && !isGarbageTranscript(t);
+  if (!sOk && !tOk) return "";
+  if (!sOk) return t;
+  if (!tOk) return s;
+  if (s === t) return s;
+
+  const merged = sanitizeCategories(categories);
+  const sl = s.toLowerCase();
+  const tl = t.toLowerCase();
+  if (tl.includes(sl) && t.length > s.length + 1) return t;
+  if (sl.includes(tl) && s.length > t.length + 1) return s;
+
+  const incomeHints = /получил|зарплат|доход|пришло|зачисли|received|salary|income|earned/i;
+  const txType: TxType = incomeHints.test(s) || incomeHints.test(t) ? "income" : "expense";
+
+  const catS = detectCategoryId(s, txType, merged);
+  const catT = detectCategoryId(t, txType, merged);
+  const fallback = getFallbackCategoryId(txType);
+  if (catS === fallback && catT !== fallback) return t;
+  if (catT === fallback && catS !== fallback) return s;
+
+  return t.length >= s.length ? t : s;
+}
+
 export function matchCategoryIdFromText(
   raw: string,
   type: TxType,
@@ -166,7 +286,8 @@ export function matchCategoryIdFromText(
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return getFallbackCategoryId(type);
 
-  const byId = categories.find((c) => c.id.toLowerCase() === normalized && c.type === type);
+  const migrated = migrateCategoryId(normalized);
+  const byId = categories.find((c) => c.id.toLowerCase() === migrated && c.type === type);
   if (byId) return byId.id;
 
   const legacy = LEGACY_LABEL_TO_ID[normalized];

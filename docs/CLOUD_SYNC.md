@@ -1,57 +1,75 @@
-# Облачная синхронизация (план на будущее)
+# Облачная синхронизация (household)
 
-Сейчас данные в `localStorage` (Zustand persist). Для двух телефонов и пары «я + партнёр» нужен backend.
+> **Пошаговая инструкция для пользователя:** [HOUSEHOLD_SETUP.md](./HOUSEHOLD_SETUP.md)
 
-## Рекомендуемый стек
 
-| Слой | Технология | Зачем |
-|------|------------|--------|
-| БД | **Supabase** (PostgreSQL) | Транзакции, категории, household |
-| Auth | **Telegram initData** | Вход без пароля в Mini App |
-| API | Next.js Route Handlers или Supabase RPC | Уже есть `/api/*` |
-| Realtime | Supabase Realtime | Синк между двумя телефонами |
+Реализован MVP: PostgreSQL + Prisma, авторизация через **Telegram initData** (Mini App) или **Login Widget** (браузер), семейный бюджет с метками `me` / `partner` на каждой операции.
 
-## Модель данных (черновик)
+## Режимы
 
-```sql
-households (id, name, created_at)
-household_members (household_id, user_id, role, display_name)
-transactions (id, household_id, user_id, amount, type, category_id, currency, note, date, owner)
-categories (id, household_id, type, labels, keywords, is_system)
+| Режим | Кто | Как |
+|--------|-----|-----|
+| **Веду один** (`SOLO`) | Один Telegram-аккаунт | Создаёте облачный бюджет, указываете имя партнёра для меток. Второй человек не обязан подключаться. |
+| **Вдвоём** (`SHARED`) | Два телефона | Создатель получает **код приглашения** (6 символов). Партнёр в настройках → «Присоединиться». После 2-го участника режим становится shared. |
+
+Фильтры «Общий / Я / Партнёр» и отдельные балансы работают как в локальной версии.
+
+## Переменные окружения (Vercel / `.env.local`)
+
+```env
+DATABASE_URL=postgresql://...
+TELEGRAM_BOT_TOKEN=123456:ABC...   # тот же бот, что открывает Mini App
+HOUSEHOLD_SESSION_SECRET=случайная_длинная_строка
 ```
 
-- Один **household** = общий бюджет пары.
-- `owner` = `me` | `partner` привязан к `household_members`.
-- Пользователь авторизуется через `telegram_id` из `initData`.
+Опционально:
 
-## Поток авторизации (TMA)
+```env
+TELEGRAM_INIT_MAX_AGE_SEC=86400
+```
 
-1. Клиент отправляет `initData` на `POST /api/auth/telegram`.
-2. Сервер проверяет подпись через `BOT_TOKEN` (HMAC).
-3. Возвращает JWT / session cookie + `household_id`.
-4. Все запросы транзакций с этим токеном.
+Без `DATABASE_URL` API отвечает `503` — приложение продолжает работать только с `localStorage`.
 
-## Синхронизация клиента
+## База данных
 
-1. **Первый запуск:** `GET /api/sync` → скачать transactions + categories.
-2. **Добавление:** `POST /api/transactions` → ответ → обновить Zustand.
-3. **Офлайн (опционально):** очередь в IndexedDB, flush при сети.
-4. **Realtime:** подписка на `transactions` по `household_id` → `useStore.setState`.
+```bash
+cd voicebudget
+npm install
+npx prisma db push   # или migrate deploy на проде
+```
 
-## Миграция с localStorage
+## API
 
-1. При первом входе с Telegram: если localStorage не пуст — `POST /api/sync/import`.
-2. После успеха — переключить persist на `cloud` или отключить local-only.
-3. Комментарий в коде уже есть: `// TODO: migrate to Supabase/PostgreSQL` в `lib/storage.ts`.
+| Метод | Путь | Описание |
+|--------|------|----------|
+| POST | `/api/household/bootstrap` | `{ initData }` → сессия + sync, если уже в семье |
+| POST | `/api/household/create` | Создать семью (`mode`: `solo` \| `shared`, `partnerLabel`) |
+| POST | `/api/household/join` | `{ inviteCode }` |
+| GET | `/api/household/sync` | Bearer token → полный снимок |
+| POST | `/api/household/import` | Залить локальные транзакции с телефона |
+| POST/PATCH/DELETE | `/api/household/transactions` | CRUD операций |
+| PATCH | `/api/household/partner-label` | Имя партнёра в облаке |
 
-## Оценка объёма
+## Клиент
 
-- MVP sync (auth + CRUD + один household): **3–5 дней**
-- Realtime + офлайн-очередь: **+2–3 дня**
-- Приглашение партнёра по ссылке: **+1–2 дня**
+- Настройки → блок **«Облако и семья»**
+- **Телефон:** откройте Mini App из бота — вход автоматический
+- **Браузер:** https://voicebudget.vercel.app → **Войти через Telegram** (тот же аккаунт)
+- При активном облаке: каждая операция уходит на сервер; при возврате на вкладку — **слияние** с облаком (локальные записи не затираются)
+- После обновления приложения: новые системные категории подтягиваются с сервера; старый `food` → `Продукты`
+- Сбой сети **не отключает** облако — сессия сбрасывается только при `401` / `403`
+- **Синхронизировать** — принудительно обновить с облака (merge)
+- **Загрузить данные с этого телефона** — однократный import из localStorage
 
-## Альтернативы
+Токен сессии: `voicebudget-cloud` в localStorage.
 
-- **Firebase** — быстрее старт, слабее SQL-отчёты.
-- **PocketBase** — self-hosted, дешевле.
-- **Свой PostgreSQL + Prisma** — максимум контроля, дольше разработка.
+## Google Таблица (участники)
+
+При **создании** семьи и **присоединении по коду** в таблицу пишутся имя, @ник, дата и id Telegram. Настройка: [GOOGLE-SHEETS.md](./GOOGLE-SHEETS.md), переменная `GOOGLE_SHEETS_WEBHOOK_URL` на Vercel.
+
+## Дальше (не в MVP)
+
+- Realtime (Supabase / polling)
+- Офлайн-очередь
+- Deep link `t.me/bot?startapp=join_CODE`
+- Синхронизация пользовательских категорий при каждом изменении

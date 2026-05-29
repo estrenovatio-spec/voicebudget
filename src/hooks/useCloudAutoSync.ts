@@ -1,0 +1,54 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
+import { isCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isAuthSyncError } from "@/lib/cloud/sync-errors";
+import { apiSync } from "@/lib/cloud/client";
+import { useCloudStore } from "@/store/useCloudStore";
+
+const MIN_PULL_MS = 8_000;
+/** Browser tab may stay open while phone records — poll occasionally */
+const POLL_MS = 30_000;
+
+/** Pull cloud on load, when tab becomes visible, and on a timer while visible. */
+export function useCloudAutoSync() {
+  const lastPullAt = useRef(0);
+
+  useEffect(() => {
+    const pull = () => {
+      if (isCloudPaused()) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+      const now = Date.now();
+      if (now - lastPullAt.current < MIN_PULL_MS) return;
+
+      const token = useCloudStore.getState().token;
+      const household = useCloudStore.getState().household;
+      if (!token || !household) return;
+
+      lastPullAt.current = now;
+      void apiSync(token)
+        .then((res) => {
+          applyHouseholdSync(res.sync, token);
+          useCloudStore.getState().touchSync();
+        })
+        .catch((e) => {
+          if (isAuthSyncError(e)) useCloudStore.getState().clearSession();
+        });
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") pull();
+    };
+
+    pull();
+    document.addEventListener("visibilitychange", onVisible);
+    const interval = window.setInterval(pull, POLL_MS);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(interval);
+    };
+  }, []);
+}

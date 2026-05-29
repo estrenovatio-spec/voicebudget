@@ -25,9 +25,13 @@ npm run dev:clean
 
 Кратко: GitHub → Import на [vercel.com](https://vercel.com) → переменные `OPENAI_API_KEY`, `ADVISOR_NAME`, `ADVISOR_CONTACT` → Deploy → URL в BotFather.
 
-## Облачная синхронизация (будущее)
+## FAQ для пользователей
 
-См. [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md) — Supabase + Telegram auth + общий household.
+[docs/FAQ.md](docs/FAQ.md) — как пользоваться **Бюджетом**, команды бота, облако, подписка, типичные проблемы.
+
+## Облачная синхронизация
+
+См. [docs/CLOUD_SYNC.md](docs/CLOUD_SYNC.md) и [docs/HOUSEHOLD_SETUP.md](docs/HOUSEHOLD_SETUP.md).
 
 ## Тест AI-рекомендаций
 

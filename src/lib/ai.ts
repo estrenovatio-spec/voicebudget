@@ -5,17 +5,27 @@ import {
   getDefaultCategories,
   getFallbackCategoryId,
   normalizeParsedCategory,
+  sanitizeCategories,
 } from "@/lib/categories";
+import { APP_CURRENCY } from "@/lib/app-currency";
 import { parseAmountFromTranscript, resolveTransactionAmount } from "@/lib/parse-amount";
+import { isGarbageTranscript } from "@/lib/transcript-guard";
+import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import type { Locale, ParsedTransaction, TxType } from "@/types";
 
 export const PARSE_PROMPT = (
   transcript: string,
   locale: Locale,
   categories: CategoryDefinition[] = getDefaultCategories(),
+  partnerName?: string | null,
 ) => {
   const expenseIds = getCategoryIdsForPrompt(categories, "expense", locale);
   const incomeIds = getCategoryIdsForPrompt(categories, "income", locale);
+  const partnerRule = partnerName?.trim()
+    ? locale === "ru"
+      ? `- Если в фразе имя партнёра «${partnerName.trim()}» (или склонение: «${partnerName.trim().slice(0, -1)}е», «для ${partnerName.trim()}») — это доход/расход партнёра, categoryId подбирай по смыслу; «возврат» → refund.`
+      : `- If the phrase mentions partner «${partnerName.trim()}», treat as their transaction; refunds → refund category.`
+    : "";
   return `
 Extract financial transaction from: "${transcript}"
 Return ONLY valid JSON matching this schema:
@@ -23,7 +33,7 @@ Return ONLY valid JSON matching this schema:
   "amount": number,
   "type": "income" or "expense",
   "categoryId": string,
-  "currency": "RUB" | "USD" | "EUR",
+  "currency": "RUB",
   "note": string,
   "date": "YYYY-MM-DD"
 }
@@ -33,16 +43,33 @@ Rules:
 - Income categoryIds: ${incomeIds}
 - Russian amounts: "100 тысяч" / "100 тыс" = 100000; "1.5 млн" = 1500000; "100.000" rubles = 100000 (dot as thousands separator, NOT 100.0).
 - "потратил 100 тысяч на ремонт" → amount 100000, categoryId housing if available.
+- "ксюше возврат 100" / "вернули 100" → type income, categoryId refund.
+- currency MUST always be "RUB" (even if user says euro, dollar, €, $ — record amount as rubles).
 - If amount missing → 0. If type unclear → "expense". Locale: ${locale}.
+${partnerRule}
 `;
 };
 
-const INCOME_KEYWORDS_RU = ["получил", "зарплата", "доход", "пришло", "зачислили"];
+const INCOME_KEYWORDS_RU = [
+  "получил",
+  "получила",
+  "зарплата",
+  "доход",
+  "пришло",
+  "пришли",
+  "зачислили",
+  "возврат",
+  "вернули",
+  "вернула",
+  "компенсация",
+  "кэшбэк",
+  "кешбэк",
+];
 const INCOME_KEYWORDS_EN = ["received", "salary", "income", "earned", "got paid"];
 const EXPENSE_KEYWORDS_RU = ["потратил", "купил", "оплатил", "расход", "потратила"];
 const EXPENSE_KEYWORDS_EN = ["spent", "bought", "paid", "expense"];
 
-function detectType(transcript: string, locale: Locale): TxType {
+export function detectType(transcript: string, locale: Locale): TxType {
   const lower = transcript.toLowerCase();
   const incomeKw = locale === "ru" ? INCOME_KEYWORDS_RU : INCOME_KEYWORDS_EN;
   const expenseKw = locale === "ru" ? EXPENSE_KEYWORDS_RU : EXPENSE_KEYWORDS_EN;
@@ -56,27 +83,37 @@ export function fallbackParse(
   locale: Locale,
   categories: CategoryDefinition[] = getDefaultCategories(),
 ): ParsedTransaction {
+  if (isGarbageTranscript(transcript)) {
+    return {
+      amount: 0,
+      type: "expense",
+      categoryId: getFallbackCategoryId("expense"),
+      currency: APP_CURRENCY,
+      note: "",
+      date: new Date().toISOString().slice(0, 10),
+    };
+  }
+
   const type = detectType(transcript, locale);
   const amount = parseAmountFromTranscript(transcript, locale);
 
-  const lower = transcript.toLowerCase();
-  const currency: ParsedTransaction["currency"] =
-    lower.includes("usd") || lower.includes("$")
-      ? "USD"
-      : lower.includes("eur") || lower.includes("€")
-        ? "EUR"
-        : locale === "ru"
-          ? "RUB"
-          : "USD";
+  let resolvedType = type;
+  if (/возврат|вернули|вернула|refund|cashback|кэшбэк|кешбэк/i.test(transcript)) {
+    resolvedType = "income";
+  }
 
-  const categoryId = detectCategoryId(transcript, type, categories);
+  let categoryId = detectCategoryId(transcript, resolvedType, sanitizeCategories(categories));
+  if (/возврат|вернули|refund/i.test(transcript) && resolvedType === "income") {
+    const refundCat = sanitizeCategories(categories).find((c) => c.id === "refund");
+    if (refundCat) categoryId = "refund";
+  }
 
   return {
     amount,
-    type,
-    categoryId: categoryId || getFallbackCategoryId(type),
-    currency,
-    note: transcript.slice(0, 120),
+    type: resolvedType,
+    categoryId: categoryId || getFallbackCategoryId(resolvedType),
+    currency: APP_CURRENCY,
+    note: sanitizeTransactionNote(transcript.slice(0, 120), amount),
     date: new Date().toISOString().slice(0, 10),
   };
 }
@@ -107,8 +144,8 @@ export function normalizeAiParsed(
     amount,
     type: raw.type,
     categoryId,
-    currency: raw.currency,
-    note: raw.note,
+    currency: APP_CURRENCY,
+    note: sanitizeTransactionNote(raw.note, amount),
     date: raw.date,
   };
 }

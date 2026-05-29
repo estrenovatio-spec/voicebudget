@@ -1,0 +1,92 @@
+import { mergeSyncPayload } from "@/lib/cloud/merge-sync";
+import {
+  cloudPushCategory,
+  cloudPushCategoryBudget,
+  cloudPushGoal,
+  cloudPushRecurring,
+  cloudPushTransaction,
+} from "@/lib/cloud/push";
+import type { SyncPayload } from "@/lib/household/types";
+import { useCloudStore } from "@/store/useCloudStore";
+import { useStore } from "@/store/useStore";
+
+function emptyPlanningDefaults(sync: SyncPayload): SyncPayload {
+  return {
+    ...sync,
+    savingsGoals: sync.savingsGoals ?? [],
+    categoryBudgets: sync.categoryBudgets ?? [],
+    recurringTransactions: sync.recurringTransactions ?? [],
+  };
+}
+
+/** Слияние с локальными данными — обновление приложения не затирает операции */
+export function applyHouseholdSync(
+  sync: SyncPayload,
+  token: string,
+  opts?: { skipPartnerName?: boolean },
+) {
+  const remote = emptyPlanningDefaults(sync);
+  const local = useStore.getState();
+  const cloud = useCloudStore.getState();
+  const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
+  const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
+  const merged = mergeSyncPayload(
+    local.transactions,
+    local.categories,
+    {
+      savingsGoals: local.savingsGoals,
+      categoryBudgets: local.categoryBudgets,
+      recurringTransactions: local.recurringTransactions,
+    },
+    remote,
+    previouslySynced,
+    previouslySyncedCategories,
+    {
+      goalIds: new Set(cloud.lastSyncedRemoteGoalIds),
+      budgetCategoryIds: new Set(cloud.lastSyncedRemoteBudgetCategoryIds),
+      recurringIds: new Set(cloud.lastSyncedRemoteRecurringIds),
+    },
+  );
+
+  useCloudStore.getState().setSession(token, remote.household);
+  useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
+  useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
+  useCloudStore.getState().setLastSyncedRemoteGoalIds(merged.savingsGoals.map((g) => g.id));
+  useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
+    merged.categoryBudgets.map((b) => b.categoryId),
+  );
+  useCloudStore.getState().setLastSyncedRemoteRecurringIds(
+    merged.recurringTransactions.map((r) => r.id),
+  );
+
+  useStore.setState({
+    transactions: merged.transactions,
+    categories: merged.categories,
+    savingsGoals: merged.savingsGoals,
+    categoryBudgets: merged.categoryBudgets,
+    recurringTransactions: merged.recurringTransactions,
+    ...(opts?.skipPartnerName
+      ? {}
+      : { partnerName: remote.household.partnerLabel?.trim() || null }),
+  });
+
+  for (const id of merged.localOnlyTransactionIds) {
+    const tx = merged.transactions.find((t) => t.id === id);
+    if (tx) void cloudPushTransaction(tx);
+  }
+  for (const cat of merged.localOnlyCategories) {
+    void cloudPushCategory(cat);
+  }
+  for (const id of merged.localOnlyGoalIds) {
+    const goal = merged.savingsGoals.find((g) => g.id === id);
+    if (goal) void cloudPushGoal(goal);
+  }
+  for (const categoryId of merged.localOnlyBudgetCategoryIds) {
+    const budget = merged.categoryBudgets.find((b) => b.categoryId === categoryId);
+    if (budget) void cloudPushCategoryBudget(budget);
+  }
+  for (const id of merged.localOnlyRecurringIds) {
+    const item = merged.recurringTransactions.find((r) => r.id === id);
+    if (item) void cloudPushRecurring(item);
+  }
+}

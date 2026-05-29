@@ -1,8 +1,13 @@
 "use client";
 
 import { Settings } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { CategoryManager } from "@/components/CategoryManager";
+import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
+import { DismissibleHints } from "@/components/DismissibleHints";
+import { HelpFaqDialog } from "@/components/HelpFaqDialog";
+import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { t } from "@/lib/i18n";
-import { clearCachedRecommendations } from "@/lib/storage";
+import { hardReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
 export function TMAHeader() {
@@ -23,19 +28,24 @@ export function TMAHeader() {
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const setPartnerName = useStore((s) => s.setPartnerName);
-  const clearAll = useStore((s) => s.clearAll);
   const balances = useHouseholdBalances();
   const [open, setOpen] = useState(false);
   const [partnerInput, setPartnerInput] = useState(partnerName ?? "");
-
-  const fmt = (n: number) =>
-    n.toLocaleString(locale === "ru" ? "ru-RU" : "en-US", { maximumFractionDigits: 0 });
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const handleClear = () => {
-    clearAll();
-    clearCachedRecommendations();
-    setOpen(false);
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
+    hardReloadApp();
   };
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const timer = window.setTimeout(() => setConfirmClear(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, [confirmClear]);
 
   const savePartner = () => {
     setPartnerName(partnerInput.trim() || null);
@@ -48,28 +58,66 @@ export function TMAHeader() {
       )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-xs text-muted-foreground">{t(locale, "balance")}</p>
-          <p className="text-2xl font-bold tabular-nums">
-            {fmt(balances.all)} {t(locale, "currency")}
-          </p>
-          {partnerName && (
-            <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-              <span>
-                {t(locale, "ownerMe")}: {fmt(balances.me)} {t(locale, "currency")}
+          <p className="text-sm font-semibold text-muted-foreground">{t(locale, "balance")}</p>
+          <p className="text-sm font-semibold text-foreground">
+            {partnerName?.trim() ? (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <BalanceQuickEdit
+                  owner="all"
+                  displayed={balances.all}
+                  partnerDisplayed={balances.partner}
+                  label={t(locale, "balance")}
+                  className="text-sm font-semibold"
+                />
               </span>
-              <span>
-                {partnerName}: {fmt(balances.partner)} {t(locale, "currency")}
+            ) : (
+              <BalanceQuickEdit
+                owner="all"
+                displayed={balances.all}
+                label={t(locale, "balance")}
+                className="text-sm font-semibold"
+              />
+            )}
+          </p>
+          {partnerName ? (
+            <div className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                {t(locale, "ownerMe")}:{" "}
+                <BalanceQuickEdit
+                  owner="me"
+                  displayed={balances.me}
+                  label={t(locale, "ownerMe")}
+                />
+              </span>
+              <span className="inline-flex items-center gap-1">
+                {partnerName}:{" "}
+                <BalanceQuickEdit
+                  owner="partner"
+                  displayed={balances.partner}
+                  label={partnerName}
+                />
               </span>
             </div>
-          )}
+          ) : null}
+          <DismissibleHints
+            zoneId="balance-tap"
+            lines={[
+              partnerName?.trim()
+                ? t(locale, "balanceTapHintPartner")
+                : t(locale, "balanceTapHint"),
+            ]}
+            className="[&_button]:text-left"
+          />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <LocaleSwitcher />
-          <Dialog
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <LocaleSwitcher />
+            <Dialog
             open={open}
             onOpenChange={(v) => {
               setOpen(v);
               if (v) setPartnerInput(partnerName ?? "");
+              if (!v) setConfirmClear(false);
             }}
           >
             <DialogTrigger asChild>
@@ -83,7 +131,13 @@ export function TMAHeader() {
               </DialogHeader>
               <Card>
                 <CardContent className="space-y-4 pt-4">
-                  <div className="space-y-2">
+                  <HelpFaqDialog locale={locale} />
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold">{t(locale, "categoriesTitle")}</h3>
+                    <CategoryManager />
+                  </div>
+                  <HouseholdCloudPanel />
+                  <div className="space-y-2 border-t pt-3">
                     <h3 className="text-sm font-semibold">{t(locale, "householdTitle")}</h3>
                     <p className="text-xs text-muted-foreground">{t(locale, "householdHint")}</p>
                     <Input
@@ -95,9 +149,9 @@ export function TMAHeader() {
                       {t(locale, "partnerSave")}
                     </Button>
                   </div>
-                  <div>
-                    <h3 className="mb-2 text-sm font-semibold">{t(locale, "categoriesTitle")}</h3>
-                    <CategoryManager />
+                  <div className="rounded-md border border-dashed p-3">
+                    <p className="text-sm font-semibold">{t(locale, "donationTitle")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t(locale, "donationLine")}</p>
                   </div>
                   <div className="border-t pt-3">
                     <p className="mb-2 text-sm text-muted-foreground">{t(locale, "clearConfirm")}</p>
@@ -107,13 +161,15 @@ export function TMAHeader() {
                       onClick={handleClear}
                       type="button"
                     >
-                      {t(locale, "clearData")}
+                      {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             </DialogContent>
           </Dialog>
+          </div>
+          <CloudHeaderStatus />
         </div>
       </div>
     </header>

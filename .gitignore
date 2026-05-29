@@ -30,7 +30,14 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.local.save
+.env.local.rtf
+.env.vercel.*
+
+# db dumps / local backups
+/backups/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.vercel

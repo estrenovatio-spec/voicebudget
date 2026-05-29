@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  telegramId BigInt   @unique
+  firstName  String?
+  username   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  memberships  HouseholdMember[]
+  subscription Subscription?
+  payments     Payment[]
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  status           SubscriptionStatus @default(expired)
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                String    @id @default(cuid())
+  userId            String
+  yookassaPaymentId String    @unique
+  amount            Float
+  currency          String    @default("RUB")
+  status            String    @default("pending")
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  canceled
+}
+
+model Household {
+  id           String        @id @default(cuid())
+  name         String        @default("Семейный бюджет")
+  inviteCode   String        @unique
+  mode         HouseholdMode @default(SOLO)
+  partnerLabel String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  members      HouseholdMember[]
+  transactions Transaction[]
+  categories   Category[]
+  savingsGoals SavingsGoal[]
+  categoryBudgets CategoryBudget[]
+  recurringTransactions RecurringTransaction[]
+}
+
+model HouseholdMember {
+  id          String     @id @default(cuid())
+  householdId String
+  userId      String
+  role        MemberRole @default(MEMBER)
+  createdAt   DateTime   @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId])
+}
+
+model Transaction {
+  id         String   @id
+  householdId String
+  amount     Float
+  type       TxType
+  categoryId String
+  currency   String   @default("RUB")
+  note       String   @default("")
+  date       String
+  owner      String   @default("me")
+  goalId String?
+  goalAmount Float?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+}
+
+model Category {
+  id          String   @id
+  householdId String
+  type        TxType
+  labelRu     String
+  labelEn     String
+  keywords    String[] @default([])
+  isSystem    Boolean  @default(true)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, id])
+  @@index([householdId])
+}
+
+enum HouseholdMode {
+  SOLO
+  SHARED
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+enum TxType {
+  income
+  expense
+}
+
+enum SavingsGoalKind {
+  custom
+  emergency
+}
+
+enum RecurringFrequency {
+  weekly
+  monthly
+  yearly
+}
+
+model SavingsGoal {
+  id              String          @id
+  householdId     String
+  name            String
+  targetAmount    Float
+  savedAmount     Float           @default(0)
+  deadline        String?
+  kind            SavingsGoalKind @default(custom)
+  emergencyMonths Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, id])
+  @@index([householdId])
+}
+
+model CategoryBudget {
+  id            String   @id @default(cuid())
+  householdId   String
+  categoryId    String
+  monthlyLimit  Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, categoryId])
+  @@index([householdId])
+}
+
+model RecurringTransaction {
+  id          String             @id
+  householdId String
+  amount      Float
+  type        TxType
+  categoryId  String
+  note        String             @default("")
+  owner       String             @default("me")
+  frequency   RecurringFrequency
+  dayOfMonth  Int?
+  nextRunDate String
+  enabled     Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+}

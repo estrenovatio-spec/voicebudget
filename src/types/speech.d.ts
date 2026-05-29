@@ -43,7 +43,12 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  initData?: string;
+  platform?: string;
+  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  colorScheme?: "light" | "dark";
   themeParams: Record<string, string | undefined>;
+  onEvent?: (eventType: string, eventHandler: () => void) => void;
   viewportHeight: number;
   viewportStableHeight: number;
   initDataUnsafe: {

@@ -10,9 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getCategoriesByType, getCategoryLabel } from "@/lib/categories";
+import { formatTransactionDate } from "@/lib/format-date";
 import { t } from "@/lib/i18n";
 import { parseAmountFromTranscript } from "@/lib/parse-amount";
+import { roundMoneyUp } from "@/lib/format-money";
 import { clearCachedRecommendations } from "@/lib/storage";
+import { normalizeGoalAmount } from "@/lib/goal-from-transaction";
 import { useCategories, useStore } from "@/store/useStore";
 import type { BudgetOwner, Transaction, TxType } from "@/types";
 import { getFallbackCategoryId } from "@/lib/categories";
@@ -31,6 +34,7 @@ export function TransactionEditDialog({
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
   const categories = useCategories();
+  const savingsGoals = useStore((s) => s.savingsGoals);
   const updateTransaction = useStore((s) => s.updateTransaction);
   const deleteTransaction = useStore((s) => s.deleteTransaction);
 
@@ -38,6 +42,8 @@ export function TransactionEditDialog({
   const [txType, setTxType] = useState<TxType>("expense");
   const [categoryId, setCategoryId] = useState("");
   const [owner, setOwner] = useState<BudgetOwner>("me");
+  const [goalId, setGoalId] = useState("");
+  const [goalAmount, setGoalAmount] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -50,6 +56,12 @@ export function TransactionEditDialog({
     setTxType(transaction.type);
     setCategoryId(transaction.categoryId);
     setOwner(transaction.owner ?? "me");
+    setGoalId(transaction.goalId ?? "");
+    setGoalAmount(
+      transaction.goalAmount && transaction.goalAmount > 0
+        ? String(transaction.goalAmount)
+        : "",
+    );
     setConfirmDelete(false);
   }, [transaction, open]);
 
@@ -63,17 +75,28 @@ export function TransactionEditDialog({
     if (!valid) {
       setCategoryId(getFallbackCategoryId(next));
     }
+    if (next !== "income") {
+      setGoalId("");
+      setGoalAmount("");
+    }
   };
 
   const handleSave = () => {
     const parsed = parseAmountFromTranscript(amount, locale);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
 
+    const parsedGoal = goalId ? parseAmountFromTranscript(goalAmount || amount, locale) : 0;
+
     updateTransaction(transaction.id, {
-      amount: Math.round(parsed * 100) / 100,
+      amount: roundMoneyUp(parsed),
       type: txType,
       categoryId,
       owner: partnerName ? owner : undefined,
+      goalId: txType === "income" && goalId ? goalId : null,
+      goalAmount:
+        txType === "income" && goalId
+          ? normalizeGoalAmount(parsedGoal > 0 ? parsedGoal : parsed)
+          : null,
     });
     clearCachedRecommendations();
     onOpenChange(false);
@@ -101,6 +124,9 @@ export function TransactionEditDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>{t(locale, "txEditTitle")}</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {formatTransactionDate(transaction.date, locale)}
+          </p>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
@@ -154,6 +180,35 @@ export function TransactionEditDialog({
               ))}
             </select>
           </div>
+          {txType === "income" && savingsGoals.length > 0 ? (
+            <div className="space-y-2 rounded-md border border-dashed p-3">
+              <p className="text-sm font-medium">{t(locale, "txGoal")}</p>
+              <select
+                value={goalId}
+                onChange={(e) => setGoalId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t(locale, "txGoalNone")}</option>
+                {savingsGoals.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              {goalId ? (
+                <>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={goalAmount}
+                    onChange={(e) => setGoalAmount(e.target.value)}
+                    placeholder={t(locale, "txGoalAmount")}
+                  />
+                  <p className="text-xs text-muted-foreground">{t(locale, "txGoalHint")}</p>
+                </>
+              ) : null}
+            </div>
+          ) : null}
           {partnerName && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="tx-owner">

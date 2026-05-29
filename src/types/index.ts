@@ -20,6 +20,11 @@ export interface Transaction {
   note: string;
   date: string;
   owner: BudgetOwner;
+  /** Сумма, переведённая в копилку из этой операции */
+  goalId?: string | null;
+  goalAmount?: number | null;
+  /** ISO — с облака; для слияния при синхронизации */
+  updatedAt?: string;
 }
 export type Locale = "ru" | "en";
 
@@ -31,6 +36,8 @@ export interface ParsedTransaction {
   note: string;
   date: string;
   owner?: BudgetOwner;
+  goalId?: string | null;
+  goalAmount?: number | null;
 }
 
 /** @deprecated persisted legacy shape */

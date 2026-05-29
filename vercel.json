@@ -2,5 +2,10 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "regions": ["fra1"]
+  "regions": ["fra1"],
+  "functions": {
+    "src/app/api/telegram/webhook/route.ts": {
+      "maxDuration": 120
+    }
+  }
 }

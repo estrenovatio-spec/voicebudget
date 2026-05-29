@@ -1,0 +1,206 @@
+import {
+  extractAllAmountsFromTranscript,
+  parseAmountFromTranscript,
+} from "@/lib/parse-amount";
+import { roundMoneyUp } from "@/lib/format-money";
+import type { Locale } from "@/types";
+import type { PlanningInputAction, SavingsGoal } from "@/types/planning";
+import { EMERGENCY_GOAL_ID } from "@/types/planning";
+
+/** Без \\b: в JS \\b не работает с кириллицей (\\w только ASCII). */
+const DEPOSIT_RU =
+  /(?:отлож(?:ил|ила|или|ить|у|им|ите|ишь|ит|ат|ате|аем)|откладыва(?:ю|ем|ете|л|ю)|положил(?:а)?|закин(?:ул|ула|у|ем|ете|им|ить)?|закидыва(?:ю|ем|ете|л|ла|ть)|(?:пере|вы)?кин(?:ул|ула|у|ем|ете|им|ить)?|перекинул(?:а)?|скинул(?:а)?|перев[её]л(?:а)?|внес(?:ла|ли|у|ёму|ем)?|накопил(?:а|и)?|депозит|бросил(?:а)?|выделил(?:а)?|отправил(?:а)?|коп(?:и|ил|ила|или|ить|лю|им|ите|ит|ят|яем)|запиш(?:и|ите|у|ем|ут)(?:\s+в)?|(?:в\s+)?копилк(?:у|и|а|е))(?=\s|$|[,.!?;:])/i;
+const DEPOSIT_EN =
+  /(?:saved|save|saving|deposited|deposit|put aside|set aside|transferred|transfer|moved|move)(?=\s|$|[,.!?;:])/i;
+
+const CREATE_GOAL_RU =
+  /(?:создай|создать|новая)\s+(?:цел(?:ь|и)|копилк(?:у|а))\s+(.+)/i;
+const CREATE_GOAL_EN = /(?:create|new)\s+(?:goal|jar)\s+(.+)/i;
+
+const TARGET_RU = /(?:цел(?:ь|и)|сумм(?:а|у))\s+(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)/i;
+const TARGET_EN = /(?:target|goal amount)\s+(\d[\d\s.,]*(?:\s*(?:k|m))?)/i;
+
+const GOAL_PREP_RU = /(?:на|в|для)/i;
+const GOAL_PREP_EN = /(?:for|to|into)/i;
+
+const INCOME_HINT_RU = /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс)/i;
+const INCOME_HINT_EN = /(?:salary|received|income|earned|paid|paycheck)/i;
+
+const SPLIT_HINT_RU = /(?:из них|из которых|в копилк|на копилк|в цел)/i;
+const SPLIT_HINT_EN = /(?:of which|put aside|into (?:the )?(?:goal|jar))/i;
+
+const GOAL_NAME_STOP_RU =
+  /^(?:копилк(?:у|а|и|е)|цел(?:ь|и)|накоплени(?:е|я)|сбережени(?:е|я)|отлож(?:ен(?:ное|ные|ная))?)$/i;
+
+function findGoalByName(goals: SavingsGoal[], name: string): SavingsGoal | null {
+  const q = name.trim().toLowerCase();
+  if (!q) return null;
+  if (/подушк|резерв|emergency|cushion/i.test(q)) {
+    return goals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency") ?? null;
+  }
+  return (
+    goals.find((g) => g.name.toLowerCase() === q) ??
+    goals.find((g) => g.name.toLowerCase().includes(q)) ??
+    goals.find((g) => q.includes(g.name.toLowerCase())) ??
+    null
+  );
+}
+
+function cleanGoalName(raw: string): string {
+  return raw
+    .replace(/^["«]|["»]$/g, "")
+    .replace(/\s*(?:руб(?:лей|ля)?|₽)\s*$/i, "")
+    .replace(/\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?\s*(?:руб(?:лей|ля)?|₽)?\s*$/i, "")
+    .replace(/^(?:копилк(?:у|а|и|е)\s+)+/i, "")
+    .replace(/^(?:на|в|для|for|to|into)\s+/i, "")
+    .trim();
+}
+
+/** Ищет существующую цель, название которой есть во фразе (любой порядок слов). */
+function findGoalMentionedInText(text: string, goals: SavingsGoal[]): SavingsGoal | null {
+  const lower = text.toLowerCase();
+  let best: SavingsGoal | null = null;
+  for (const g of goals) {
+    const n = g.name.trim().toLowerCase();
+    if (n.length < 2) continue;
+    if (!lower.includes(n)) continue;
+    if (!best || n.length > best.name.length) best = g;
+  }
+  return best;
+}
+
+function extractGoalNameFromText(text: string, locale: Locale): string {
+  const patterns =
+    locale === "ru"
+      ? [
+          /(?:^|\s)(?:на|в|для)\s+(?:копилк(?:у|а|и|е)\s+)?(?:на|в|для\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+          /(?:^|\s)(?:в\s+)?копилк(?:у|а|и|е)\s+(?:на|в|для\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+          /(?:^|\s)([а-яёa-z]{3,}(?:\s+[а-яёa-z]{3,})?)\s+\d[\d\s.,]*/i,
+        ]
+      : [
+          /(?:^|\s)(?:for|to|into)\s+(?:goal|jar\s+)?([a-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+          /(?:^|\s)(?:goal|jar)\s+([a-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+        ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m?.[1]) continue;
+    const name = cleanGoalName(m[1]);
+    if (name.length >= 2 && !GOAL_NAME_STOP_RU.test(name)) return name;
+  }
+  return "";
+}
+
+function parseGoalDepositFromText(
+  text: string,
+  locale: Locale,
+  goals: SavingsGoal[],
+): PlanningInputAction | null {
+  const trimmed = text.trim();
+  const amount = roundMoneyUp(parseAmountFromTranscript(trimmed, locale));
+  if (amount <= 0) return null;
+
+  const mentioned = findGoalMentionedInText(trimmed, goals);
+  if (mentioned) {
+    return { kind: "goal_deposit", goalId: mentioned.id, amount };
+  }
+
+  const goalName = extractGoalNameFromText(trimmed, locale);
+  if (!goalName) return null;
+
+  const goal = findGoalByName(goals, goalName);
+  if (goal) return { kind: "goal_deposit", goalId: goal.id, amount };
+  return { kind: "goal_deposit_by_name", goalName, amount };
+}
+
+function parseGoalCreateTail(tail: string, locale: Locale): { name: string; targetAmount: number } | null {
+  const targetMatch = locale === "ru" ? tail.match(TARGET_RU) : tail.match(TARGET_EN);
+  let targetAmount = 0;
+  let namePart = tail;
+  if (targetMatch) {
+    targetAmount = roundMoneyUp(parseAmountFromTranscript(targetMatch[1], locale));
+    namePart = tail.replace(targetMatch[0], "").trim();
+  }
+  const name = namePart.replace(/^["«]|["»]$/g, "").trim();
+  if (!name) return null;
+  return { name, targetAmount: targetAmount > 0 ? targetAmount : 0 };
+}
+
+function tryParseIncomeWithGoal(
+  text: string,
+  locale: Locale,
+  goals: SavingsGoal[],
+): PlanningInputAction | null {
+  const trimmed = text.trim();
+  const hasIncome =
+    locale === "ru" ? INCOME_HINT_RU.test(trimmed) : INCOME_HINT_EN.test(trimmed);
+  const hasSplit =
+    locale === "ru" ? SPLIT_HINT_RU.test(trimmed) : SPLIT_HINT_EN.test(trimmed);
+  const hasGoalPrep = locale === "ru" ? GOAL_PREP_RU.test(trimmed) : GOAL_PREP_EN.test(trimmed);
+
+  const amounts = extractAllAmountsFromTranscript(trimmed, locale);
+  if (amounts.length < 2 || !hasGoalPrep) return null;
+  if (!hasIncome && !hasSplit) return null;
+
+  const goalMatch = trimmed.match(/(?:^|\s)(?:на|в|для|for|to|into)\s+(.+?)(?:\s*$|\.|,)/i);
+  if (!goalMatch) return null;
+
+  const goalName = cleanGoalName(goalMatch[1]);
+  if (!goalName) return null;
+
+  const incomeAmount = amounts[0];
+  const goalAmount = amounts[1];
+  if (goalAmount <= 0 || goalAmount >= incomeAmount) return null;
+
+  const goal = findGoalByName(goals, goalName);
+  if (goal) {
+    return {
+      kind: "income_with_goal",
+      incomeAmount,
+      goalAmount,
+      goalId: goal.id,
+      goalName: goal.name,
+      sourceText: trimmed,
+    };
+  }
+  return {
+    kind: "income_with_goal",
+    incomeAmount,
+    goalAmount,
+    goalName,
+    sourceText: trimmed,
+  };
+}
+
+export function tryParsePlanningInput(
+  text: string,
+  locale: Locale,
+  goals: SavingsGoal[],
+): PlanningInputAction | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const createMatch =
+    locale === "ru" ? trimmed.match(CREATE_GOAL_RU) : trimmed.match(CREATE_GOAL_EN);
+  if (createMatch) {
+    const parsed = parseGoalCreateTail(createMatch[1], locale);
+    if (parsed) return { kind: "goal_create", ...parsed };
+  }
+
+  const incomeGoal = tryParseIncomeWithGoal(trimmed, locale, goals);
+  if (incomeGoal) return incomeGoal;
+
+  const depositRe = locale === "ru" ? DEPOSIT_RU : DEPOSIT_EN;
+  if (depositRe.test(trimmed)) {
+    const parsed = parseGoalDepositFromText(trimmed, locale, goals);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
+/** Фраза похожа на перевод в копилку (для подстраховки после ИИ). */
+export function looksLikeGoalDeposit(text: string, locale: Locale): boolean {
+  const depositRe = locale === "ru" ? DEPOSIT_RU : DEPOSIT_EN;
+  return depositRe.test(text.trim());
+}

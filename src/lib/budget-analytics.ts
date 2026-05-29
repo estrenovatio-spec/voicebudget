@@ -52,6 +52,10 @@ export function buildBudgetSummary(
   const incomes = transactions.filter((tx) => tx.type === "income");
   const totalExpense = expenses.reduce((s, tx) => s + tx.amount, 0);
   const totalIncome = incomes.reduce((s, tx) => s + tx.amount, 0);
+  const toGoals = incomes.reduce((s, tx) => {
+    const g = tx.goalAmount;
+    return s + (g != null && g > 0 ? g : 0);
+  }, 0);
 
   const expenseMap = new Map<string, number>();
   expenses.forEach((tx) => {
@@ -95,14 +99,14 @@ export function buildBudgetSummary(
   const lastDate =
     dates.length > 0 ? new Date(Math.max(...dates)).toISOString().slice(0, 10) : null;
 
-  const currency = transactions[0]?.currency ?? "RUB";
+  const currency = "RUB";
 
   return {
     daysTracked: getDaysTracked(trackingStartedAt, transactions),
     transactionCount: transactions.length,
     totalIncome,
     totalExpense,
-    balance: totalIncome - totalExpense,
+    balance: totalIncome - toGoals - totalExpense,
     expenseByCategory,
     incomeByCategory,
     monthlyExpenses,

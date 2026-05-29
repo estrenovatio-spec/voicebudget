@@ -1,4 +1,5 @@
 import type { AdvisorConfig } from "@/lib/advisor-config";
+import { advisorBookConsultRu, advisorPlanningWithRu } from "@/lib/advisor-config";
 import type { BudgetSummary } from "@/lib/budget-analytics";
 import type { Locale } from "@/types";
 
@@ -41,7 +42,7 @@ Output rules:
 - Use real category names and amounts from the data.
 - Prioritize: cash-flow balance, cutting the top expense categories, monthly limits, savings rate, emergency fund.
 - If expenses > 70% of income — flag clearly and suggest concrete % cuts by category.
-- The LAST tip MUST invite the user to book a personal consultation with ${advisor.name} via ${advisor.contact}.
+- The LAST tip MUST invite the user to book a personal consultation (Russian: «${advisorBookConsultRu(advisor)}»; English: contact ${advisor.name} via ${advisor.contact}).
   Phrase it warmly: automated analysis is a start, deeper plan needs a 1:1 call.
 - Tone: experienced mentor, supportive, no shame.
 `;
@@ -110,7 +111,7 @@ export function ruleBasedRecommendations(
 
   tips.push(
     isRu
-      ? `Это автоматический обзор. Для персонального плана (цели, долги, инвестиции) запишитесь на консультацию к ${advisor.name}: ${advisor.contact}.`
+      ? `Это автоматический обзор. Для персонального плана (цели, долги, инвестиции) ${advisorBookConsultRu(advisor)}.`
       : `This is an automated overview. For a personal plan, book a consultation with ${advisor.name}: ${advisor.contact}.`,
   );
 

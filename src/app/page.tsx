@@ -1,8 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AIRecommendations } from "@/components/AIRecommendations";
-import { PlanningTips } from "@/components/PlanningTips";
+import { TipsPanel } from "@/components/TipsPanel";
+import { MonthlyFinanceDialog } from "@/components/MonthlyFinanceDialog";
+import { PlanningPanel } from "@/components/PlanningPanel";
+import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
+import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
 import { TMAHeader } from "@/components/TMAHeader";
 import { TransactionList } from "@/components/TransactionList";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
@@ -29,17 +32,21 @@ export default function HomePage() {
     setLocale(detectLocale(navigator.language));
   }, [setLocale]);
 
+  useRecurringProcessor();
+
   return (
     <main
       className="mx-auto flex min-h-[var(--tg-viewport-height,100vh)] max-w-lg flex-col gap-4 px-4 pb-8"
       lang={locale}
     >
+      <HouseholdCloudBootstrap />
       <TMAHeader />
       <VoiceRecorder />
       <TransactionList />
+      <PlanningPanel />
       <FinancialChart />
-      <AIRecommendations />
-      <PlanningTips />
+      <MonthlyFinanceDialog />
+      <TipsPanel />
     </main>
   );
 }

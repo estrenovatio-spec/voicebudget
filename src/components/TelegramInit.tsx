@@ -1,33 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
+import { applyLightTheme, syncThemeFromTelegram } from "@/lib/app-theme";
 import { detectLocale } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
-
-function applyThemeParams(params: Record<string, string | undefined>) {
-  const root = document.documentElement;
-  const bg = params.bg_color ?? "#ffffff";
-  const text = params.text_color ?? "#000000";
-  const secondary = params.secondary_bg_color ?? "#f4f4f5";
-
-  root.style.setProperty("--tg-bg", bg);
-  root.style.setProperty("--tg-text", text);
-  root.style.setProperty("--tg-secondary", secondary);
-  document.body.style.backgroundColor = bg;
-  document.body.style.color = text;
-}
 
 export function TelegramInit() {
   const setLocale = useStore((s) => s.setLocale);
   const setUserName = useStore((s) => s.setUserName);
+  const ensureTrackingStarted = useStore((s) => s.ensureTrackingStarted);
 
   useEffect(() => {
+    ensureTrackingStarted();
+
     const tg = window.Telegram?.WebApp;
-    if (!tg) return;
+    if (!tg) {
+      applyLightTheme();
+      return;
+    }
 
     tg.ready();
     tg.expand();
-    applyThemeParams(tg.themeParams);
+    const offTheme = syncThemeFromTelegram();
 
     const user = tg.initDataUnsafe?.user;
     if (user?.first_name) setUserName(user.first_name);
@@ -47,12 +41,13 @@ export function TelegramInit() {
     }
 
     return () => {
+      offTheme?.();
       if (tg.BackButton) {
         tg.BackButton.offClick(onBack);
         tg.BackButton.hide();
       }
     };
-  }, [setLocale, setUserName]);
+  }, [ensureTrackingStarted, setLocale, setUserName]);
 
   return null;
 }

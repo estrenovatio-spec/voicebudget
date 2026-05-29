@@ -88,7 +88,10 @@ git push -u origin main
 
 | Имя | Значение | Обязательно |
 |-----|----------|-------------|
-| `OPENAI_API_KEY` | `sk-...` из OpenAI | Да (голос и AI-советы) |
+| `LLM_API_KEY` | `sk-...` (xinghu / OpenAI) | Да (разбор фраз и AI-советы) |
+| `LLM_BASE_URL` | `https://xinghuapi.com/v1` | Да, если не официальный OpenAI |
+| `LLM_MODEL` | `gemini-2.5-pro-all` | Рекомендуется для xinghu |
+| `OPENAI_API_KEY` | то же, что `LLM_API_KEY` | Альтернативное имя |
 | `ADVISOR_NAME` | Ваше имя для советов | Рекомендуется |
 | `ADVISOR_CONTACT` | `https://t.me/ваш_ник` | Рекомендуется |
 | `NEXT_PUBLIC_TG_BOT_NAME` | имя бота без @ | Если используете Telegram |
@@ -141,7 +144,7 @@ git push -u origin main
 
 - На Vercel: **Deployments** → **Redeploy** (без кэша)
 - В браузере на том же URL сайт должен открываться
-- Убедитесь, что в Vercel задан `OPENAI_API_KEY`
+- Убедитесь, что в Vercel задан `LLM_API_KEY` (или `OPENAI_API_KEY`) и при прокси — `LLM_BASE_URL`
 
 Голос в Telegram иногда ограничен — можно вводить сумму **текстом** в поле внизу.
 
@@ -165,7 +168,7 @@ Vercel **сам** пересоберёт сайт за 1–3 минуты.
 | Проблема | Что сделать |
 |----------|-------------|
 | Build failed на Vercel | Откройте **Deployments** → последний деплой → **Building** → прочитайте красную ошибку |
-| Голос/AI не отвечает | Проверьте `OPENAI_API_KEY` в Vercel → Settings → Environment Variables → **Redeploy** |
+| Голос/AI не отвечает | Проверьте `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` → **Redeploy**. См. [LLM_VERCEL.md](./LLM_VERCEL.md) |
 | Белый экран | Deployments → **⋯** → **Redeploy** → снять галочку **Use existing Build Cache** |
 | Ошибка загрузки в браузере | Очистить Local Storage ключ `voicebudget-store` |
 

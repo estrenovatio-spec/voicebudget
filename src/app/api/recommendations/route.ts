@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { z } from "zod";
+import { createLlmChatCompletion, getLlmClient, isLlmConfigured } from "@/lib/llm";
+import { extractJsonFromLlmContent } from "@/lib/llm-json";
 import {
   AI_RECOMMENDATIONS_MIN_DAYS,
   type BudgetSummary,
@@ -72,8 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    if (!isLlmConfigured()) {
       return NextResponse.json({
         success: true,
         tips: ruleBasedRecommendations(summary, locale as Locale, advisor),
@@ -81,12 +81,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const openai = new OpenAI({ apiKey });
+    const openai = getLlmClient();
+    if (!openai) {
+      return NextResponse.json({
+        success: true,
+        tips: ruleBasedRecommendations(summary, locale as Locale, advisor),
+        fallback: true,
+      });
+    }
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
+      const completion = await createLlmChatCompletion(openai, {
         messages: [
           {
             role: "system",
@@ -108,7 +113,7 @@ export async function POST(request: NextRequest) {
       const content = completion.choices[0]?.message?.content;
       if (!content) throw new Error("Empty response");
 
-      const raw: unknown = JSON.parse(content);
+      const raw: unknown = extractJsonFromLlmContent(content);
       const validated = tipsSchema.safeParse(raw);
       if (!validated.success) throw new Error("Invalid tips JSON");
 
