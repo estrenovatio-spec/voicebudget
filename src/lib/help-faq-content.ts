@@ -220,14 +220,22 @@ export function buildFaqKnowledgeText(locale: Locale): string {
 export function faqCheatsheet(locale: Locale): string[] {
   return locale === "ru"
     ? [
-        "/start, /help — кратко в боте",
-        "Голос / текст — «потратил 500 на обед»",
-        "Про приложение — Настройки → Помощь → спросите ИИ",
+        "/start, /help — справка в боте",
+        "Голос / текст — «потратил 500 на обед», «зарплата 80000»",
+        "Копилка — «отложил 5000 на отпуск»",
+        "Mini App — бот → «Открыть приложение»",
+        "Партнёр вдвоём — Облако → Вдвоём → код → Присоединиться",
+        "Не слышит голос — текст боту или Chrome (ссылка под микрофоном)",
+        "Подробнее — спросите ИИ ниже",
       ]
     : [
-        "/start, /help — short bot guide",
-        "Voice / text — «spent 500 on lunch»",
-        "App help — Settings → Help → ask AI",
+        "/start, /help — bot guide",
+        "Voice / text — «spent 500 on lunch», «salary 80000»",
+        "Jar — «saved 5000 for vacation»",
+        "Mini App — bot → «Open app»",
+        "Partner — Cloud → Shared → invite code → Join",
+        "Mic issues — text to bot or Chrome (link under mic)",
+        "Details — ask AI below",
       ];
 }
 

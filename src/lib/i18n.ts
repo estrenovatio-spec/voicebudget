@@ -19,6 +19,7 @@ export const DICT = {
     settings: "Настройки",
     helpButton: "Помощь и вопросы",
     helpTitle: "Помощь — Бюджет",
+    helpCheatsheetTitle: "Шпаргалка",
     helpChatTitle: "Спросите ИИ",
     helpChatHint:
       "Здесь можно спросить только ИИ: как пользоваться приложением и по вашим тратам. С облаком — ответ по базе на сервере.",
@@ -353,6 +354,7 @@ export const DICT = {
     settings: "Settings",
     helpButton: "Help & questions",
     helpTitle: "Help — Budget",
+    helpCheatsheetTitle: "Quick reference",
     helpChatTitle: "Ask AI",
     helpChatHint:
       "Ask AI only: how to use the app and about your spending. With cloud, answers use the server database.",

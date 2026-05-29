@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { HelpFaqChat } from "@/components/HelpFaqChat";
+import { faqCheatsheet } from "@/lib/help-faq-content";
 import { t } from "@/lib/i18n";
 import type { Locale } from "@/types";
 
@@ -38,7 +39,19 @@ export function HelpFaqDialog({ locale, variant = "settings" }: HelpFaqDialogPro
         <DialogHeader>
           <DialogTitle>{t(locale, "helpTitle")}</DialogTitle>
         </DialogHeader>
-        <HelpFaqChat locale={locale} />
+        <div className="space-y-3">
+          <div className="rounded-md border bg-muted/40 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t(locale, "helpCheatsheetTitle")}
+            </p>
+            <ul className="space-y-1 text-sm text-foreground">
+              {faqCheatsheet(locale).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+          <HelpFaqChat locale={locale} />
+        </div>
       </DialogContent>
     </Dialog>
   );
