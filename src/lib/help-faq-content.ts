@@ -14,7 +14,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
     body: {
       ru: [
         "Откройте бота @VoiceBudgetBot → «Открыть Mini App».",
-        "Запишите трату: микрофон в приложении или голосовое/текст боту.",
+        "Запишите трату: текст + «Добавить» в приложении или голосовое/текст боту.",
         "Вход только через Telegram — пароль не нужен.",
       ],
       en: [
@@ -174,7 +174,6 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Не работает?", en: "Troubleshooting" },
     body: {
       ru: [
-        "Голос: разрешите микрофон · HTTPS · голосовое боту · текст вручную.",
         "Не нашёл сумму — добавьте цифру: 500 обед.",
         "Пусто в браузере — войти через Telegram, скачать с облака.",
         "Зависло — «Сбросить кэш и перезагрузить» в настройках (если есть).",
@@ -220,20 +219,18 @@ export function faqCheatsheet(locale: Locale): string[] {
   return locale === "ru"
     ? [
         "/start, /help — справка в боте",
-        "Голос / текст — «потратил 500 на обед», «зарплата 80000»",
+        "Текст в приложении или голос/текст боту — «потратил 500 на обед»",
         "Копилка — «отложил 5000 на отпуск»",
         "Mini App — бот → «Открыть приложение»",
         "Партнёр вдвоём — Облако → Вдвоём → код → Присоединиться",
-        "Не слышит голос — текст боту или Chrome (ссылка под микрофоном)",
         "Подробнее — спросите ИИ ниже",
       ]
     : [
         "/start, /help — bot guide",
-        "Voice / text — «spent 500 on lunch», «salary 80000»",
+        "Text in app or voice/text to bot — «spent 500 on lunch»",
         "Jar — «saved 5000 for vacation»",
         "Mini App — bot → «Open app»",
         "Partner — Cloud → Shared → invite code → Join",
-        "Mic issues — text to bot or Chrome (link under mic)",
         "Details — ask AI below",
       ];
 }
