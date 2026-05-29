@@ -220,16 +220,14 @@ export function buildFaqKnowledgeText(locale: Locale): string {
 export function faqCheatsheet(locale: Locale): string[] {
   return locale === "ru"
     ? [
-        "/start, /help — справка в боте",
+        "/start, /help — кратко в боте",
         "Голос / текст — «потратил 500 на обед»",
-        "Копилка — «отложил 5000 на отпуск»",
-        "Полная справка — Настройки → Помощь и вопросы",
+        "Про приложение — Настройки → Помощь → спросите ИИ",
       ]
     : [
-        "/start, /help — bot guide",
+        "/start, /help — short bot guide",
         "Voice / text — «spent 500 on lunch»",
-        "Jar — «saved 5000 for vacation»",
-        "Full FAQ — Settings → Help & questions",
+        "App help — Settings → Help → ask AI",
       ];
 }
 
@@ -248,7 +246,7 @@ export function formatBotHelpHtml(locale: Locale, botUsername = "VoiceBudgetBot"
       `• saved 5000 for vacation\n\n` +
       `<b>Voice</b> — send a voice message; or type the same.\n` +
       `Syncs with the Mini App when cloud is on.\n\n` +
-      `<b>Full FAQ & AI</b> — Mini App → Settings → Help & questions → «Ask AI»\n\n` +
+      `<b>App help</b> — Mini App → Settings → Help → ask AI (unlimited)\n\n` +
       `Bot: @${bot}`
     );
   }
@@ -263,7 +261,7 @@ export function formatBotHelpHtml(locale: Locale, botUsername = "VoiceBudgetBot"
     `• отложил 5000 на отпуск\n\n` +
     `<b>Голос</b> — голосовое в чат; или тот же текст.\n` +
     `Синхронизация с Mini App при включённом облаке.\n\n` +
-    `<b>Полный FAQ и ИИ</b> — Mini App → Настройки → Помощь и вопросы → «Спросить ИИ»\n\n` +
+    `<b>Справка по приложению</b> — Mini App → Настройки → Помощь → спросите ИИ (без лимита)\n\n` +
     `Бот: @${bot}`
   );
 }

@@ -9,7 +9,8 @@ import {
 import type { CategoryDefinition, Locale, Transaction } from "@/types";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
 
-export const HELP_CHAT_MAX_USER_MESSAGES = 12;
+/** Max messages sent to LLM per request (full history kept in UI/storage). */
+export const HELP_CHAT_LLM_HISTORY_MAX = 40;
 export const HELP_CHAT_RECENT_TX_LIMIT = 50;
 
 export type HelpChatMessage = { role: "user" | "assistant"; content: string };
@@ -149,13 +150,12 @@ Partner label for "partner" owner: ${ctx.partnerLabel ?? "(not set)"}`
 
 Respond in ${lang}. Be concise (2–4 short paragraphs or a short list). Friendly, no shame.
 
-You have two knowledge sources:
-1) APP HELP — how to use the app, bot commands, cloud sync, subscription, voice, categories, planning.
-2) USER FINANCES — only from the JSON below; never invent amounts or categories.
+The user has NO other help screens — all questions about how the app works must be answered from APP HELP below.
+For their money, use only USER FINANCES JSON.
 
 Rules:
-- How-to / "how does X work" → use APP HELP (FAQ). Mention Settings → Help if useful.
-- "How much did I spend", trends, categories, goals → use USER FINANCES only.
+- App usage, bot, cloud, subscription, voice, categories, planning → APP HELP only.
+- Spending, income, trends, categories, goals → USER FINANCES only; never invent numbers.
 - No tax, legal, or specific investment product advice.
 - If finances are asked but data is empty, explain briefly and suggest logging a few transactions.
 - ${sourceNote}

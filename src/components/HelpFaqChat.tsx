@@ -3,7 +3,6 @@
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { HELP_CHAT_MAX_USER_MESSAGES } from "@/lib/help-chat";
 import type { HelpChatMessage } from "@/lib/help-chat";
 import { getCloudAuthBody } from "@/lib/cloud/auth-payload";
 import { t } from "@/lib/i18n";
@@ -12,6 +11,7 @@ import { useStore } from "@/store/useStore";
 import type { Locale } from "@/types";
 
 const CHAT_STORAGE_KEY = "voicebudget-help-chat-v1";
+const STORED_MESSAGES_MAX = 200;
 
 function readStoredChat(): HelpChatMessage[] {
   if (typeof window === "undefined") return [];
@@ -34,7 +34,7 @@ function readStoredChat(): HelpChatMessage[] {
 
 function writeStoredChat(messages: HelpChatMessage[]): void {
   try {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-24)));
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-STORED_MESSAGES_MAX)));
   } catch {
     /* ignore */
   }
@@ -57,7 +57,6 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
   const [chat, setChat] = useState<HelpChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [limitHit, setLimitHit] = useState(false);
   const [dataSourceHint, setDataSourceHint] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,12 +68,9 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat, loading]);
 
-  const userMessageCount = chat.filter((m) => m.role === "user").length;
-  const canAsk = !limitHit && userMessageCount < HELP_CHAT_MAX_USER_MESSAGES;
-
   const sendQuestion = useCallback(async () => {
     const q = question.trim();
-    if (!q || !canAsk || loading) return;
+    if (!q || loading) return;
 
     const userMsg: HelpChatMessage = { role: "user", content: q };
     const nextChat = [...chat, userMsg];
@@ -111,15 +107,8 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
       const json = (await res.json()) as {
         success?: boolean;
         reply?: string;
-        error?: string;
         dataSource?: string;
-        fallback?: boolean;
       };
-
-      if (res.status === 429 || json.error === "chat_limit") {
-        setLimitHit(true);
-        return;
-      }
 
       const reply =
         json.reply ??
@@ -150,7 +139,6 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
       setLoading(false);
     }
   }, [
-    canAsk,
     categories,
     categoryBudgets,
     chat,
@@ -173,7 +161,7 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
       </p>
       <p className="mb-2 text-xs text-muted-foreground">{t(locale, "helpChatHint")}</p>
 
-      <div className="mb-2 max-h-48 space-y-2 overflow-y-auto rounded-md bg-background/80 p-2">
+      <div className="mb-2 max-h-56 space-y-2 overflow-y-auto rounded-md bg-background/80 p-2">
         {chat.length === 0 && !loading && (
           <p className="text-xs text-muted-foreground">{t(locale, "helpChatEmpty")}</p>
         )}
@@ -202,10 +190,6 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
         <p className="mb-2 text-[10px] text-muted-foreground">{dataSourceHint}</p>
       ) : null}
 
-      {limitHit && (
-        <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">{t(locale, "helpChatLimit")}</p>
-      )}
-
       <div className="flex gap-2">
         <textarea
           value={question}
@@ -217,7 +201,7 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
             }
           }}
           placeholder={t(locale, "helpChatPlaceholder")}
-          disabled={!canAsk || loading}
+          disabled={loading}
           rows={2}
           className="min-h-[2.5rem] flex-1 resize-none rounded-md border border-input bg-background px-2.5 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
@@ -225,16 +209,13 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
           type="button"
           size="icon"
           className="h-10 w-10 shrink-0"
-          disabled={!canAsk || loading || !question.trim()}
+          disabled={loading || !question.trim()}
           onClick={() => void sendQuestion()}
           aria-label={t(locale, "helpChatSend")}
         >
           <Send className="h-4 w-4" />
         </Button>
       </div>
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">
-        {userMessageCount}/{HELP_CHAT_MAX_USER_MESSAGES}
-      </p>
     </div>
   );
 }

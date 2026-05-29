@@ -10,7 +10,7 @@ import {
   upsertTelegramUser,
 } from "@/lib/household/service";
 import {
-  HELP_CHAT_MAX_USER_MESSAGES,
+  HELP_CHAT_LLM_HISTORY_MAX,
   HELP_CHAT_SYSTEM,
   buildHelpChatContext,
   type HelpChatMessage,
@@ -49,7 +49,7 @@ const bodySchema = z
   .object({
     locale: z.enum(["ru", "en"]),
     question: z.string().min(1).max(1000),
-    messages: z.array(messageSchema).max(HELP_CHAT_MAX_USER_MESSAGES * 2),
+    messages: z.array(messageSchema).max(400),
     trackingStartedAt: z.string().nullable().optional(),
     partnerLabel: z.string().nullable().optional(),
     initData: z.string().optional(),
@@ -110,15 +110,10 @@ export async function POST(request: NextRequest) {
       clientSnapshot,
     } = parsed.data;
 
-    const userTurns = messages.filter((m) => m.role === "user").length;
-    if (userTurns >= HELP_CHAT_MAX_USER_MESSAGES) {
-      return NextResponse.json({ error: "chat_limit", success: false }, { status: 429 });
-    }
-
     const isRu = locale === "ru";
     const fallbackReply = isRu
-      ? "Сейчас ИИ недоступен. Посмотрите разделы FAQ ниже или попробуйте позже."
-      : "AI is unavailable. Check the FAQ sections below or try again later.";
+      ? "Сейчас ИИ недоступен. Попробуйте задать вопрос позже."
+      : "AI is unavailable. Try again later.";
 
     let dataSource: "cloud_db" | "client_device" | "none" = "none";
     let transactions: Transaction[] = [];
@@ -180,10 +175,12 @@ export async function POST(request: NextRequest) {
     }
 
     const system = HELP_CHAT_SYSTEM(ctx);
-    const history = (messages as HelpChatMessage[]).map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+    const history = (messages as HelpChatMessage[])
+      .slice(-HELP_CHAT_LLM_HISTORY_MAX)
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
 
     try {
       const completion = await createLlmChatCompletion(openai, {
