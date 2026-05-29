@@ -5,6 +5,7 @@ import {
 } from "@/lib/budget-analytics";
 import type { AdvisorConfig } from "@/lib/advisor-config";
 import { advisorPlanningWithRu } from "@/lib/advisor-config";
+import { formatIsoPeriod } from "@/lib/format-date";
 import type { Locale, Transaction } from "@/types";
 
 export const WEEKLY_ANALYSIS_DAYS = 7;
@@ -146,7 +147,7 @@ export const WEEKLY_ANALYSIS_PROMPT = (
   const limited = summary.weekTransactionCount < 8;
 
   return `
-You are a calm financial mentor. Weekly review for ${summary.periodStart} — ${summary.periodEnd}.
+You are a calm financial mentor. Weekly review for ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)}.
 
 Data (JSON):
 ${JSON.stringify(summary, null, 2)}

@@ -1,9 +1,15 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  HomeSectionCardHeader,
+  HomeSectionCollapsedBar,
+  homeSectionContentClassName,
+  sectionToggleButtonClassName,
+} from "@/components/HomeSectionCardHeader";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
@@ -64,8 +70,25 @@ export function PlanningPanel() {
   const entryOwner = useStore((s) => s.entryOwner);
   const budgetMonthStartDay = useStore((s) => s.budgetMonthStartDay);
   const setBudgetMonthStartDay = useStore((s) => s.setBudgetMonthStartDay);
+  const collapsed = useStore((s) => s.planningPanelCollapsed);
+  const setPlanningPanelCollapsed = useStore((s) => s.setPlanningPanelCollapsed);
 
-  const [open, setOpen] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const finish = () => setHydrated(true);
+    if (useStore.persist.hasHydrated()) {
+      finish();
+      return;
+    }
+    return useStore.persist.onFinishHydration(finish);
+  }, []);
+
+  const open = hydrated && !collapsed;
+
+  const toggleOpen = useCallback(() => {
+    setPlanningPanelCollapsed(!useStore.getState().planningPanelCollapsed);
+  }, [setPlanningPanelCollapsed]);
   const [goalName, setGoalName] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
@@ -156,29 +179,47 @@ export function PlanningPanel() {
     });
   };
 
+  const showToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={sectionToggleButtonClassName}
+      onClick={toggleOpen}
+    >
+      {open && hydrated ? (
+        <>
+          <ChevronUp className="h-4 w-4" />
+          {t(locale, "planningHide")}
+        </>
+      ) : (
+        <>
+          <ChevronDown className="h-4 w-4" />
+          {t(locale, "planningShow")}
+        </>
+      )}
+    </Button>
+  );
+
+  if (hydrated && !open) {
+    return (
+      <HomeSectionCollapsedBar
+        icon={PiggyBank}
+        title={t(locale, "planningTitle")}
+        action={showToggle}
+      />
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <PiggyBank className="h-4 w-4" />
-          {t(locale, "planningTitle")}
-        </CardTitle>
-        <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}>
-          {open ? (
-            <>
-              <ChevronUp className="mr-1 h-4 w-4" />
-              {t(locale, "planningHide")}
-            </>
-          ) : (
-            <>
-              <ChevronDown className="mr-1 h-4 w-4" />
-              {t(locale, "planningShow")}
-            </>
-          )}
-        </Button>
-      </CardHeader>
+    <Card className="border-primary/20">
+      <HomeSectionCardHeader
+        icon={PiggyBank}
+        title={t(locale, "planningTitle")}
+        action={showToggle}
+      />
       {open ? (
-        <CardContent>
+        <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
             <TabsList className="mb-3 grid w-full grid-cols-4">
               <TabsTrigger value="goals">{t(locale, "planningTabGoals")}</TabsTrigger>

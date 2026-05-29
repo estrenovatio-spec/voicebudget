@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getAdvisorConfig } from "@/lib/advisor-config";
+import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
 import { t } from "@/lib/i18n";
 import {
@@ -337,8 +338,8 @@ export function MonthlyFinanceDialog() {
               <CalendarDays className="h-3 w-3" />
               {gate.ready
                 ? t(locale, "monthlyPeriod", {
-                    from: summary.periodStart,
-                    to: summary.periodEnd,
+                    from: formatIsoDate(summary.periodStart, locale),
+                    to: formatIsoDate(summary.periodEnd, locale),
                   })
                 : t(locale, "monthlySubtitleWaiting")}
             </p>
@@ -411,8 +412,8 @@ export function MonthlyFinanceDialog() {
             </DialogTitle>
             <p className="text-left text-xs text-muted-foreground">
               {t(locale, "monthlyPeriod", {
-                from: summary.periodStart,
-                to: summary.periodEnd,
+                from: formatIsoDate(summary.periodStart, locale),
+                to: formatIsoDate(summary.periodEnd, locale),
               })}
             </p>
           </DialogHeader>

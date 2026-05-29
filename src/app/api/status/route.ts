@@ -18,6 +18,7 @@ export async function GET() {
   const llm = isLlmConfigured();
 
   let dbTables = false;
+  let planningTables = false;
   let dbError: string | undefined;
 
   if (databaseUrl) {
@@ -25,6 +26,20 @@ export async function GET() {
       await prisma.$queryRaw`SELECT 1`;
       await prisma.household.findFirst({ take: 1 });
       dbTables = true;
+
+      const planningRows = await prisma.$queryRaw<{ table_name: string }[]>`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name IN (
+            'SavingsGoal',
+            'CategoryBudget',
+            'RecurringTransaction',
+            'Subscription',
+            'Payment'
+          )
+      `;
+      planningTables = planningRows.length >= 5;
     } catch (e) {
       dbError = e instanceof Error ? e.message.slice(0, 280) : "unknown";
     }
@@ -44,6 +59,7 @@ export async function GET() {
     sttReady: listSttProviderIds().length > 0,
     paymentsConfigured: isPaymentsConfigured(),
     dbTables,
+    planningTables,
     dbError,
     databaseUrlHint,
     ...(usesSupabaseDirect

@@ -84,6 +84,9 @@ interface StoreState {
   recurringTransactions: RecurringTransaction[];
   /** День начала бюджетного месяца (1 = календарный, 25 = с 25-го по 24-е) */
   budgetMonthStartDay: number;
+  /** Блок «Цели и планирование» свёрнут */
+  planningPanelCollapsed: boolean;
+  setPlanningPanelCollapsed: (collapsed: boolean) => void;
   addTransaction: (data: ParsedTransaction, transcript?: string) => void;
   updateTransaction: (
     id: string,
@@ -215,6 +218,8 @@ export const useStore = create<StoreState>()(
       categoryBudgets: [],
       recurringTransactions: [],
       budgetMonthStartDay: 1,
+      planningPanelCollapsed: false,
+      setPlanningPanelCollapsed: (collapsed) => set({ planningPanelCollapsed: collapsed }),
       cashOffsetMe: 0,
       cashOffsetPartner: 0,
       addTransaction: (data, transcript) => {
@@ -668,8 +673,8 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 14,
-      migrate: (persisted) => {
+      version: 15,
+      migrate: (persisted, version) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);
         const rawTx = Array.isArray(raw.transactions) ? raw.transactions : [];
@@ -739,12 +744,27 @@ export const useStore = create<StoreState>()(
           cashOffsetMe: typeof raw.cashOffsetMe === "number" ? raw.cashOffsetMe : 0,
           cashOffsetPartner:
             typeof raw.cashOffsetPartner === "number" ? raw.cashOffsetPartner : 0,
+          planningPanelCollapsed:
+            typeof raw.planningPanelCollapsed === "boolean" ? raw.planningPanelCollapsed : false,
         };
       },
       onRehydrateStorage: () => (state, error) => {
         if (error) {
           console.warn("[voicebudget-store] rehydrate failed, keeping cloud session", error);
         } else if (state) {
+          if (typeof window !== "undefined") {
+            try {
+              if (
+                localStorage.getItem("voicebudget-planning-panel-hidden") === "1" &&
+                !state.planningPanelCollapsed
+              ) {
+                state.planningPanelCollapsed = true;
+              }
+              localStorage.removeItem("voicebudget-planning-panel-hidden");
+            } catch {
+              /* ignore */
+            }
+          }
           state.categories = sanitizeCategories(state.categories);
           state.transactions = (state.transactions ?? []).map((tx) => {
             const withO = withOwner(tx);

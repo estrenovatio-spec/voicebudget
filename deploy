@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Запуск без глобального npm: bash deploy   или   ./deploy
+exec "$(dirname "$0")/scripts/deploy.sh" "$@"

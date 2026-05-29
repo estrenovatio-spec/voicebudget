@@ -4,6 +4,7 @@ import { CalendarDays, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getAdvisorConfig } from "@/lib/advisor-config";
+import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
 import { t } from "@/lib/i18n";
 import {
@@ -127,8 +128,8 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
           <CalendarDays className="h-3 w-3 shrink-0" />
           {gate.ready
             ? t(locale, "weeklyPeriod", {
-                from: summary.periodStart,
-                to: summary.periodEnd,
+                from: formatIsoDate(summary.periodStart, locale),
+                to: formatIsoDate(summary.periodEnd, locale),
               })
             : t(locale, "weeklySubtitleWaiting")}
         </p>

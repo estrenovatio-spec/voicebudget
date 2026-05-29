@@ -13,12 +13,31 @@ export const TIPS_TAB_ORDER_KEY = "voicebudget-tips-tab-order";
 export const TRANSACTIONS_HIDDEN_KEY = "voicebudget-transactions-hidden";
 export const TIPS_PANEL_HIDDEN_KEY = "voicebudget-tips-panel-hidden";
 export const PLANNING_TIPS_HIDDEN_KEY = "voicebudget-planning-tips-hidden";
+export const PLANNING_PANEL_HIDDEN_KEY = "voicebudget-planning-panel-hidden";
 export const AI_RECOMMENDATIONS_HIDDEN_KEY = "voicebudget-ai-recommendations-hidden";
 export const WEEKLY_ANALYSIS_HIDDEN_KEY = "voicebudget-weekly-analysis-hidden";
 export const MONTHLY_ANALYSIS_HIDDEN_KEY = "voicebudget-monthly-analysis-hidden";
 export const SUMMARY_INCOME_HIDDEN_KEY = "voicebudget-summary-income-hidden";
 export const SUMMARY_EXPENSE_HIDDEN_KEY = "voicebudget-summary-expense-hidden";
 export const CHART_HIDDEN_KEY = "voicebudget-chart-hidden";
+export const BALANCE_AMOUNTS_HIDDEN_KEY = "voicebudget-balance-amounts-hidden";
+const HOME_SECTION_ORDER_KEY = "voicebudget-home-section-order";
+
+const DISMISSIBLE_HINTS_PREFIX = "voicebudget-hints-hidden:";
+
+/** Legacy tap-to-hide hints under balance/voice — remove leftover keys */
+export function clearDismissibleHintKeys(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(DISMISSIBLE_HINTS_PREFIX)) keys.push(key);
+    }
+    keys.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function clearAppStorage(): void {
   if (typeof window === "undefined") return;
@@ -35,12 +54,16 @@ export function clearAppStorage(): void {
     localStorage.removeItem(TRANSACTIONS_HIDDEN_KEY);
     localStorage.removeItem(TIPS_PANEL_HIDDEN_KEY);
     localStorage.removeItem(PLANNING_TIPS_HIDDEN_KEY);
+    localStorage.removeItem(PLANNING_PANEL_HIDDEN_KEY);
     localStorage.removeItem(AI_RECOMMENDATIONS_HIDDEN_KEY);
     localStorage.removeItem(WEEKLY_ANALYSIS_HIDDEN_KEY);
     localStorage.removeItem(MONTHLY_ANALYSIS_HIDDEN_KEY);
     localStorage.removeItem(SUMMARY_INCOME_HIDDEN_KEY);
     localStorage.removeItem(SUMMARY_EXPENSE_HIDDEN_KEY);
     localStorage.removeItem(CHART_HIDDEN_KEY);
+    localStorage.removeItem(BALANCE_AMOUNTS_HIDDEN_KEY);
+    localStorage.removeItem(HOME_SECTION_ORDER_KEY);
+    clearDismissibleHintKeys();
     localStorage.removeItem(CLOUD_KEY);
     sessionStorage.removeItem(WEB_LOGIN_KEY);
     sessionStorage.removeItem(CLOUD_PAUSE_KEY);

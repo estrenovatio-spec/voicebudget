@@ -6,6 +6,7 @@ import {
 } from "@/lib/budget-analytics";
 import type { AdvisorConfig } from "@/lib/advisor-config";
 import { advisorPlanningWithRu } from "@/lib/advisor-config";
+import { formatIsoDate, formatIsoPeriod } from "@/lib/format-date";
 import type { Locale, Transaction } from "@/types";
 
 /** Макс. длина периода отчёта; если ведёте дольше — берём последние 30 дней */
@@ -22,12 +23,17 @@ export interface MonthlySummary extends BudgetSummary {
   monthTransactionCount: number;
 }
 
-export type MonthlyGateReason = "need_more_entries" | "sparse_month" | "ready";
+export type MonthlyGateReason =
+  | "need_more_days"
+  | "need_more_entries"
+  | "sparse_month"
+  | "ready";
 
 export interface MonthlyGate {
   ready: boolean;
   reason: MonthlyGateReason;
   entriesNeeded?: number;
+  daysNeeded?: number;
 }
 
 function parseDate(date: string): Date {
@@ -175,6 +181,15 @@ export function getMonthlyGate(
   _trackingStartedAt: string | null,
   _transactions: Transaction[],
 ): MonthlyGate {
+  const periodDays = reportPeriodDays(summary);
+  if (periodDays < MONTHLY_ANALYSIS_DAYS) {
+    return {
+      ready: false,
+      reason: "need_more_days",
+      daysNeeded: MONTHLY_ANALYSIS_DAYS - periodDays,
+    };
+  }
+
   if (summary.monthTransactionCount < MONTHLY_MIN_TRANSACTIONS) {
     return {
       ready: false,
@@ -197,6 +212,15 @@ export function getMonthlyWaitingMessages(
   summary: MonthlySummary,
 ): string[] {
   const isRu = locale === "ru";
+
+  if (gate.reason === "need_more_days") {
+    const n = gate.daysNeeded ?? 1;
+    return [
+      isRu
+        ? `Месячный разбор откроется через ${n} ${n === 1 ? "день" : n < 5 ? "дня" : "дней"} — ведите учёт с первого входа (нужно ${MONTHLY_ANALYSIS_DAYS} дней).`
+        : `Monthly review unlocks in ${n} day(s) — keep logging (${MONTHLY_ANALYSIS_DAYS} days from your first entry).`,
+    ];
+  }
 
   if (gate.reason === "need_more_entries") {
     const n = gate.entriesNeeded ?? 1;
@@ -227,7 +251,7 @@ export const MONTHLY_ANALYSIS_PROMPT = (
   const limited = summary.monthTransactionCount < 15;
 
   return `
-You are a calm financial mentor. Monthly review for ${summary.periodStart} — ${summary.periodEnd} (since user started tracking; ${summary.daysTracked} day(s) total).
+You are a calm financial mentor. Monthly review for ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)} (since user started tracking; ${summary.daysTracked} day(s) total).
 
 Data (JSON):
 ${JSON.stringify(summary, null, 2)}
@@ -252,8 +276,8 @@ export function ruleBasedMonthlyAnalysis(
   const top = summary.expenseByCategory[0];
 
   const periodLabel = isRu
-    ? `За период ${summary.periodStart} — ${summary.periodEnd}`
-    : `Period ${summary.periodStart} — ${summary.periodEnd}`;
+    ? `За период ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)}`
+    : `Period ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)}`;
 
   const tips: string[] = [
     isRu
@@ -303,7 +327,7 @@ ${extendedPeriod ? "The user asked about a LONGER period than the short monthly 
 ${trendHint}
 
 User has been tracking for ${summary.daysTracked} day(s) total.
-Period in Summary JSON: ${summary.periodStart} — ${summary.periodEnd} (${summary.monthTransactionCount} entries)
+Period in Summary JSON: ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)} (${summary.monthTransactionCount} entries; dates in JSON are YYYY-MM-DD)
 Currency: ${summary.currency}
 
 Summary JSON:

@@ -8,11 +8,7 @@ import { parseVoiceTranscript } from "@/lib/voice";
 import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { DismissibleHints } from "@/components/DismissibleHints";
 import { useStore } from "@/store/useStore";
-import { hasTelegramWebApp } from "@/lib/cloud/telegram";
-
-const TG_BOT = process.env.NEXT_PUBLIC_TG_BOT_NAME?.replace(/^@/, "") ?? "";
 
 export function VoiceRecorder() {
   const locale = useStore((s) => s.locale);
@@ -111,8 +107,8 @@ export function VoiceRecorder() {
   }, [addTransaction, applyPlanningInput, busy, categories, locale, partnerName, savingsGoals, text, toast]);
 
   return (
-    <section className="flex flex-col items-center gap-3 py-4">
-      <div className="w-full max-w-md space-y-2">
+    <section className="flex flex-col items-center py-2">
+      <div className="w-full max-w-md space-y-1.5">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -137,16 +133,6 @@ export function VoiceRecorder() {
             t(locale, "fallbackSubmit")
           )}
         </Button>
-        <DismissibleHints
-          zoneId="voice-input"
-          lines={[
-            ...(hasTelegramWebApp() && TG_BOT
-              ? [t(locale, "voiceHintTelegram", { bot: TG_BOT })]
-              : []),
-            t(locale, "planningInputHint"),
-          ]}
-          className="min-h-[2.5rem]"
-        />
       </div>
     </section>
   );

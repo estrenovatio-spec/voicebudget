@@ -6,7 +6,14 @@ import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { TransactionEditDialog } from "@/components/TransactionEditDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  HomeSectionCardHeader,
+  HomeSectionCollapsedBar,
+  homeSectionContentClassName,
+  homeSectionPadX,
+  sectionToggleButtonClassName,
+} from "@/components/HomeSectionCardHeader";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryLabel } from "@/lib/categories";
 import { formatTransactionDate } from "@/lib/format-date";
@@ -16,8 +23,6 @@ import { TRANSACTIONS_HIDDEN_KEY } from "@/lib/storage-reset";
 import { displayTransactionNote } from "@/lib/transaction-note";
 import { useCategories, useFilteredTransactions, useStore } from "@/store/useStore";
 import type { Transaction, TxType } from "@/types";
-
-const PINNED_COUNT = 3;
 
 function readHidden(): boolean {
   if (typeof window === "undefined") return false;
@@ -116,22 +121,25 @@ export function TransactionList() {
     writeHidden(true);
   }, []);
 
-  const pinned = transactions.slice(0, PINNED_COUNT);
-  const rest = transactions.slice(PINNED_COUNT);
-
   if (hidden) {
     return (
       <>
-        <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5">
-          <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-            <List className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate">{t(locale, "transactions")}</span>
-          </span>
-          <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1" onClick={show}>
-            <ChevronDown className="h-4 w-4" />
-            {t(locale, "transactionsShow")}
-          </Button>
-        </div>
+        <HomeSectionCollapsedBar
+          icon={List}
+          title={t(locale, "transactions")}
+          action={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={sectionToggleButtonClassName}
+              onClick={show}
+            >
+              <ChevronDown className="h-4 w-4" />
+              {t(locale, "transactionsShow")}
+            </Button>
+          }
+        />
         <TransactionEditDialog
           transaction={editing}
           open={editing !== null}
@@ -145,21 +153,24 @@ export function TransactionList() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="space-y-3 pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base">{t(locale, "transactions")}</CardTitle>
+      <Card className="border-primary/20">
+        <HomeSectionCardHeader
+          icon={List}
+          title={t(locale, "transactions")}
+          action={
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 shrink-0 gap-1 px-2 text-xs"
+              className={sectionToggleButtonClassName}
               onClick={hide}
             >
               <ChevronUp className="h-4 w-4" />
               {t(locale, "transactionsHide")}
             </Button>
-          </div>
+          }
+        />
+        <CardHeader className={`space-y-3 pb-2 pt-0 ${homeSectionPadX}`}>
           <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | TxType)}>
             <TabsList className="w-full">
               <TabsTrigger value="all" className="flex-1">
@@ -174,7 +185,7 @@ export function TransactionList() {
             </TabsList>
           </Tabs>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className={`space-y-3 ${homeSectionContentClassName}`}>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">{t(locale, "householdFilterLabel")}</p>
             <HouseholdFilterTabs />
@@ -184,34 +195,18 @@ export function TransactionList() {
               {t(locale, "noTransactions")}
             </p>
           ) : (
-            <div className="space-y-2">
-              <ul className="space-y-2">
-                {pinned.map((tx) => (
-                  <TransactionRow
-                    key={tx.id}
-                    tx={tx}
-                    locale={locale}
-                    categories={categories}
-                    partnerName={partnerName}
-                    onEdit={setEditing}
-                  />
-                ))}
-              </ul>
-              {rest.length > 0 && (
-                <ul className="max-h-52 space-y-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
-                  {rest.map((tx) => (
-                    <TransactionRow
-                      key={tx.id}
-                      tx={tx}
-                      locale={locale}
-                      categories={categories}
-                      partnerName={partnerName}
-                      onEdit={setEditing}
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
+            <ul className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
+              {transactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  locale={locale}
+                  categories={categories}
+                  partnerName={partnerName}
+                  onEdit={setEditing}
+                />
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

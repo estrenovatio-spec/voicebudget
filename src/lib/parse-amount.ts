@@ -36,12 +36,111 @@ function applyMultiplier(base: number, multiplier: number): number {
   return roundMoneyUp(base * multiplier);
 }
 
+const RU_WORD_ONES: Record<string, number> = {
+  один: 1,
+  одна: 1,
+  одно: 1,
+  два: 2,
+  две: 2,
+  три: 3,
+  четыре: 4,
+  пять: 5,
+  шесть: 6,
+  семь: 7,
+  восемь: 8,
+  девять: 9,
+  десять: 10,
+  одиннадцать: 11,
+  двенадцать: 12,
+  тринадцать: 13,
+  четырнадцать: 14,
+  пятнадцать: 15,
+  шестнадцать: 16,
+  семнадцать: 17,
+  восемнадцать: 18,
+  девятнадцать: 19,
+  двадцать: 20,
+  тридцать: 30,
+  сорок: 40,
+  пятьдесят: 50,
+  шестьдесят: 60,
+  семьдесят: 70,
+  восемьдесят: 80,
+  девяносто: 90,
+  сто: 100,
+  двести: 200,
+  триста: 300,
+  четыреста: 400,
+  пятьсот: 500,
+  шестьсот: 600,
+  семьсот: 700,
+  восемьсот: 800,
+  девятьсот: 900,
+};
+
+/** «две тысячи», «пятьсот рублей» без цифр */
+function parseRussianSpokenAmount(text: string): number {
+  const lower = text.toLowerCase();
+  const afterWord = String.raw`(?=\s|$|[^а-яёa-z0-9])`;
+
+  const thousandRe = new RegExp(
+    String.raw`(\d+|[а-яё]+)\s*(?:тысяч[а-яё]*|тысячи|тыс\.?)${afterWord}`,
+    "i",
+  );
+  const thousandMatch = lower.match(thousandRe);
+  if (thousandMatch?.[1]) {
+    const token = thousandMatch[1].trim();
+    const base = /^\d+$/.test(token)
+      ? Number(token)
+      : (RU_WORD_ONES[token] ?? 0);
+    if (base > 0) return roundMoneyUp(base * 1000);
+  }
+
+  const millionRe = new RegExp(
+    String.raw`(\d+|[а-яё]+)\s*(?:млн|миллион[а-яё]*)${afterWord}`,
+    "i",
+  );
+  const millionMatch = lower.match(millionRe);
+  if (millionMatch?.[1]) {
+    const token = millionMatch[1].trim();
+    const base = /^\d+$/.test(token)
+      ? Number(token)
+      : (RU_WORD_ONES[token] ?? 0);
+    if (base > 0) return roundMoneyUp(base * 1_000_000);
+  }
+
+  const compound = lower.match(
+    /(?:^|\s)((?:двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто)\s+(?:один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять))(?:\s|$|[^а-яё])/i,
+  );
+  if (compound?.[1]) {
+    const parts = compound[1].trim().split(/\s+/);
+    const tens = RU_WORD_ONES[parts[0]] ?? 0;
+    const ones = parts[1] ? (RU_WORD_ONES[parts[1]] ?? 0) : 0;
+    if (tens + ones > 0) return roundMoneyUp(tens + ones);
+  }
+
+  const words = [...lower.matchAll(
+    /(?:^|\s)(сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|два|две|три|четыре|пять|шесть|семь|восемь|девять)(?=\s|$|[^а-яё])/gi,
+  )];
+  let maxWord = 0;
+  for (const m of words) {
+    const v = RU_WORD_ONES[m[1].toLowerCase()] ?? 0;
+    if (v > maxWord) maxWord = v;
+  }
+  return maxWord > 0 ? roundMoneyUp(maxWord) : 0;
+}
+
 /**
  * Извлекает сумму из русской/английской речи и текста.
  * «100 тысяч» → 100000, «100.000» → 100000, «1,5 млн» → 1500000
  */
-export function parseAmountFromTranscript(transcript: string, _locale: Locale): number {
+export function parseAmountFromTranscript(transcript: string, locale: Locale): number {
   const text = transcript.toLowerCase().replace(/−/g, "-");
+
+  if (locale === "ru") {
+    const spoken = parseRussianSpokenAmount(text);
+    if (spoken > 0) return spoken;
+  }
 
   // (?=...) вместо \b: в JS \b не работает после кириллицы («млн», «тысяч»)
   const afterWord = String.raw`(?=\s|$|[^а-яёa-z0-9])`;

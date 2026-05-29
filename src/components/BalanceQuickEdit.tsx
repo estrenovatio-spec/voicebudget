@@ -20,6 +20,7 @@ type BalanceQuickEditProps = {
   label: string;
   partnerDisplayed?: number;
   className?: string;
+  amountsHidden?: boolean;
 };
 
 export function BalanceQuickEdit({
@@ -28,6 +29,7 @@ export function BalanceQuickEdit({
   label,
   partnerDisplayed = 0,
   className = "",
+  amountsHidden = false,
 }: BalanceQuickEditProps) {
   const locale = useStore((s) => s.locale);
   const setActualCash = useStore((s) => s.setActualCash);
@@ -63,11 +65,26 @@ export function BalanceQuickEdit({
         ? computedPartner
         : computedMe + computedPartner;
 
+  if (amountsHidden) {
+    return (
+      <span
+        className={`select-none tabular-nums ${className}`}
+        aria-hidden
+      >
+        {t(locale, "balanceAmountsHidden")} {t(locale, "currency")}
+      </span>
+    );
+  }
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        data-balance-amount
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
         className={`rounded-md px-0.5 tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:bg-muted/60 hover:text-foreground ${className}`}
         aria-label={t(locale, "balanceTapToEdit")}
       >

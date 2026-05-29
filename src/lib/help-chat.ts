@@ -1,4 +1,5 @@
 import { getCategoryLabel } from "@/lib/categories";
+import { formatIsoPeriod } from "@/lib/format-date";
 import { buildFaqKnowledgeText } from "@/lib/help-faq-content";
 import {
   buildChatSummaryForQuestion,
@@ -134,7 +135,7 @@ export function HELP_CHAT_SYSTEM(ctx: HelpChatContext): string {
         : "No transaction data available.";
 
   const financeBlock = ctx.summary
-    ? `Summary JSON (period ${ctx.summary.periodStart} — ${ctx.summary.periodEnd}, ${ctx.summary.monthTransactionCount} entries in period):
+    ? `Summary JSON (period ${formatIsoPeriod(ctx.summary.periodStart, ctx.summary.periodEnd, ctx.locale)}, ${ctx.summary.monthTransactionCount} entries in period):
 ${JSON.stringify(ctx.summary, null, 2)}
 
 Recent transactions (newest first, up to ${HELP_CHAT_RECENT_TX_LIMIT}):

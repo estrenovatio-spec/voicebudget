@@ -1,10 +1,16 @@
 "use client";
 
-import { ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  HomeSectionCardHeader,
+  HomeSectionCollapsedBar,
+  homeSectionContentClassName,
+  sectionToggleButtonClassName,
+} from "@/components/HomeSectionCardHeader";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBudgetPeriodLabel } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
@@ -258,10 +264,8 @@ export function FinancialChart() {
 
   if (!mounted) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
-        </CardHeader>
+      <Card className="border-primary/20">
+        <HomeSectionCardHeader icon={BarChart3} title={title} />
         <CardContent>
           <div className="h-[240px] w-full animate-pulse rounded-md bg-muted" />
         </CardContent>
@@ -271,39 +275,47 @@ export function FinancialChart() {
 
   if (hidden) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5">
-        <span className="min-w-0 truncate text-sm font-medium">{title}</span>
-        <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1" onClick={show}>
-          <ChevronDown className="h-4 w-4" />
-          {t(locale, "summaryShow")}
-        </Button>
-      </div>
+      <HomeSectionCollapsedBar
+        icon={BarChart3}
+        title={title}
+        action={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={sectionToggleButtonClassName}
+            onClick={show}
+          >
+            <ChevronDown className="h-4 w-4" />
+            {t(locale, "summaryShow")}
+          </Button>
+        }
+      />
     );
   }
 
   const partnerLabel = partnerName?.trim() || t(locale, "chartTitlePartner");
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
-        <div className="min-w-0">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t(locale, "chartPeriod", { period: periodLabel })}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 shrink-0 gap-1 px-2 text-xs"
-          onClick={hide}
-        >
-          <ChevronUp className="h-4 w-4" />
-          {t(locale, "summaryHide")}
-        </Button>
-      </CardHeader>
-      <CardContent className="overflow-hidden pt-0">
+    <Card className="border-primary/20">
+      <HomeSectionCardHeader
+        icon={BarChart3}
+        title={title}
+        subtitle={t(locale, "chartPeriod", { period: periodLabel })}
+        action={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={sectionToggleButtonClassName}
+            onClick={hide}
+          >
+            <ChevronUp className="h-4 w-4" />
+            {t(locale, "summaryHide")}
+          </Button>
+        }
+      />
+      <CardContent className={`overflow-hidden ${homeSectionContentClassName}`}>
         {!hasAnyData ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t(locale, "chartEmpty")}</p>
         ) : (

@@ -7,9 +7,9 @@ import type { Locale } from "@/types";
 import type { PlanningInputAction, SavingsGoal } from "@/types/planning";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
 
-/** Без \\b: в JS \\b не работает с кириллицей (\\w только ASCII). */
+/** Без \\b: в JS \\b не работает с кириллицей. «кинул» не должен матчиться внутри «закинул». */
 const DEPOSIT_RU =
-  /(?:отлож(?:ил|ила|или|ить|у|им|ите|ишь|ит|ат|ате|аем)|откладыва(?:ю|ем|ете|л|ю)|положил(?:а)?|закин(?:ул|ула|у|ем|ете|им|ить)?|закидыва(?:ю|ем|ете|л|ла|ть)|(?:пере|вы)?кин(?:ул|ула|у|ем|ете|им|ить)?|перекинул(?:а)?|скинул(?:а)?|перев[её]л(?:а)?|внес(?:ла|ли|у|ёму|ем)?|накопил(?:а|и)?|депозит|бросил(?:а)?|выделил(?:а)?|отправил(?:а)?|коп(?:и|ил|ила|или|ить|лю|им|ите|ит|ят|яем)|запиш(?:и|ите|у|ем|ут)(?:\s+в)?|(?:в\s+)?копилк(?:у|и|а|е))(?=\s|$|[,.!?;:])/i;
+  /(?:отлож(?:ил|ила|или|ить|у|им|ите|ишь|ит|ат|ате|аем)|откладыва(?:ю|ем|ете|л|ю)|полож(?:ил|ила|у|ить|им|ите)|закин(?:ул|ула|у|ем|ете|им|ить|ю|ем|ете)?|закидыва(?:ю|ем|ете|л|ла|ть)|перекинул(?:а)?|выкинул(?:а)?|(?<![а-яё])кинул(?:а|и)?|(?<![а-яё])кину\b|скинул(?:а)?|перев[её]л(?:а)?|внес(?:ла|ли|у|ёму|ем)?|накопил(?:а|и)?|депозит|бросил(?:а)?|выделил(?:а)?|отправил(?:а)?|коп(?:и|ил|ила|или|ить|лю|им|ите|ит|ят|яем)|запиш(?:и|ите|у|ем|ут)(?:\s+в)?|(?:в\s+)?копилк(?:у|и|а|е))(?=\s|$|[,.!?;:])/i;
 const DEPOSIT_EN =
   /(?:saved|save|saving|deposited|deposit|put aside|set aside|transferred|transfer|moved|move)(?=\s|$|[,.!?;:])/i;
 
@@ -30,7 +30,18 @@ const SPLIT_HINT_RU = /(?:из них|из которых|в копилк|на �
 const SPLIT_HINT_EN = /(?:of which|put aside|into (?:the )?(?:goal|jar))/i;
 
 const GOAL_NAME_STOP_RU =
-  /^(?:копилк(?:у|а|и|е)|цел(?:ь|и)|накоплени(?:е|я)|сбережени(?:е|я)|отлож(?:ен(?:ное|ные|ная))?)$/i;
+  /^(?:копилк(?:у|а|и|е)|цел(?:ь|и)|накоплени(?:е|я)|сбережени(?:е|я)|отлож(?:ен(?:ное|ные|ная))?|полож(?:ил|ила|у|ить)|закин(?:ул|ула|у|ить)?|закидыва(?:ю|л)?|кинул(?:а)?|перекинул(?:а)?|скинул(?:а)?)$/i;
+
+const DEPOSIT_VERB_RU =
+  /(?:отлож|полож|закин|закидыва|перекин|выкин|кинул|скинул|перевел|перевёл|внес|накопил|копил|коплю|запиш)/i;
+
+function ruWordStem(word: string): string {
+  return word
+    .toLowerCase()
+    .replace(/^(?:на|в|для)\s+/i, "")
+    .replace(/(?:а|у|е|ом|ой|ою|ю|и|ы|ов|ей|ам|ами|ах)$/i, "")
+    .trim();
+}
 
 function findGoalByName(goals: SavingsGoal[], name: string): SavingsGoal | null {
   const q = name.trim().toLowerCase();
@@ -60,12 +71,32 @@ function cleanGoalName(raw: string): string {
 function findGoalMentionedInText(text: string, goals: SavingsGoal[]): SavingsGoal | null {
   const lower = text.toLowerCase();
   let best: SavingsGoal | null = null;
+
   for (const g of goals) {
     const n = g.name.trim().toLowerCase();
     if (n.length < 2) continue;
-    if (!lower.includes(n)) continue;
-    if (!best || n.length > best.name.length) best = g;
+    if (lower.includes(n)) {
+      if (!best || n.length > best.name.length) best = g;
+    }
   }
+  if (best) return best;
+
+  const prepMatch = lower.match(/(?:^|\s)(?:на|в|для)\s+([а-яё][а-яё\s]{1,40})/i);
+  if (prepMatch?.[1]) {
+    const phrase = cleanGoalName(prepMatch[1]);
+    const firstWord = phrase.split(/\s+/)[0] ?? "";
+    const stem = ruWordStem(firstWord);
+    if (stem.length >= 3) {
+      for (const g of goals) {
+        const gn = ruWordStem(g.name.trim());
+        if (gn.length < 2) continue;
+        if (gn.includes(stem) || stem.includes(gn) || phrase.includes(g.name.toLowerCase())) {
+          if (!best || g.name.length > best.name.length) best = g;
+        }
+      }
+    }
+  }
+
   return best;
 }
 
@@ -86,7 +117,7 @@ function extractGoalNameFromText(text: string, locale: Locale): string {
     const m = text.match(re);
     if (!m?.[1]) continue;
     const name = cleanGoalName(m[1]);
-    if (name.length >= 2 && !GOAL_NAME_STOP_RU.test(name)) return name;
+    if (name.length >= 2 && !GOAL_NAME_STOP_RU.test(name) && !DEPOSIT_VERB_RU.test(name)) return name;
   }
   return "";
 }
