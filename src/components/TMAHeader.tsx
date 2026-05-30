@@ -147,9 +147,6 @@ export function TMAHeader() {
 
   return (
     <header className="space-y-2 pb-2 pt-1">
-      {userName && (
-        <p className="text-sm text-muted-foreground">{t(locale, "greeting", { name: userName })}</p>
-      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div
