@@ -19,7 +19,24 @@ if ! command -v npx >/dev/null 2>&1; then
 fi
 
 echo "→ Node: $(node -v) ($(command -v node))"
-echo "→ Сборка..."
+echo "→ Сборка (локально)..."
 npm run build
-echo "→ Деплой на production (vercel)..."
-npx vercel --prod "$@"
+echo "→ Vercel build (prebuilt)..."
+npx vercel build --prod --yes
+echo "→ Деплой на production (prebuilt, без ожидания CLI)..."
+OUT="$(npx vercel deploy --prebuilt --prod --yes --no-wait 2>&1)"
+echo "$OUT"
+INSPECT="$(echo "$OUT" | sed -n 's/.*Inspect[[:space:]]*\(.*\)/\1/p' | head -1)"
+if echo "$OUT" | grep -q 'BLOCKED'; then
+  echo ""
+  echo "⚠️  Vercel вернул BLOCKED — новая версия НЕ вышла в production."
+  echo "   Откройте панель: https://vercel.com/renovatio-s-projects/voicebudget"
+  echo "   Проверьте: Billing, Deployment Protection, лимиты Hobby."
+  echo "   Застрявшие деплои: npx vercel ls voicebudget --prod"
+  exit 1
+fi
+if [[ -n "${INSPECT:-}" ]]; then
+  echo ""
+  echo "→ Статус: $INSPECT"
+  echo "   Production: https://voicebudget.vercel.app"
+fi
