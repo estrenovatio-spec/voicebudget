@@ -79,7 +79,7 @@ export const DICT = {
     voiceError: "Ошибка распознавания",
     micDenied:
       "Нет доступа к микрофону. В браузере нажмите «Разрешить» в адресной строке; в Telegram — в настройках приложения.",
-    fallbackPlaceholder: "Например: потратил 500 на обед",
+    fallbackPlaceholder: "Например: потратил 500 на обед, заработал 1000",
     fallbackSubmit: "Добавить",
     speechUnavailable: "Голос недоступен — введите текст",
     transactions: "Транзакции",
@@ -413,7 +413,7 @@ export const DICT = {
     voiceError: "Recognition error",
     micDenied:
       "Microphone access denied. In the browser, allow the mic in the address bar; in Telegram, check app settings.",
-    fallbackPlaceholder: "e.g. spent 50 on lunch",
+    fallbackPlaceholder: "e.g. spent 50 on lunch, earned 1000",
     fallbackSubmit: "Add",
     speechUnavailable: "Voice unavailable — type instead",
     transactions: "Transactions",
