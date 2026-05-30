@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
+import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import {
   SUMMARY_EXPENSE_HIDDEN_KEY,
   SUMMARY_INCOME_HIDDEN_KEY,
@@ -192,12 +193,13 @@ function CollapsibleTotalsSection({
 /** Income & expense totals by owner — after the category chart */
 export function OwnerTotalsSummary() {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const totals = useOwnerTypeTotals(DAYS);
 
-  const showPartner = Boolean(partnerName?.trim());
-  const partnerLabel = partnerName?.trim() ?? "";
-  const meLabel = t(locale, "ownerMe");
+  const showPartner = hasPartnerBudget(partnerName);
+  const partnerLabel = partnerDisplayName(partnerName);
+  const meLabel = myDisplayName(locale, userName);
 
   return (
     <div className="space-y-3">

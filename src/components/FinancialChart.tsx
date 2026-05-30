@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBudgetPeriodLabel } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
+import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import { CHART_HIDDEN_KEY } from "@/lib/storage-reset";
 import {
   useBudgetPeriod,
@@ -152,14 +153,15 @@ function TotalsPanel({
   variant: "expense" | "income";
 }) {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const totals = usePeriodOwnerTotals();
   const categories = usePeriodTypeCategoryBreakdown(variant === "expense" ? "expense" : "income");
   const [showCategories, setShowCategories] = useState(true);
 
-  const showPartner = Boolean(partnerName?.trim());
-  const partnerLabel = partnerName?.trim() ?? "";
-  const meLabel = t(locale, "ownerMe");
+  const showPartner = hasPartnerBudget(partnerName);
+  const partnerLabel = partnerDisplayName(partnerName);
+  const meLabel = myDisplayName(locale, userName);
   const meAmount = variant === "expense" ? totals.me.expense : totals.me.income;
   const partnerAmount = variant === "expense" ? totals.partner.expense : totals.partner.income;
   const total = meAmount + partnerAmount;
@@ -223,6 +225,7 @@ function TotalsPanel({
 
 export function FinancialChart() {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const period = useBudgetPeriod();
   const breakdownAll = usePeriodCategoryBreakdown();
@@ -233,7 +236,7 @@ export function FinancialChart() {
   const [hidden, setHidden] = useState(false);
   const [tab, setTab] = useState("categories");
 
-  const dualMode = Boolean(partnerName?.trim());
+  const dualMode = hasPartnerBudget(partnerName);
   const periodLabel = formatBudgetPeriodLabel(period, locale);
 
   const hasCategoryData = useMemo(() => {
@@ -294,7 +297,9 @@ export function FinancialChart() {
     );
   }
 
-  const partnerLabel = partnerName?.trim() || t(locale, "chartTitlePartner");
+  const partnerLabel =
+    partnerDisplayName(partnerName) || t(locale, "chartTitlePartner");
+  const meChartLabel = myDisplayName(locale, userName);
 
   return (
     <Card className="border-primary/20">
@@ -336,7 +341,7 @@ export function FinancialChart() {
               {hasCategoryData ? (
                 dualMode ? (
                   <div className="grid grid-cols-2 gap-2">
-                    <CategoryPie data={breakdownMe} title={t(locale, "chartTitleMe")} compact />
+                    <CategoryPie data={breakdownMe} title={meChartLabel} compact />
                     <CategoryPie data={breakdownPartner} title={partnerLabel} compact />
                   </div>
                 ) : (

@@ -65,9 +65,10 @@ export function applyHouseholdSync(
     savingsGoals: merged.savingsGoals,
     categoryBudgets: merged.categoryBudgets,
     recurringTransactions: merged.recurringTransactions,
-    ...(opts?.skipPartnerName
-      ? {}
-      : { partnerName: remote.household.partnerLabel?.trim() || null }),
+    // Имя партнёра в балансе — только локальные настройки (у каждого своё).
+    ...(opts?.skipPartnerName === false
+      ? { partnerName: remote.household.partnerLabel?.trim() || null }
+      : {}),
   });
 
   for (const id of merged.localOnlyTransactionIds) {

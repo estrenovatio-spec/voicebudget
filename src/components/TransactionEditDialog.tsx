@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { getCategoriesByType, getCategoryLabel } from "@/lib/categories";
 import { formatTransactionDate } from "@/lib/format-date";
 import { t } from "@/lib/i18n";
+import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import { parseAmountFromTranscript } from "@/lib/parse-amount";
 import { roundMoneyUp } from "@/lib/format-money";
 import { clearCachedRecommendations } from "@/lib/storage";
@@ -32,6 +33,7 @@ export function TransactionEditDialog({
   onOpenChange,
 }: TransactionEditDialogProps) {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const categories = useCategories();
   const savingsGoals = useStore((s) => s.savingsGoals);
@@ -209,7 +211,7 @@ export function TransactionEditDialog({
               ) : null}
             </div>
           ) : null}
-          {partnerName && (
+          {hasPartnerBudget(partnerName) && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="tx-owner">
                 {t(locale, "txOwner")}
@@ -220,8 +222,8 @@ export function TransactionEditDialog({
                 onChange={(e) => setOwner(e.target.value as BudgetOwner)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="me">{t(locale, "ownerMe")}</option>
-                <option value="partner">{partnerName}</option>
+                <option value="me">{myDisplayName(locale, userName)}</option>
+                <option value="partner">{partnerDisplayName(partnerName)}</option>
               </select>
             </div>
           )}

@@ -2,20 +2,22 @@
 
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
+import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import { useStore } from "@/store/useStore";
 import type { BudgetOwner, HouseholdFilter } from "@/types";
 
 export function EntryOwnerToggle() {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const entryOwner = useStore((s) => s.entryOwner);
   const setEntryOwner = useStore((s) => s.setEntryOwner);
 
-  if (!partnerName?.trim()) return null;
+  if (!hasPartnerBudget(partnerName)) return null;
 
   const options: { id: BudgetOwner; label: string }[] = [
-    { id: "me", label: t(locale, "ownerMe") },
-    { id: "partner", label: partnerName.trim() },
+    { id: "me", label: myDisplayName(locale, userName) },
+    { id: "partner", label: partnerDisplayName(partnerName) },
   ];
 
   return (
@@ -37,16 +39,17 @@ export function EntryOwnerToggle() {
 
 export function HouseholdFilterTabs() {
   const locale = useStore((s) => s.locale);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const householdFilter = useStore((s) => s.householdFilter);
   const setHouseholdFilter = useStore((s) => s.setHouseholdFilter);
 
-  if (!partnerName?.trim()) return null;
+  if (!hasPartnerBudget(partnerName)) return null;
 
   const tabs: { id: HouseholdFilter; label: string }[] = [
     { id: "all", label: t(locale, "householdAll") },
-    { id: "me", label: t(locale, "ownerMe") },
-    { id: "partner", label: partnerName.trim() },
+    { id: "me", label: myDisplayName(locale, userName) },
+    { id: "partner", label: partnerDisplayName(partnerName) },
   ];
 
   return (

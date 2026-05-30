@@ -24,7 +24,9 @@ export function TelegramInit() {
     const offTheme = syncThemeFromTelegram();
 
     const user = tg.initDataUnsafe?.user;
-    if (user?.first_name) setUserName(user.first_name);
+    if (user?.first_name && !useStore.getState().userName?.trim()) {
+      setUserName(user.first_name);
+    }
     if (user?.language_code) setLocale(detectLocale(user.language_code));
 
     const onBack = () => {

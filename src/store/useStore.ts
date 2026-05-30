@@ -26,7 +26,6 @@ import {
   cloudPushCategoryDelete,
   cloudPushGoal,
   cloudPushGoalDelete,
-  cloudPushPartnerLabel,
   cloudPushRecurring,
   cloudPushRecurringDelete,
   cloudPushTransaction,
@@ -390,7 +389,6 @@ export const useStore = create<StoreState>()(
           entryOwner: "me",
           householdFilter: "all",
         });
-        void cloudPushPartnerLabel(trimmed);
       },
       setEntryOwner: (entryOwner) => set({ entryOwner }),
       setHouseholdFilter: (householdFilter) => set({ householdFilter }),

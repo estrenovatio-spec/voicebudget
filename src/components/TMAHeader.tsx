@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { t } from "@/lib/i18n";
+import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import { cn } from "@/lib/utils";
 import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
@@ -77,9 +78,11 @@ export function TMAHeader() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const setUserName = useStore((s) => s.setUserName);
   const setPartnerName = useStore((s) => s.setPartnerName);
   const balances = useHouseholdBalances();
   const [open, setOpen] = useState(false);
+  const [myNameInput, setMyNameInput] = useState(userName ?? "");
   const [partnerInput, setPartnerInput] = useState(partnerName ?? "");
   const [confirmClear, setConfirmClear] = useState(false);
   const [amountsHidden, setAmountsHidden] = useState(false);
@@ -118,14 +121,19 @@ export function TMAHeader() {
     return () => window.clearTimeout(timer);
   }, [confirmClear]);
 
+  const saveMyName = () => {
+    setUserName(myNameInput.trim() || null);
+  };
+
   const savePartner = () => {
     setPartnerName(partnerInput.trim() || null);
   };
 
-  const partner = partnerName?.trim() ?? "";
-  const hasPartner = Boolean(partner);
+  const meName = myDisplayName(locale, userName);
+  const partner = partnerDisplayName(partnerName);
+  const hasPartner = hasPartnerBudget(partnerName);
   const balanceWord = `${t(locale, "balance")}:`;
-  const meLabel = `${t(locale, "ownerMe")}:`;
+  const meLabel = `${meName}:`;
   const partnerLabel = partner ? `${partner}:` : "";
 
   const labelWidthCh = useMemo(() => {
@@ -181,7 +189,7 @@ export function TMAHeader() {
                     <BalanceQuickEdit
                       owner="me"
                       displayed={balances.me}
-                      label={t(locale, "ownerMe")}
+                      label={meName}
                       className={balanceAmountClass}
                       amountsHidden={amountsHidden}
                     />
@@ -213,7 +221,10 @@ export function TMAHeader() {
               open={open}
               onOpenChange={(v) => {
                 setOpen(v);
-                if (v) setPartnerInput(partnerName ?? "");
+                if (v) {
+                  setMyNameInput(userName ?? "");
+                  setPartnerInput(partnerName ?? "");
+                }
                 if (!v) setConfirmClear(false);
               }}
             >
@@ -237,6 +248,14 @@ export function TMAHeader() {
                     <div className="space-y-2 border-t pt-3">
                       <h3 className="text-sm font-semibold">{t(locale, "householdTitle")}</h3>
                       <p className="text-xs text-muted-foreground">{t(locale, "householdHint")}</p>
+                      <Input
+                        value={myNameInput}
+                        onChange={(e) => setMyNameInput(e.target.value)}
+                        placeholder={t(locale, "myNamePlaceholder")}
+                      />
+                      <Button type="button" variant="secondary" className="w-full" onClick={saveMyName}>
+                        {t(locale, "myNameSave")}
+                      </Button>
                       <Input
                         value={partnerInput}
                         onChange={(e) => setPartnerInput(e.target.value)}
