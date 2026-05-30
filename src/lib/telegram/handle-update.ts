@@ -503,6 +503,14 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     return;
   }
 
+  const command = lower.split(/\s/)[0] ?? "";
+  if (command === "/appss_verify" || command.startsWith("/appss_verify@")) {
+    const token =
+      process.env.TELEGRAM_APPSS_VERIFY_RESPONSE?.trim() || "appss_48b635";
+    await sendMessage(chatId, token);
+    return;
+  }
+
   if (text.startsWith("/")) return;
 
   await processTranscript(message, text, locale);
