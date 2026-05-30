@@ -31,6 +31,15 @@ npm run build
 
 Vercel удобнее всего подключается к **GitHub**.
 
+**Важно:** email в коммите должен совпадать с аккаунтом GitHub (или noreply GitHub). Иначе деплой будет **Blocked**. В терминале один раз в папке проекта:
+
+```bash
+git config user.email "ВАШ_ID+ВАШ_ЛОГИН@users.noreply.github.com"
+git config user.name "ваш-логин-github"
+```
+
+Noreply-адрес: GitHub → Settings → Emails → «Keep my email addresses private» (формат `id+login@users.noreply.github.com`).
+
 ```bash
 cd "/Users/bhima/Downloads/апп/voicebudget"
 git init
