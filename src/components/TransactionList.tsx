@@ -19,7 +19,10 @@ import { getCategoryLabel } from "@/lib/categories";
 import { formatTransactionDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { TRANSACTIONS_HIDDEN_KEY } from "@/lib/storage-reset";
+import {
+  TRANSACTIONS_HIDDEN_KEY,
+  TRANSACTIONS_TYPE_FILTER_KEY,
+} from "@/lib/storage-reset";
 import { displayTransactionNote } from "@/lib/transaction-note";
 import { useCategories, useFilteredTransactions, useStore } from "@/store/useStore";
 import type { Transaction, TxType } from "@/types";
@@ -37,6 +40,26 @@ function writeHidden(hidden: boolean): void {
   try {
     if (hidden) localStorage.setItem(TRANSACTIONS_HIDDEN_KEY, "1");
     else localStorage.removeItem(TRANSACTIONS_HIDDEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function readTypeFilter(): "all" | TxType {
+  if (typeof window === "undefined") return "all";
+  try {
+    const v = localStorage.getItem(TRANSACTIONS_TYPE_FILTER_KEY);
+    if (v === "income" || v === "expense") return v;
+  } catch {
+    /* ignore */
+  }
+  return "all";
+}
+
+function writeTypeFilter(filter: "all" | TxType): void {
+  try {
+    if (filter === "all") localStorage.removeItem(TRANSACTIONS_TYPE_FILTER_KEY);
+    else localStorage.setItem(TRANSACTIONS_TYPE_FILTER_KEY, filter);
   } catch {
     /* ignore */
   }
@@ -109,6 +132,13 @@ export function TransactionList() {
 
   useEffect(() => {
     setHidden(readHidden());
+    setFilter(readTypeFilter());
+  }, []);
+
+  const onTypeFilterChange = useCallback((value: string) => {
+    const next = value as "all" | TxType;
+    setFilter(next);
+    writeTypeFilter(next);
   }, []);
 
   const show = useCallback(() => {
@@ -171,7 +201,7 @@ export function TransactionList() {
           }
         />
         <CardHeader className={`space-y-3 pb-2 pt-0 ${homeSectionPadX}`}>
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | TxType)}>
+          <Tabs value={filter} onValueChange={onTypeFilterChange}>
             <TabsList className="w-full">
               <TabsTrigger value="all" className="flex-1">
                 {t(locale, "filterAll")}

@@ -11,6 +11,8 @@ const MONTHLY_TS_KEY = "voicebudget-monthly-analysis-ts-v1";
 const MONTHLY_CHAT_KEY = "voicebudget-monthly-chat-v1";
 export const TIPS_TAB_ORDER_KEY = "voicebudget-tips-tab-order";
 export const TRANSACTIONS_HIDDEN_KEY = "voicebudget-transactions-hidden";
+/** Вкладка «Все / Доходы / Расходы» в списке транзакций */
+export const TRANSACTIONS_TYPE_FILTER_KEY = "voicebudget-transactions-type-filter";
 export const TIPS_PANEL_HIDDEN_KEY = "voicebudget-tips-panel-hidden";
 export const PLANNING_TIPS_HIDDEN_KEY = "voicebudget-planning-tips-hidden";
 export const PLANNING_PANEL_HIDDEN_KEY = "voicebudget-planning-panel-hidden";

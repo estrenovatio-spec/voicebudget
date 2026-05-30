@@ -4,10 +4,19 @@ export function isPaymentsConfigured(): boolean {
   return Boolean(shopId && secret);
 }
 
+function isSubscriptionFreePeriod(): boolean {
+  const raw = process.env.SUBSCRIPTION_FREE_UNTIL?.trim();
+  if (!raw) return false;
+  const until = new Date(raw);
+  if (Number.isNaN(until.getTime())) return false;
+  return new Date() < until;
+}
+
 /** When false — cloud works without paywall (dev or keys not set yet). */
 export function subscriptionEnforced(): boolean {
   if (!isPaymentsConfigured()) return false;
   if (process.env.YOOKASSA_SUBSCRIPTION_DISABLED === "true") return false;
+  if (isSubscriptionFreePeriod()) return false;
   return true;
 }
 
