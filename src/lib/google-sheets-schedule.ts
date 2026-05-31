@@ -9,6 +9,7 @@ export function scheduleHouseholdMemberGoogleSheetLog(opts: {
   tgUser: TelegramWebAppUser;
   household?: HouseholdPublic | null;
   logTag?: string;
+  onSuccess?: () => Promise<void>;
 }): void {
   const tag = opts.logTag ?? `google-sheets/${opts.action}`;
   waitUntil(
@@ -16,6 +17,8 @@ export function scheduleHouseholdMemberGoogleSheetLog(opts: {
       action: opts.action,
       tgUser: opts.tgUser,
       household: opts.household,
-    }).catch((err) => console.error(`[${tag}]`, err)),
+    })
+      .then(() => opts.onSuccess?.())
+      .catch((err) => console.error(`[${tag}]`, err)),
   );
 }

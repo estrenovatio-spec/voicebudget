@@ -8,6 +8,7 @@ import { signHouseholdSession } from "@/lib/household/token";
 import { scheduleHouseholdMemberGoogleSheetLog } from "@/lib/google-sheets-schedule";
 import {
   buildSyncPayload,
+  getHouseholdSessionForUser,
   getUserMembership,
   upsertTelegramUser,
 } from "@/lib/household/service";
@@ -27,21 +28,28 @@ export async function POST(req: NextRequest) {
   if (!tgUser) return NextResponse.json({ error: "invalid_init_data" }, { status: 401 });
 
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { telegramId: BigInt(tgUser.id) },
-    });
     const user = await upsertTelegramUser(tgUser);
-    if (!existingUser) {
-      scheduleHouseholdMemberGoogleSheetLog({
-        action: "open",
-        tgUser,
-        household: null,
-        logTag: "household/bootstrap",
-      });
-    }
     await ensureTrialForUser(user.id);
     const subscription = await getSubscriptionForUser(user.id);
     const membership = await getUserMembership(user.id);
+
+    if (!user.googleSheetsOpenLogged) {
+      const householdForSheet = membership
+        ? (await getHouseholdSessionForUser(user.id))?.household ?? null
+        : null;
+      scheduleHouseholdMemberGoogleSheetLog({
+        action: "open",
+        tgUser,
+        household: householdForSheet,
+        logTag: "household/bootstrap",
+        onSuccess: async () => {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { googleSheetsOpenLogged: true },
+          });
+        },
+      });
+    }
 
     if (!membership) {
       return NextResponse.json({

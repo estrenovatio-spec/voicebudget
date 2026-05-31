@@ -8,6 +8,7 @@ import {
   upsertCloudGoal,
   upsertTelegramUser,
 } from "@/lib/household/service";
+import { scheduleHouseholdMemberGoogleSheetLog } from "@/lib/google-sheets-schedule";
 import { subscriptionEnforced } from "@/lib/payments/config";
 import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { dbCategoryToApp } from "@/lib/household/sync-mapper";
@@ -58,11 +59,19 @@ function toWebAppUser(from: TelegramUser): TelegramWebAppUser {
   };
 }
 
-async function ensureHousehold(userId: string) {
+async function ensureHousehold(userId: string, tgUser: TelegramWebAppUser) {
   let membership = await getUserMembership(userId);
   if (membership) return membership;
 
-  await createHousehold(userId, { mode: "solo" });
+  const { household, isNew } = await createHousehold(userId, { mode: "solo" });
+  if (isNew) {
+    scheduleHouseholdMemberGoogleSheetLog({
+      action: "create",
+      tgUser,
+      household,
+      logTag: "telegram/ensure-household",
+    });
+  }
   membership = await getUserMembership(userId);
   if (!membership) throw new Error("household_create_failed");
   return membership;
@@ -404,7 +413,7 @@ async function processTranscript(
     return;
   }
 
-  const membership = await ensureHousehold(user.id);
+  const membership = await ensureHousehold(user.id, toWebAppUser(from));
   const categories = await householdCategories(membership.householdId);
   const partnerLabel = await householdPartnerLabel(membership.householdId);
   const goals = await householdGoals(membership.householdId);

@@ -178,3 +178,32 @@ node scripts/with-env-local.cjs node scripts/test-google-sheets.cjs
 | Второй человек ввёл код приглашения | Присоединился |
 
 Подключение браузера к уже существующей семье **не** создаёт новую строку.
+
+---
+
+## Почему новый человек не попал в таблицу
+
+| Ситуация | Что происходит |
+|----------|----------------|
+| Сначала написал/наговорил **боту**, потом «Присоединиться» по коду | Бот создал **свою** соло-семью без строки в таблице; старый join не переключал семью — строка «Присоединился» не писалась. **Исправлено:** при другом коде старая семья снимается, join пишет в таблицу. |
+| Удалил бота и зашёл снова | Аккаунт в базе остаётся — повторная строка «Открыл приложение» **не** дублируется (флаг `googleSheetsOpenLogged`). Нужно **Присоединиться** по коду или догоняющая запись (ниже). |
+| Повторно «Создать» / тот же код | Строка не дублируется — это норма. |
+
+**Проверка:** `GET https://voicebudget.vercel.app/api/status` → `googleSheetsConfigured: true`.
+
+**Догнать строку вручную** (подставьте telegram id жены):
+
+```bash
+curl -sS -X POST "https://voicebudget.vercel.app/api/admin/test-google-sheets" \
+  -H "Authorization: Bearer ВАШ_HOUSEHOLD_SESSION_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"telegramUserId":123456789,"action":"join"}'
+```
+
+После обновления кода на Vercel один раз выполните в Supabase:
+
+```sql
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "googleSheetsOpenLogged" BOOLEAN NOT NULL DEFAULT false;
+```
+
+(или `npm run db:push` локально с `DATABASE_URL`.)

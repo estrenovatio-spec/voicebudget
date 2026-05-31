@@ -63,6 +63,7 @@ export async function logHouseholdMemberToGoogleSheet(opts: {
   if (!webhookUrl) {
     console.warn(
       "Google Sheets: GOOGLE_SHEETS_WEBHOOK_URL не задан — участник в таблицу не записан",
+      { action: opts.action, telegramUserId: opts.tgUser.id },
     );
     return;
   }
@@ -75,6 +76,12 @@ export async function logHouseholdMemberToGoogleSheet(opts: {
         ? "Присоединился"
         : "Открыл приложение";
   const household = opts.household ?? null;
+
+  console.info("[google-sheets] logging", {
+    action: opts.action,
+    telegramUserId: opts.tgUser.id,
+    householdId: household?.id ?? null,
+  });
 
   await postToAppsScript(webhookUrl, {
     type: "voicebudget_member",

@@ -183,7 +183,13 @@ export async function joinHousehold(
   if (inviteCode.length < 4) throw new Error("invalid_code");
 
   const existingSession = await getHouseholdSessionForUser(userId);
-  if (existingSession) return { ...existingSession, isNew: false };
+  if (existingSession) {
+    if (existingSession.household.inviteCode === inviteCode) {
+      return { ...existingSession, isNew: false };
+    }
+    // Уже в своей «соло»-семье (часто после бота) — переключаем на семью по коду
+    await leaveHousehold(userId);
+  }
 
   const household = await prisma.household.findUnique({
     where: { inviteCode },
