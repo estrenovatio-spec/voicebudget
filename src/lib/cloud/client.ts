@@ -2,6 +2,7 @@ import type { HouseholdPublic, SyncPayload } from "@/lib/household/types";
 import type { SubscriptionPublic } from "@/lib/payments/types";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import { fetchWithRetry } from "@/lib/fetch-retry";
 
 export type CloudApiError =
   | "database_not_configured"
@@ -27,6 +28,10 @@ export interface HouseholdActionResponse {
   sync: SyncPayload;
 }
 
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetchWithRetry(url, init);
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   const data = (await res.json()) as T & { error?: string };
   if (!res.ok) {
@@ -41,7 +46,7 @@ export type CloudAuthBody = {
 };
 
 export async function apiBootstrap(auth: CloudAuthBody): Promise<BootstrapResponse> {
-  const res = await fetch("/api/household/bootstrap", {
+  const res = await apiFetch("/api/household/bootstrap", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(auth),
@@ -59,7 +64,7 @@ export async function apiCreateHousehold(
     partnerLabel?: string | null;
   },
 ): Promise<HouseholdActionResponse> {
-  const res = await fetch("/api/household/create", {
+  const res = await apiFetch("/api/household/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -68,7 +73,7 @@ export async function apiCreateHousehold(
 }
 
 export async function apiJoinHousehold(auth: CloudAuthBody, inviteCode: string) {
-  const res = await fetch("/api/household/join", {
+  const res = await apiFetch("/api/household/join", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...auth, inviteCode }),
@@ -77,7 +82,7 @@ export async function apiJoinHousehold(auth: CloudAuthBody, inviteCode: string) 
 }
 
 export async function apiLeaveHousehold(token: string) {
-  const res = await fetch("/api/household/leave", {
+  const res = await apiFetch("/api/household/leave", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -85,7 +90,7 @@ export async function apiLeaveHousehold(token: string) {
 }
 
 export async function apiSync(token: string) {
-  const res = await fetch("/api/household/sync", {
+  const res = await apiFetch("/api/household/sync", {
     headers: { Authorization: `Bearer ${token}` },
   });
   return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
@@ -95,7 +100,7 @@ export async function apiImportLocal(
   token: string,
   data: { transactions: Transaction[]; categories: CategoryDefinition[] },
 ) {
-  const res = await fetch("/api/household/import", {
+  const res = await apiFetch("/api/household/import", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -107,7 +112,7 @@ export async function apiImportLocal(
 }
 
 export async function apiPatchPartnerLabel(token: string, partnerLabel: string | null) {
-  const res = await fetch("/api/household/partner-label", {
+  const res = await apiFetch("/api/household/partner-label", {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -119,7 +124,7 @@ export async function apiPatchPartnerLabel(token: string, partnerLabel: string |
 }
 
 export async function apiCreateTransaction(token: string, tx: Transaction) {
-  const res = await fetch("/api/household/transactions", {
+  const res = await apiFetch("/api/household/transactions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -140,7 +145,7 @@ export async function apiUpdateTransaction(
     Pick<Transaction, "amount" | "categoryId" | "owner" | "type" | "goalId" | "goalAmount">
   >,
 ) {
-  const res = await fetch(`/api/household/transactions/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/household/transactions/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -155,7 +160,7 @@ export async function apiUpdateTransaction(
 }
 
 export async function apiDeleteTransaction(token: string, id: string) {
-  const res = await fetch(`/api/household/transactions/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/household/transactions/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -166,7 +171,7 @@ export async function apiDeleteTransaction(token: string, id: string) {
 }
 
 export async function apiUpsertCategory(token: string, cat: CategoryDefinition) {
-  const res = await fetch("/api/household/categories", {
+  const res = await apiFetch("/api/household/categories", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -181,7 +186,7 @@ export async function apiUpsertCategory(token: string, cat: CategoryDefinition) 
 }
 
 export async function apiDeleteCategory(token: string, id: string) {
-  const res = await fetch(`/api/household/categories/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/household/categories/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -192,7 +197,7 @@ export async function apiDeleteCategory(token: string, id: string) {
 }
 
 export async function apiUpsertGoal(token: string, goal: SavingsGoal) {
-  const res = await fetch("/api/household/goals", {
+  const res = await apiFetch("/api/household/goals", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -207,7 +212,7 @@ export async function apiUpsertGoal(token: string, goal: SavingsGoal) {
 }
 
 export async function apiDeleteGoal(token: string, id: string) {
-  const res = await fetch(`/api/household/goals/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/household/goals/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -218,7 +223,7 @@ export async function apiDeleteGoal(token: string, id: string) {
 }
 
 export async function apiUpsertCategoryBudget(token: string, budget: CategoryBudget) {
-  const res = await fetch("/api/household/category-budgets", {
+  const res = await apiFetch("/api/household/category-budgets", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -233,7 +238,7 @@ export async function apiUpsertCategoryBudget(token: string, budget: CategoryBud
 }
 
 export async function apiDeleteCategoryBudget(token: string, categoryId: string) {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/household/category-budgets/${encodeURIComponent(categoryId)}`,
     {
       method: "DELETE",
@@ -247,7 +252,7 @@ export async function apiDeleteCategoryBudget(token: string, categoryId: string)
 }
 
 export async function apiUpsertRecurring(token: string, item: RecurringTransaction) {
-  const res = await fetch("/api/household/recurring", {
+  const res = await apiFetch("/api/household/recurring", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -262,7 +267,7 @@ export async function apiUpsertRecurring(token: string, item: RecurringTransacti
 }
 
 export async function apiDeleteRecurring(token: string, id: string) {
-  const res = await fetch(`/api/household/recurring/${encodeURIComponent(id)}`, {
+  const res = await apiFetch(`/api/household/recurring/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -273,7 +278,7 @@ export async function apiDeleteRecurring(token: string, id: string) {
 }
 
 export async function apiCreateYookassaCheckout(token: string) {
-  const res = await fetch("/api/payments/yookassa/create", {
+  const res = await apiFetch("/api/payments/yookassa/create", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -281,7 +286,7 @@ export async function apiCreateYookassaCheckout(token: string) {
 }
 
 export async function apiSubscriptionStatus(token: string) {
-  const res = await fetch("/api/payments/yookassa/create", {
+  const res = await apiFetch("/api/payments/yookassa/create", {
     headers: { Authorization: `Bearer ${token}` },
   });
   return parseJson<{ ok: boolean; subscription: SubscriptionPublic; paymentsConfigured: boolean }>(

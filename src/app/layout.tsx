@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DeployResilience } from "@/components/DeployResilience";
 import { TelegramInit } from "@/components/TelegramInit";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="lazyOnload" />
         <ToastProvider>
           <ErrorBoundary>
+            <DeployResilience />
             <TelegramInit />
             {children}
           </ErrorBoundary>

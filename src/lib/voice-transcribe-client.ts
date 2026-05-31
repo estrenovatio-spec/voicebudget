@@ -1,4 +1,5 @@
 import type { Locale } from "@/types";
+import { fetchWithRetry } from "@/lib/fetch-retry";
 import { cleanTranscript } from "@/lib/transcript-guard";
 
 type TranscribeError = "stt_not_configured" | "stt_failed";
@@ -36,7 +37,7 @@ export async function transcribeUserAudioFile(
 
   try {
     const url = `${window.location.origin}/api/transcribe`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       method: "POST",
       body: form,
       signal: controller.signal,

@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MarketRates } from "@/lib/market-rates";
+import { fetchWithRetry } from "@/lib/fetch-retry";
 import { useStore } from "@/store/useStore";
 
 const POLL_MS = 30_000;
@@ -22,19 +23,20 @@ function formatBtcUsd(value: number, locale: "ru" | "en"): string {
 
 type RateChipProps = {
   symbol: string;
+  symbolClassName: string;
   value: string;
   flash: boolean;
   className?: string;
 };
 
-function RateChip({ symbol, value, flash, className = "" }: RateChipProps) {
+function RateChip({ symbol, symbolClassName, value, flash, className = "" }: RateChipProps) {
   return (
     <span
       className={`inline-flex items-baseline gap-0.5 rounded px-0.5 transition-colors duration-700 tabular-nums ${
         flash ? "bg-emerald-500/15" : ""
       } ${className}`}
     >
-      <span className="text-[11px] text-muted-foreground">{symbol}</span>
+      <span className={`text-[12px] font-bold leading-none ${symbolClassName}`}>{symbol}</span>
       <span className="text-xs font-semibold">{value}</span>
     </span>
   );
@@ -63,7 +65,7 @@ export function LiveRatesBar() {
 
   const loadRates = useCallback(async () => {
     try {
-      const res = await fetch("/api/rates", { cache: "no-store" });
+      const res = await fetchWithRetry("/api/rates", { cache: "no-store" });
       const json = (await res.json()) as { success?: boolean; rates?: MarketRates };
       if (!res.ok || !json.success || !json.rates) return;
       pulseFlash(json.rates);
@@ -95,12 +97,23 @@ export function LiveRatesBar() {
   return (
     <div className="max-w-[9rem] leading-tight" aria-live="polite">
       <div className="flex justify-end gap-x-2.5">
-        <RateChip symbol="$" value={formatFiatRate(rates.usdRub, locale)} flash={flash.usd} />
-        <RateChip symbol="€" value={formatFiatRate(rates.eurRub, locale)} flash={flash.eur} />
+        <RateChip
+          symbol="$"
+          symbolClassName="text-emerald-500"
+          value={formatFiatRate(rates.usdRub, locale)}
+          flash={flash.usd}
+        />
+        <RateChip
+          symbol="€"
+          symbolClassName="text-blue-500"
+          value={formatFiatRate(rates.eurRub, locale)}
+          flash={flash.eur}
+        />
       </div>
       <div className="mt-0.5 flex justify-center">
         <RateChip
           symbol="₿"
+          symbolClassName="text-amber-400"
           value={`$${formatBtcUsd(rates.btcUsd, locale)}`}
           flash={flash.btc}
         />

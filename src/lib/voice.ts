@@ -7,6 +7,7 @@ import {
   normalizeOwnerDetectOptions,
 } from "@/lib/detect-owner";
 import { hasPartnerBudget } from "@/lib/owner-labels";
+import { fetchWithRetry } from "@/lib/fetch-retry";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
 import { transcribeUserAudioFile } from "@/lib/voice-transcribe-client";
 import type { DictKey } from "@/lib/i18n";
@@ -360,7 +361,7 @@ export async function parseVoiceTranscripts(
   try {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 10_000);
-    const res = await fetch(`${window.location.origin}/api/parse-voice`, {
+    const res = await fetchWithRetry(`${window.location.origin}/api/parse-voice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
