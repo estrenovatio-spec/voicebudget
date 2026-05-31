@@ -703,7 +703,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 16,
+      version: 17,
       migrate: (persisted, version) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);

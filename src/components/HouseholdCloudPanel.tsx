@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { CloudSyncActions } from "@/components/CloudSyncActions";
 import { PaywallPanel } from "@/components/PaywallPanel";
+import { PromoCodeRedeem } from "@/components/PromoCodeRedeem";
 import { TelegramLoginButton } from "@/components/TelegramLoginButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
 import { t } from "@/lib/i18n";
@@ -96,6 +98,14 @@ export function HouseholdCloudPanel() {
   }
 
   if (isActive && household) {
+    const expiresLabel =
+      subscription?.expiresAt &&
+      new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(subscription.expiresAt));
+
     return (
       <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3">
         <div className="space-y-1">
@@ -107,6 +117,11 @@ export function HouseholdCloudPanel() {
             {" · "}
             {t(locale, "cloudMembers", { count: String(household.memberCount) })}
           </p>
+          {subscription?.enforced && expiresLabel && (
+            <p className="text-xs text-muted-foreground">
+              {t(locale, "paywallActiveUntil", { date: expiresLabel })}
+            </p>
+          )}
         </div>
 
         {household.mode === "shared" || household.memberCount < 2 ? (
@@ -119,6 +134,10 @@ export function HouseholdCloudPanel() {
         ) : null}
 
         <CloudSyncActions embedded />
+
+        {subscription?.enforced && subscription.active && (
+          <PromoCodeRedeem compact onRedeemed={() => void runHouseholdBootstrap()} />
+        )}
 
         {error && <p className="text-xs text-destructive">{mapCloudError(locale, error)}</p>}
       </div>
@@ -249,6 +268,10 @@ export function HouseholdCloudPanel() {
       )}
 
       {error && <p className="text-xs text-destructive">{mapCloudError(locale, error)}</p>}
+
+      {subscription?.enforced && subscription.active && (
+        <PromoCodeRedeem compact onRedeemed={() => void runHouseholdBootstrap()} />
+      )}
     </div>
   );
 }

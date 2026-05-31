@@ -54,8 +54,10 @@ export function useHouseholdCloud() {
         });
         applyHouseholdSync(res.sync, res.token);
         const label = opts.partnerLabel?.trim();
-        const { partnerNameCustomized } = useStore.getState();
-        if (label && !partnerNameCustomized) useStore.getState().setPartnerName(label);
+        const { partnerName, partnerNameCustomized } = useStore.getState();
+        if (label && !partnerNameCustomized && !partnerName?.trim()) {
+          useStore.getState().setPartnerName(label);
+        }
         useCloudStore.getState().touchSync();
         return true;
       } catch (e) {

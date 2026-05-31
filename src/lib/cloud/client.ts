@@ -293,3 +293,21 @@ export async function apiSubscriptionStatus(token: string) {
     res,
   );
 }
+
+export async function apiRedeemPromoCode(token: string, code: string) {
+  const res = await apiFetch("/api/payments/promo/redeem", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+  return parseJson<{
+    ok: boolean;
+    bonusDays: number;
+    expiresAt: string;
+    label: string | null;
+    subscription: SubscriptionPublic;
+  }>(res);
+}

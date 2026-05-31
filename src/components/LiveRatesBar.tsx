@@ -21,6 +21,13 @@ function formatBtcUsd(value: number, locale: "ru" | "en"): string {
   });
 }
 
+function formatMoexIndex(value: number, locale: "ru" | "en"): string {
+  return value.toLocaleString(locale === "ru" ? "ru-RU" : "en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 type RateChipProps = {
   symbol: string;
   symbolClassName: string;
@@ -47,7 +54,7 @@ export function LiveRatesBar() {
   const locale = useStore((s) => s.locale);
   const [rates, setRates] = useState<MarketRates | null>(null);
   const [loading, setLoading] = useState(true);
-  const [flash, setFlash] = useState({ usd: false, eur: false, btc: false });
+  const [flash, setFlash] = useState({ usd: false, eur: false, btc: false, moex: false });
   const prevRef = useRef<MarketRates | null>(null);
 
   const pulseFlash = useCallback((next: MarketRates) => {
@@ -57,10 +64,14 @@ export function LiveRatesBar() {
       usd: prev.usdRub !== next.usdRub,
       eur: prev.eurRub !== next.eurRub,
       btc: prev.btcUsd !== next.btcUsd,
+      moex: prev.moexIndex !== next.moexIndex,
     };
-    if (!changed.usd && !changed.eur && !changed.btc) return;
+    if (!changed.usd && !changed.eur && !changed.btc && !changed.moex) return;
     setFlash(changed);
-    window.setTimeout(() => setFlash({ usd: false, eur: false, btc: false }), 900);
+    window.setTimeout(
+      () => setFlash({ usd: false, eur: false, btc: false, moex: false }),
+      900,
+    );
   }, []);
 
   const loadRates = useCallback(async () => {
@@ -110,12 +121,18 @@ export function LiveRatesBar() {
           flash={flash.eur}
         />
       </div>
-      <div className="mt-0.5 flex justify-center">
+      <div className="mt-0.5 flex justify-center gap-x-3">
         <RateChip
           symbol="₿"
           symbolClassName="text-amber-400"
           value={`$${formatBtcUsd(rates.btcUsd, locale)}`}
           flash={flash.btc}
+        />
+        <RateChip
+          symbol="◆"
+          symbolClassName="text-red-500"
+          value={formatMoexIndex(rates.moexIndex, locale)}
+          flash={flash.moex}
         />
       </div>
     </div>

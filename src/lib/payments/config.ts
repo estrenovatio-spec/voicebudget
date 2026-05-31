@@ -32,6 +32,13 @@ export function subscriptionPeriodDays(): number {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
+/** Free trial days for new users (stacks with promo codes). 0 = disabled. */
+export function subscriptionTrialDays(): number {
+  const raw = process.env.SUBSCRIPTION_TRIAL_DAYS?.trim();
+  const n = raw ? Number.parseInt(raw, 10) : 0;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 export function yookassaReturnUrl(): string {
   const site =
     process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||

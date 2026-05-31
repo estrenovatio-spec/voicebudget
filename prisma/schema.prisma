@@ -8,16 +8,47 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  telegramId BigInt   @unique
-  firstName  String?
-  username   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String    @id @default(cuid())
+  telegramId      BigInt    @unique
+  firstName       String?
+  username        String?
+  trialGrantedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  memberships  HouseholdMember[]
-  subscription Subscription?
-  payments     Payment[]
+  memberships      HouseholdMember[]
+  subscription     Subscription?
+  payments         Payment[]
+  promoRedemptions PromoRedemption[]
+}
+
+model PromoCode {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  label      String?
+  bonusDays  Int
+  maxUses    Int?
+  usesCount  Int       @default(0)
+  validFrom  DateTime?
+  validUntil DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  redemptions PromoRedemption[]
+}
+
+model PromoRedemption {
+  id          String   @id @default(cuid())
+  promoCodeId String
+  userId      String
+  redeemedAt  DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, userId])
+  @@index([userId])
 }
 
 model Subscription {

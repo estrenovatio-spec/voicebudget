@@ -5,6 +5,7 @@ export interface SubscriptionPublic {
   enforced: boolean;
   priceRub: number;
   periodDays: number;
+  trialDays: number;
 }
 
 export interface YookassaPaymentObject {

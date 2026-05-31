@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { applyLightTheme, syncThemeFromTelegram } from "@/lib/app-theme";
 import { detectLocale } from "@/lib/i18n";
+import { applyTelegramDefaultUserName, whenStoreHydrated } from "@/lib/telegram-default-names";
 import { useStore } from "@/store/useStore";
 
 export function TelegramInit() {
@@ -22,11 +23,11 @@ export function TelegramInit() {
     tg.expand();
     const offTheme = syncThemeFromTelegram();
 
+    const unsubHydrate = whenStoreHydrated(() => {
+      applyTelegramDefaultUserName(tg.initDataUnsafe?.user?.first_name);
+    });
+
     const user = tg.initDataUnsafe?.user;
-    const { userName, userNameCustomized } = useStore.getState();
-    if (user?.first_name && !userNameCustomized && !userName?.trim()) {
-      useStore.setState({ userName: user.first_name });
-    }
     if (user?.language_code) setLocale(detectLocale(user.language_code));
 
     const onBack = () => {
@@ -43,6 +44,7 @@ export function TelegramInit() {
     }
 
     return () => {
+      unsubHydrate?.();
       offTheme?.();
       if (tg.BackButton) {
         tg.BackButton.offClick(onBack);

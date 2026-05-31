@@ -11,7 +11,7 @@ import {
   getUserMembership,
   upsertTelegramUser,
 } from "@/lib/household/service";
-import { getSubscriptionForUser } from "@/lib/payments/subscription";
+import { ensureTrialForUser, getSubscriptionForUser } from "@/lib/payments/subscription";
 
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         household: null,
       }).catch((err) => console.error("[household/bootstrap] Google Sheets", err));
     }
+    await ensureTrialForUser(user.id);
     const subscription = await getSubscriptionForUser(user.id);
     const membership = await getUserMembership(user.id);
 

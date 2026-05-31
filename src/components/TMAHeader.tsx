@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { t } from "@/lib/i18n";
 import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
 import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
@@ -157,7 +158,9 @@ export function TMAHeader() {
   };
 
   const savePartner = () => {
-    setPartnerName(partnerInput.trim() || null);
+    const trimmed = partnerInput.trim() || null;
+    setPartnerName(trimmed);
+    if (isCloudSyncActive()) void cloudPushPartnerLabel(trimmed);
     flashSaved("partner");
   };
 

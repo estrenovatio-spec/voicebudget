@@ -4,6 +4,7 @@ import {
   subscriptionAmountRub,
   subscriptionEnforced,
   subscriptionPeriodDays,
+  subscriptionTrialDays,
 } from "@/lib/payments/config";
 import type { SubscriptionPublic } from "@/lib/payments/types";
 
@@ -26,6 +27,7 @@ function toPublic(
     enforced,
     priceRub: subscriptionAmountRub(),
     periodDays: subscriptionPeriodDays(),
+    trialDays: subscriptionTrialDays(),
   };
 }
 
@@ -53,8 +55,12 @@ export async function assertActiveSubscription(userId: string): Promise<void> {
   }
 }
 
-export async function activateSubscription(userId: string): Promise<void> {
-  const days = subscriptionPeriodDays();
+/** Add days to subscription (stacks on current end date if still active). */
+export async function extendSubscriptionDays(userId: string, days: number): Promise<Date> {
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error("invalid_subscription_days");
+  }
+
   const now = new Date();
   const existing = await prisma.subscription.findUnique({ where: { userId } });
   const base =
@@ -68,4 +74,31 @@ export async function activateSubscription(userId: string): Promise<void> {
     create: { userId, status: "active", currentPeriodEnd: newEnd },
     update: { status: "active", currentPeriodEnd: newEnd },
   });
+
+  return newEnd;
+}
+
+export async function activateSubscription(userId: string): Promise<void> {
+  await extendSubscriptionDays(userId, subscriptionPeriodDays());
+}
+
+/** One-time trial for new users; stacks with promo codes applied later. */
+export async function ensureTrialForUser(userId: string): Promise<boolean> {
+  if (!subscriptionEnforced()) return false;
+
+  const trialDays = subscriptionTrialDays();
+  if (trialDays <= 0) return false;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { trialGrantedAt: true },
+  });
+  if (!user || user.trialGrantedAt) return false;
+
+  await extendSubscriptionDays(userId, trialDays);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { trialGrantedAt: new Date() },
+  });
+  return true;
 }

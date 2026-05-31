@@ -60,7 +60,11 @@ export function VoiceRecorder() {
         return;
       }
 
-      const parsed = await parseVoiceTranscripts(value, locale, categories, partnerName);
+      const parsed = await parseVoiceTranscripts(value, locale, categories, {
+        partnerName,
+        myName: userName,
+        hasPartner: hasPartnerBudget(partnerName),
+      });
       if (!parsed || parsed.items.length === 0) {
         toast(t(locale, "voiceTryManual"), "error");
         return;

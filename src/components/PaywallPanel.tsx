@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PromoCodeRedeem } from "@/components/PromoCodeRedeem";
 import { Button } from "@/components/ui/button";
 import { getCloudAuthBody } from "@/lib/cloud/auth-payload";
 import { apiCreateYookassaCheckout } from "@/lib/cloud/client";
@@ -86,6 +87,11 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
             days: String(subscription.periodDays),
           })}
         </p>
+        {subscription.trialDays > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {t(locale, "paywallTrialHint", { days: String(subscription.trialDays) })}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" disabled={loading} onClick={() => void pay()}>
@@ -96,6 +102,7 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
         </Button>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
+      <PromoCodeRedeem compact onRedeemed={refresh} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ export type MarketRates = {
   usdRub: number;
   eurRub: number;
   btcUsd: number;
+  moexIndex: number;
   updatedAt: string;
 };
 
@@ -48,16 +49,46 @@ async function fetchBtcUsd(): Promise<number> {
   return btcUsd;
 }
 
+async function fetchMoexIndex(): Promise<number> {
+  const url =
+    "https://iss.moex.com/iss/engines/stock/markets/index/securities/IMOEX.json?iss.meta=off&iss.only=marketdata&marketdata.columns=CURRENTVALUE,LASTVALUE";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("MOEX fetch failed");
+
+  const json = (await res.json()) as {
+    marketdata?: { columns?: string[]; data?: (number | string | null)[][] };
+  };
+  const columns = json.marketdata?.columns ?? [];
+  const row = json.marketdata?.data?.[0];
+  if (!row?.length) throw new Error("MOEX parse failed");
+
+  const pick = (name: string): number => {
+    const idx = columns.indexOf(name);
+    if (idx < 0) return NaN;
+    const value = Number(row[idx]);
+    return Number.isFinite(value) && value > 0 ? value : NaN;
+  };
+
+  const moexIndex = pick("CURRENTVALUE") || pick("LASTVALUE");
+  if (!Number.isFinite(moexIndex)) throw new Error("MOEX value missing");
+  return moexIndex;
+}
+
 export async function getMarketRates(): Promise<MarketRates> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
     return cache.data;
   }
 
-  const [cbr, btcUsd] = await Promise.all([fetchCbrRates(), fetchBtcUsd()]);
+  const [cbr, btcUsd, moexIndex] = await Promise.all([
+    fetchCbrRates(),
+    fetchBtcUsd(),
+    fetchMoexIndex(),
+  ]);
   const data: MarketRates = {
     usdRub: cbr.usdRub,
     eurRub: cbr.eurRub,
     btcUsd,
+    moexIndex,
     updatedAt: new Date().toISOString(),
   };
   cache = { data, at: Date.now() };
