@@ -108,13 +108,19 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
         success?: boolean;
         reply?: string;
         dataSource?: string;
+        error?: string;
+        builtin?: boolean;
       };
 
+      if (!res.ok) {
+        throw new Error(json.error ?? `http_${res.status}`);
+      }
+
       const reply =
-        json.reply ??
+        json.reply?.trim() ||
         (locale === "ru"
-          ? "Не удалось получить ответ. Попробуйте переформулировать."
-          : "Could not get an answer. Try rephrasing.");
+          ? "Не удалось получить ответ. Посмотрите шпаргалку выше или попробуйте через минуту."
+          : "No answer yet. See the quick reference above or try again in a minute.");
 
       if (json.dataSource === "cloud_db") {
         setDataSourceHint(t(locale, "helpChatSourceCloud"));

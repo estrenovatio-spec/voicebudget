@@ -161,6 +161,21 @@ const PLAYBOOKS: Playbook[] = [
   },
 ];
 
+/** Готовый ответ без LLM — если API упал или модель молчит */
+export function formatBuiltinHelpAnswer(question: string, locale: Locale): string | null {
+  const q = question.toLowerCase().replace(/ё/g, "е");
+  const matched = PLAYBOOKS.filter((p) => p.keywords.test(q));
+  if (matched.length === 0) return null;
+
+  const p = matched[0];
+  const steps = p.steps[locale].map((s, i) => `${i + 1}. ${s}`).join("\n");
+  const intro =
+    locale === "ru"
+      ? `«${p.title.ru}» — по шагам:\n\n${steps}`
+      : `${p.title.en} — step by step:\n\n${steps}`;
+  return intro;
+}
+
 export function selectPlaybooksForQuestion(question: string, locale: Locale, limit = 4): string {
   const q = question.toLowerCase().replace(/ё/g, "е");
   const matched = PLAYBOOKS.filter((p) => p.keywords.test(q));

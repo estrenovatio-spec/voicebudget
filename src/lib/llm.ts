@@ -101,3 +101,52 @@ export async function createLlmChatCompletion(
       : {}),
   });
 }
+
+export function getPlainTextLlmClient(): OpenAI | null {
+  const apiKey = getLlmApiKey();
+  if (!apiKey) return null;
+
+  const baseURL = getLlmBaseUrl();
+  return new OpenAI({
+    apiKey,
+    ...(baseURL ? { baseURL } : {}),
+    timeout: 60_000,
+    maxRetries: 1,
+  });
+}
+
+/** Чат помощи / monthly-chat — только plain text, без json_object */
+export async function createPlainTextChatCompletion(
+  client: OpenAI,
+  params: Omit<ChatCompletionCreateParamsNonStreaming, "model"> & { model?: string },
+) {
+  const { model: modelOverride, ...rest } = params;
+  const model = modelOverride ?? getLlmModel();
+
+  return client.chat.completions.create({
+    ...rest,
+    model,
+  });
+}
+
+/** Ответ модели: текст или поле reply/answer/message в JSON */
+export function extractPlainTextFromLlmContent(content: string | null | undefined): string {
+  const trimmed = content?.trim() ?? "";
+  if (!trimmed) return "";
+
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    for (const key of ["reply", "answer", "text", "message", "content"]) {
+      const v = parsed[key];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+  } catch {
+    /* not json */
+  }
+
+  return trimmed;
+}
