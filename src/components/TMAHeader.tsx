@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { t } from "@/lib/i18n";
 import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
-import { cn } from "@/lib/utils";
 import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
@@ -176,10 +175,7 @@ export function TMAHeader() {
             aria-label={
               amountsHidden ? t(locale, "balanceTapToShow") : t(locale, "balanceTapToHide")
             }
-            className={cn(
-              "rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm transition-colors",
-              balanceEditDialogOpen && "pointer-events-none",
-            )}
+            className="rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm transition-colors"
           >
             <div className="flex w-full flex-col gap-y-0.5">
               <BalanceRow label={balanceWord} onHideToggle={requestHideToggle}>

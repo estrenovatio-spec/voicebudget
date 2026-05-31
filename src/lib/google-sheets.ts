@@ -1,7 +1,7 @@
 import type { HouseholdPublic } from "@/lib/household/types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 
-export type HouseholdMemberLogAction = "create" | "join";
+export type HouseholdMemberLogAction = "create" | "join" | "open";
 
 function formatTelegramHandle(user: TelegramWebAppUser): string {
   if (!user.username?.trim()) return "";
@@ -53,11 +53,11 @@ async function postToAppsScript(webhookUrl: string, body: Record<string, unknown
   }
 }
 
-/** Запись в Google Таблицу при создании семьи или присоединении (см. docs/GOOGLE-SHEETS.md) */
+/** Запись в Google Таблицу: первый вход, создание или присоединение к облаку (см. docs/GOOGLE-SHEETS.md) */
 export async function logHouseholdMemberToGoogleSheet(opts: {
   action: HouseholdMemberLogAction;
   tgUser: TelegramWebAppUser;
-  household: HouseholdPublic;
+  household?: HouseholdPublic | null;
 }): Promise<void> {
   const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL?.trim();
   if (!webhookUrl) {
@@ -68,7 +68,13 @@ export async function logHouseholdMemberToGoogleSheet(opts: {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? "https://voicebudget.vercel.app";
-  const actionLabel = opts.action === "create" ? "Создал семью" : "Присоединился";
+  const actionLabel =
+    opts.action === "create"
+      ? "Создал семью"
+      : opts.action === "join"
+        ? "Присоединился"
+        : "Открыл приложение";
+  const household = opts.household ?? null;
 
   await postToAppsScript(webhookUrl, {
     type: "voicebudget_member",
@@ -79,10 +85,10 @@ export async function logHouseholdMemberToGoogleSheet(opts: {
     lastName: opts.tgUser.last_name?.trim() ?? "",
     telegram: formatTelegramHandle(opts.tgUser),
     telegramUserId: opts.tgUser.id,
-    mode: opts.household.mode === "shared" ? "Вдвоём" : "Веду один",
-    memberCount: opts.household.memberCount,
-    inviteCode: opts.household.inviteCode,
-    householdId: opts.household.id,
+    mode: household?.mode === "shared" ? "Вдвоём" : household ? "Веду один" : "",
+    memberCount: household?.memberCount ?? "",
+    inviteCode: household?.inviteCode ?? "",
+    householdId: household?.id ?? "",
     siteUrl,
   });
 }

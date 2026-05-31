@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbUnavailable } from "@/lib/api/household-response";
-import { isDatabaseConfigured } from "@/lib/db";
+import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { householdAuthSchema } from "@/lib/household/auth-body";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { requireTelegramUser } from "@/lib/household/require-telegram-user";
 import { signHouseholdSession } from "@/lib/household/token";
+import { logHouseholdMemberToGoogleSheet } from "@/lib/google-sheets";
 import {
   buildSyncPayload,
   getUserMembership,
@@ -26,7 +27,17 @@ export async function POST(req: NextRequest) {
   if (!tgUser) return NextResponse.json({ error: "invalid_init_data" }, { status: 401 });
 
   try {
+    const existingUser = await prisma.user.findUnique({
+      where: { telegramId: BigInt(tgUser.id) },
+    });
     const user = await upsertTelegramUser(tgUser);
+    if (!existingUser) {
+      void logHouseholdMemberToGoogleSheet({
+        action: "open",
+        tgUser,
+        household: null,
+      }).catch((err) => console.error("[household/bootstrap] Google Sheets", err));
+    }
     const subscription = await getSubscriptionForUser(user.id);
     const membership = await getUserMembership(user.id);
 

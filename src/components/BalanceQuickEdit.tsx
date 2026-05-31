@@ -55,6 +55,7 @@ export function BalanceQuickEdit({
 
   const closeDialog = () => {
     setOpen(false);
+    onEditDialogOpenChange?.(false);
   };
 
   const confirmDialogAction = (action: () => void) => {

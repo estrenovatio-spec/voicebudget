@@ -70,6 +70,7 @@ export async function GET() {
     paymentsConfigured: isPaymentsConfigured(),
     dbTables,
     planningTables,
+    googleSheetsConfigured: Boolean(process.env.GOOGLE_SHEETS_WEBHOOK_URL?.trim()),
     dbError,
     databaseUrlHint,
     ...(usesSupabaseDirect
