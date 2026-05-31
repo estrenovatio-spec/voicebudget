@@ -1,6 +1,12 @@
 import { getCategoryLabel } from "@/lib/categories";
 import { formatIsoPeriod } from "@/lib/format-date";
-import { buildFaqKnowledgeText } from "@/lib/help-faq-content";
+import {
+  buildAppScreenMap,
+  buildFewShotExamples,
+  classifyHelpQuestion,
+  selectPlaybooksForQuestion,
+} from "@/lib/help-app-knowledge";
+import { buildRelevantFaqText } from "@/lib/help-faq-content";
 import {
   buildChatSummaryForQuestion,
   buildPeriodSummary,
@@ -22,6 +28,7 @@ export interface HelpChatContext {
   locale: Locale;
   dataSource: HelpChatDataSource;
   partnerLabel: string | null;
+  question: string;
   summary: MonthlySummary | null;
   recentTransactions: CompactTx[];
   savingsGoals: SavingsGoal[];
@@ -111,6 +118,7 @@ export function buildHelpChatContext(params: {
     locale,
     dataSource,
     partnerLabel,
+    question,
     summary,
     recentTransactions: compactTransactions(
       transactions,
@@ -125,45 +133,93 @@ export function buildHelpChatContext(params: {
   };
 }
 
+/** Обёртка вопроса — модель сначала понимает намерение */
+export function formatHelpUserMessage(question: string, locale: Locale): string {
+  const kind = classifyHelpQuestion(question);
+  const kindNote =
+    locale === "ru"
+      ? { app: "похоже на вопрос про приложение", finance: "похоже на вопрос про деньги", mixed: "и приложение, и деньги" }[
+          kind
+        ]
+      : { app: "app how-to", finance: "money data", mixed: "app + money" }[kind];
+
+  return `[Вопрос пользователя, можно сформулирован нечётко; тип: ${kindNote}]\n${question.trim()}`;
+}
+
 export function HELP_CHAT_SYSTEM(ctx: HelpChatContext): string {
   const lang = ctx.locale === "ru" ? "Russian" : "English";
+  const kind = classifyHelpQuestion(ctx.question);
   const sourceNote =
     ctx.dataSource === "cloud_db"
-      ? "Financial data loaded from the user's cloud database (authoritative)."
+      ? localeRuEn(ctx.locale, "Финансы — из облачной базы (актуально).", "Finances from cloud DB (authoritative).")
       : ctx.dataSource === "client_device"
-        ? "Financial data from this device (local store; may differ from cloud if not synced)."
-        : "No transaction data available.";
+        ? localeRuEn(
+            ctx.locale,
+            "Финансы — с этого телефона (может отличаться от облака).",
+            "Finances from this device (may differ from cloud).",
+          )
+        : localeRuEn(ctx.locale, "Записей о тратах пока нет.", "No transactions logged yet.");
 
-  const financeBlock = ctx.summary
-    ? `Summary JSON (period ${formatIsoPeriod(ctx.summary.periodStart, ctx.summary.periodEnd, ctx.locale)}, ${ctx.summary.monthTransactionCount} entries in period):
+  const financeBlock =
+    ctx.summary && (kind === "finance" || kind === "mixed")
+      ? `Summary (${formatIsoPeriod(ctx.summary.periodStart, ctx.summary.periodEnd, ctx.locale)}, ${ctx.summary.monthTransactionCount} ops):
 ${JSON.stringify(ctx.summary, null, 2)}
 
-Recent transactions (newest first, up to ${HELP_CHAT_RECENT_TX_LIMIT}):
+Recent transactions:
 ${JSON.stringify(ctx.recentTransactions, null, 2)}
 
-Savings goals: ${JSON.stringify(ctx.savingsGoals)}
-Category monthly limits: ${JSON.stringify(ctx.categoryBudgets)}
-Recurring rules: ${JSON.stringify(ctx.recurringTransactions)}
-Partner label for "partner" owner: ${ctx.partnerLabel ?? "(not set)"}`
-    : `No transactions yet. For spending/income questions, tell the user to log entries (voice, text, or bot).`;
+Goals: ${JSON.stringify(ctx.savingsGoals)}
+Limits: ${JSON.stringify(ctx.categoryBudgets)}
+Recurring: ${JSON.stringify(ctx.recurringTransactions)}
+Partner label: ${ctx.partnerLabel ?? "—"}`
+      : kind === "finance"
+        ? localeRuEn(
+            ctx.locale,
+            "Пользователь спрашивает про деньги, но записей нет — предложите добавить 2–3 операции текстом.",
+            "User asks about money but no data — suggest logging a few entries.",
+          )
+        : localeRuEn(
+            ctx.locale,
+            "(Блок финансов не нужен для этого вопроса — не выдумывайте цифры.)",
+            "(Finance block not needed — do not invent numbers.)",
+          );
 
-  return `You are the assistant for the "Budget" (VoiceBudget) Telegram app — personal and family budget tracking.
+  const playbooks = selectPlaybooksForQuestion(ctx.question, ctx.locale);
+  const faq = buildRelevantFaqText(ctx.question, ctx.locale);
+  const screenMap = buildAppScreenMap(ctx.locale);
+  const fewShot = buildFewShotExamples(ctx.locale);
 
-Respond in ${lang}. Be concise (2–4 short paragraphs or a short list). Friendly, no shame.
+  return `You are the in-app support assistant for «Бюджет» (VoiceBudget) — Telegram budget app for everyday people (not tech experts).
 
-The user has NO other help screens — all questions about how the app works must be answered from APP HELP below.
-For their money, use only USER FINANCES JSON.
+Respond in ${lang} only.
 
-Rules:
-- App usage, bot, cloud, subscription, voice, categories, planning → APP HELP only.
-- Spending, income, trends, categories, goals → USER FINANCES only; never invent numbers.
-- No tax, legal, or specific investment product advice.
-- If finances are asked but data is empty, explain briefly and suggest logging a few transactions.
-- ${sourceNote}
+=== HOW TO THINK (mandatory) ===
+1. Read the user message — it may be short, vague, with typos or spoken style («как жене», «не вижу траты», «куда жать»).
+2. Guess the REAL goal (what they want to achieve). Do NOT ask them to rephrase unless truly impossible.
+3. Answer with numbered steps (1. 2. 3.), exact button names from APP MAP.
+4. Use PLAYBOOKS and FAQ below — combine them into a clear answer in your own words.
+5. Never say «уточните запрос» / «переформулируйте» as the main answer.
+6. Max 6–8 short lines or one short list. Simple words. No jargon.
 
-=== APP HELP (FAQ) ===
-${buildFaqKnowledgeText(ctx.locale)}
+=== Question type: ${kind} ===
+${sourceNote}
 
-=== USER FINANCES ===
+=== APP MAP ===
+${screenMap}
+
+=== STEP-BY-STEP PLAYBOOKS (use when relevant) ===
+${playbooks}
+
+=== FAQ DETAILS (reference) ===
+${faq}
+
+=== FEW-SHOT STYLE ===
+${fewShot}
+
+=== USER FINANCES (only for money questions; never invent) ===
 ${financeBlock}`;
+}
+
+function localeRuEn(locale: Locale, ru: string, en: string): string {
+  return locale === "ru" ? ru : en;
 }

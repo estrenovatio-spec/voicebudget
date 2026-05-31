@@ -23,13 +23,13 @@ export const DICT = {
     helpCheatsheetTitle: "Шпаргалка",
     helpChatTitle: "Спросите ИИ",
     helpChatHint:
-      "Здесь можно спросить только ИИ: как пользоваться приложением и по вашим тратам. С облаком — ответ по базе на сервере.",
+      "Спросите своими словами — ИИ поймёт и подскажет по шагам. Про приложение и про ваши траты.",
     helpChatPlaceholder:
-      "Например: как пригласить партнёра? Сколько потратил на еду за месяц?",
+      "Например: как подключить жену? куда писать трату? сколько на еду?",
     helpChatSend: "Спросить",
     helpChatThinking: "Ищу ответ…",
     helpChatEmpty:
-      "Напишите вопрос — про программу (команды, облако, голос) или про ваши финансы. Лимита нет.",
+      "Напишите как удобно — коротко и простыми словами. ИИ разберётся и ответит по шагам.",
     helpChatSourceCloud: "Ответ по данным из облачной базы.",
     helpChatSourceLocal: "Ответ по данным на этом устройстве (облако не подключено).",
     clearData: "Очистить данные",
@@ -376,13 +376,13 @@ export const DICT = {
     helpCheatsheetTitle: "Quick reference",
     helpChatTitle: "Ask AI",
     helpChatHint:
-      "Ask AI only: how to use the app and about your spending. With cloud, answers use the server database.",
+      "Ask in your own words — AI will guide you step by step. App help and your spending.",
     helpChatPlaceholder:
-      "e.g. How do I invite my partner? How much did I spend on food this month?",
+      "e.g. connect my wife? where to log lunch? how much on food?",
     helpChatSend: "Ask",
     helpChatThinking: "Thinking…",
     helpChatEmpty:
-      "Ask about the app (commands, cloud, voice) or your finances. No question limit.",
+      "Write casually — short and simple. AI will figure out what you need.",
     helpChatSourceCloud: "Answer based on cloud database.",
     helpChatSourceLocal: "Answer based on data on this device (cloud not connected).",
     clearData: "Clear data",

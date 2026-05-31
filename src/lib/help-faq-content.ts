@@ -206,7 +206,45 @@ export const FAQ_SECTIONS: FaqSection[] = [
   },
 ];
 
-/** Compact FAQ text for AI system prompt */
+const FAQ_KEYWORDS: Record<string, RegExp> = {
+  start: /начать|перв|запуск|старт|start|begin/i,
+  commands: /команд|бот|\/start|\/help|slash/i,
+  record: /запис|добав|внест|ввод|трат|расход|log|add|enter/i,
+  phrases: /фраз|пример|сказать|написать|phrase|example/i,
+  partner: /партн|жен|муж|вдво|семь|код|приглас|wife|husband|partner|invite/i,
+  cloud: /облак|синхрон|бэкап|браузер|скачать|отправить|cloud|sync|backup/i,
+  subscription: /подписк|оплат|500|плат|subscription|pay/i,
+  planning: /копилк|цел|лимит|подушк|регуляр|planning|goal|jar|limit/i,
+  ai: /совет|разбор|ai|анализ|чат.*отчет/i,
+  troubleshoot: /не работ|ошиб|не вид|завис|пусто|не нашел|broken|error|missing/i,
+  privacy: /удал|очист|данн|сброс|clear|delete|wipe/i,
+};
+
+/** Только релевантные разделы FAQ — меньше шума для модели */
+export function buildRelevantFaqText(question: string, locale: Locale): string {
+  const q = question.toLowerCase().replace(/ё/g, "е");
+  const scored = FAQ_SECTIONS.map((section) => {
+    const re = FAQ_KEYWORDS[section.id];
+    const hits = re ? (re.test(q) ? 2 : 0) : 0;
+    return { section, score: hits };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const withHits = scored.filter((s) => s.score > 0).map((s) => s.section);
+  const base = FAQ_SECTIONS.filter((s) => ["start", "record", "cloud", "partner"].includes(s.id));
+  const picked = withHits.length >= 2 ? withHits : [...base, ...withHits];
+  const unique = Array.from(new Map(picked.map((s) => [s.id, s])).values()).slice(0, 6);
+
+  return unique
+    .map((s) => {
+      const title = s.title[locale];
+      const lines = s.body[locale].map((l) => (l.startsWith("• ") ? l : `• ${l}`)).join("\n");
+      return `## ${title}\n${lines}`;
+    })
+    .join("\n\n");
+}
+
+/** Все разделы FAQ (legacy) */
 export function buildFaqKnowledgeText(locale: Locale): string {
   return FAQ_SECTIONS.map((s) => {
     const title = s.title[locale];

@@ -13,6 +13,7 @@ import {
   HELP_CHAT_LLM_HISTORY_MAX,
   HELP_CHAT_SYSTEM,
   buildHelpChatContext,
+  formatHelpUserMessage,
   type HelpChatMessage,
 } from "@/lib/help-chat";
 import { createLlmChatCompletion, getLlmClient, isLlmConfigured } from "@/lib/llm";
@@ -187,9 +188,10 @@ export async function POST(request: NextRequest) {
         messages: [
           { role: "system", content: system },
           ...history,
-          { role: "user", content: question },
+          { role: "user", content: formatHelpUserMessage(question, locale) },
         ],
-        temperature: 0.45,
+        temperature: 0.25,
+        max_tokens: 900,
       });
 
       const reply = completion.choices[0]?.message?.content?.trim();
