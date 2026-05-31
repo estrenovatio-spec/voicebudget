@@ -1,7 +1,8 @@
 /**
  * Одна кнопка: запись → серверный STT → ИИ разбирает сумму и категорию.
  */
-import { fallbackParseMany, splitTranscriptClauses } from "@/lib/ai";
+import { fallbackParseMany, splitTranscriptClauses, detectType } from "@/lib/ai";
+import { refineParsedTransaction, sanitizeCategories } from "@/lib/categories";
 import {
   applyDetectedOwner,
   normalizeOwnerDetectOptions,
@@ -11,6 +12,7 @@ import { fetchWithRetry } from "@/lib/fetch-retry";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
 import { transcribeUserAudioFile } from "@/lib/voice-transcribe-client";
 import type { DictKey } from "@/lib/i18n";
+import { detectAppLocale, inferParseLocale } from "@/lib/locale-infer";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
@@ -338,7 +340,12 @@ export async function finalizeVoiceCapture(
   });
 
   const file = new File([blob], "voice.webm", { type: blob.type || "audio/webm" });
-  const server = await transcribeUserAudioFile(file, locale);
+  const tgLang =
+    typeof window !== "undefined"
+      ? window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code
+      : undefined;
+  const sttLocale = detectAppLocale(tgLang);
+  const server = await transcribeUserAudioFile(file, sttLocale);
   if (server.text) return server;
   return { text: "", error: server.error ?? "stt_failed" };
 }
@@ -357,6 +364,9 @@ export async function parseVoiceTranscripts(
 ): Promise<{ items: ParsedTransaction[]; usedFallback: boolean } | null> {
   const text = cleanTranscript(transcript);
   if (!text || isGarbageTranscript(text)) return null;
+  const parseLocale = inferParseLocale(text, locale);
+
+  const mergedCategories = sanitizeCategories(categories);
 
   try {
     const controller = new AbortController();
@@ -367,7 +377,8 @@ export async function parseVoiceTranscripts(
       credentials: "same-origin",
       body: JSON.stringify({
         transcript: text,
-        locale,
+        locale: parseLocale,
+        categories: mergedCategories,
         partnerName:
           typeof ownerCtx === "string"
             ? ownerCtx
@@ -387,10 +398,20 @@ export async function parseVoiceTranscripts(
         items?: ParsedTransaction[];
         fallback?: boolean;
       };
-      const items = (json.items ?? (json.data ? [json.data] : [])).filter(
+      const rawItems = (json.items ?? (json.data ? [json.data] : [])).filter(
         (item) => item.amount > 0,
       );
-      if (json.success && items.length > 0) {
+      if (json.success && rawItems.length > 0) {
+        const clauses = splitTranscriptClauses(text);
+        const items = rawItems.map((item, index) =>
+          refineParsedTransaction(
+            item,
+            clauses[index]?.trim() || item.note?.trim() || text,
+            mergedCategories,
+            detectType,
+            parseLocale,
+          ),
+        );
         return {
           items,
           usedFallback: Boolean(json.fallback),
@@ -401,7 +422,7 @@ export async function parseVoiceTranscripts(
     /* локальный разбор ниже */
   }
 
-  const local = fallbackParseMany(text, locale, categories);
+  const local = fallbackParseMany(text, parseLocale, mergedCategories);
   if (local.length > 0) {
     const ownerOpts = normalizeOwnerDetectOptions(
       typeof ownerCtx === "string" ? { partnerName: ownerCtx, locale } : { ...ownerCtx, locale },

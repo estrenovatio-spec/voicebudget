@@ -1,6 +1,6 @@
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
-import type { CategoryDefinition, Locale, TxType } from "@/types";
+import type { CategoryDefinition, Locale, ParsedTransaction, TxType } from "@/types";
 
 export type { CategoryDefinition } from "@/types";
 
@@ -189,7 +189,7 @@ function detectCategoryFromPhrases(text: string, type: TxType): string | null {
   return null;
 }
 
-function scoreCategory(text: string, category: CategoryDefinition): number {
+export function scoreCategoryKeywords(text: string, category: CategoryDefinition): number {
   const lower = text.toLowerCase();
   let score = 0;
   for (const kw of category.keywords) {
@@ -202,6 +202,48 @@ function scoreCategory(text: string, category: CategoryDefinition): number {
   if (labelRu.length > 2 && keywordMatches(lower, labelRu)) score += 4;
   if (labelEn.length > 2 && keywordMatches(lower, labelEn)) score += 4;
   return score;
+}
+
+/** Доход/расход по keywords категорий (в т.ч. пользовательских). */
+export function detectTypeFromCategories(
+  text: string,
+  categories: CategoryDefinition[],
+): TxType | null {
+  const merged = sanitizeCategories(categories);
+  let incomeScore = 0;
+  let expenseScore = 0;
+  for (const cat of merged) {
+    const score = scoreCategoryKeywords(text, cat);
+    if (cat.type === "income") incomeScore = Math.max(incomeScore, score);
+    else if (cat.type === "expense") expenseScore = Math.max(expenseScore, score);
+  }
+  if (incomeScore > 0 && incomeScore >= expenseScore) return "income";
+  if (expenseScore > incomeScore) return "expense";
+  return null;
+}
+
+/** Пересчёт type/categoryId по полному списку категорий (после LLM или без него). */
+export function refineParsedTransaction(
+  item: ParsedTransaction,
+  clause: string,
+  categories: CategoryDefinition[],
+  detectTypeFn: (text: string, locale: Locale, cats?: CategoryDefinition[]) => TxType,
+  locale: Locale,
+): ParsedTransaction {
+  const text = `${clause} ${item.note ?? ""}`.trim();
+  const merged = sanitizeCategories(categories);
+  const fromCats = detectTypeFromCategories(text, merged);
+  const fromKw = detectTypeFn(text, locale, merged);
+  let type: TxType = item.type;
+  if (fromCats === "income" || (fromKw === "income" && fromCats !== "expense")) {
+    type = "income";
+  } else if (fromCats === "expense") {
+    type = "expense";
+  } else if (!fromCats && fromKw) {
+    type = fromKw;
+  }
+  const categoryId = detectCategoryId(text, type, merged);
+  return { ...item, type, categoryId };
 }
 
 export function detectCategoryId(
@@ -220,7 +262,7 @@ export function detectCategoryId(
   let bestScore = 0;
 
   for (const cat of pool) {
-    const score = scoreCategory(text, cat);
+    const score = scoreCategoryKeywords(text, cat);
     if (score > bestScore) {
       bestScore = score;
       bestId = cat.id;

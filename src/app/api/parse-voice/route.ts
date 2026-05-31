@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDefaultCategories } from "@/lib/categories";
+import { getDefaultCategories, sanitizeCategories } from "@/lib/categories";
 import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
+import { inferParseLocale } from "@/lib/locale-infer";
 import type { Locale } from "@/types";
 
 const TELEGRAM_ORIGIN_PATTERN = /\.telegram\.org$/;
+
+const categorySchema = z.object({
+  id: z.string().min(1).max(64),
+  type: z.enum(["income", "expense"]),
+  labels: z.object({ ru: z.string(), en: z.string() }),
+  keywords: z.array(z.string().max(120)).max(400),
+  isSystem: z.boolean().optional(),
+});
 
 const bodySchema = z.object({
   transcript: z.string().min(1),
@@ -12,6 +21,7 @@ const bodySchema = z.object({
   partnerName: z.string().nullable().optional(),
   myName: z.string().nullable().optional(),
   hasPartner: z.boolean().optional(),
+  categories: z.array(categorySchema).max(80).optional(),
 });
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -32,7 +42,6 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
-  const categories = getDefaultCategories();
 
   try {
     const json: unknown = await request.json();
@@ -44,17 +53,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { transcript, locale, partnerName, myName, hasPartner } = parsed.data;
+    const { transcript, locale, partnerName, myName, hasPartner, categories: clientCats } =
+      parsed.data;
+    const parseLocale = inferParseLocale(transcript, locale as Locale);
+    const categories = clientCats?.length
+      ? sanitizeCategories(clientCats)
+      : getDefaultCategories();
 
     const { items, fallback } = await parseTranscriptServerMany(
       transcript,
-      locale as Locale,
+      parseLocale,
       categories,
       { partnerName, myName, hasPartner },
     );
 
     return NextResponse.json(
-      { success: true, data: items[0] ?? null, items, fallback },
+      {
+        success: items.length > 0,
+        data: items[0] ?? null,
+        items,
+        fallback,
+      },
       { headers: corsHeaders(origin) },
     );
   } catch {

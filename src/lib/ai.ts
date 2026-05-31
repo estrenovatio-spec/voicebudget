@@ -1,10 +1,12 @@
 import {
   type CategoryDefinition,
   detectCategoryId,
+  detectTypeFromCategories,
   getCategoryIdsForPrompt,
   getDefaultCategories,
   getFallbackCategoryId,
   normalizeParsedCategory,
+  refineParsedTransaction,
   sanitizeCategories,
 } from "@/lib/categories";
 import { APP_CURRENCY } from "@/lib/app-currency";
@@ -54,6 +56,7 @@ Rules:
 - Russian amounts: "100 тысяч" / "100 тыс" = 100000; "1.5 млн" = 1500000; "100.000" rubles = 100000 (dot as thousands separator, NOT 100.0).
 - "потратил 100 тысяч на ремонт" → amount 100000, categoryId housing if available.
 - "ксюше возврат 100" / "вернули 100" → type income, categoryId refund.
+- Rental income: "субаренда", "арендный доход", "за аренду", "сдача квартиры" → type income (freelance or income_other), NOT expense rent.
 - currency MUST always be "RUB" (even if user says euro, dollar, €, $ — record amount as rubles).
 - If amount missing for an item → 0. If type unclear → "expense". Locale: ${locale}.
 ${partnerRule}
@@ -63,23 +66,45 @@ ${partnerRule}
 const INCOME_KEYWORDS_RU = [
   "получил",
   "получила",
+  "получили",
   "зарплата",
   "доход",
   "пришло",
   "пришли",
   "зачислили",
+  "зачисление",
+  "поступило",
+  "поступили",
   "возврат",
   "вернули",
   "вернула",
   "компенсация",
   "кэшбэк",
   "кешбэк",
+  "субаренда",
+  "субаренду",
+  "субаренде",
+  "арендный доход",
+  "сдача квартиры",
+  "сдаю квартиру",
+  "сдали квартиру",
+  "за аренду",
+  "оплата аренды",
+  "арендная плата",
 ];
 const INCOME_KEYWORDS_EN = ["received", "salary", "income", "earned", "got paid"];
 const EXPENSE_KEYWORDS_RU = ["потратил", "купил", "оплатил", "расход", "потратила"];
 const EXPENSE_KEYWORDS_EN = ["spent", "bought", "paid", "expense"];
 
-export function detectType(transcript: string, locale: Locale): TxType {
+export function detectType(
+  transcript: string,
+  locale: Locale,
+  categories?: CategoryDefinition[],
+): TxType {
+  if (categories?.length) {
+    const fromCats = detectTypeFromCategories(transcript, categories);
+    if (fromCats) return fromCats;
+  }
   const lower = transcript.toLowerCase();
   const incomeKw = locale === "ru" ? INCOME_KEYWORDS_RU : INCOME_KEYWORDS_EN;
   const expenseKw = locale === "ru" ? EXPENSE_KEYWORDS_RU : EXPENSE_KEYWORDS_EN;
@@ -119,7 +144,7 @@ export function fallbackParse(
     };
   }
 
-  const type = detectType(transcript, locale);
+  const type = detectType(transcript, locale, sanitizeCategories(categories));
   const amount = parseAmountFromTranscript(transcript, locale);
 
   let resolvedType = type;
@@ -181,7 +206,7 @@ export function normalizeAiParsed(
   );
   const amount = resolveTransactionAmount(transcript, raw.amount, locale);
 
-  return {
+  const base: ParsedTransaction = {
     amount,
     type: raw.type,
     categoryId,
@@ -189,4 +214,5 @@ export function normalizeAiParsed(
     note: sanitizeTransactionNote(raw.note || transcript.slice(0, 120), amount),
     date: raw.date,
   };
+  return refineParsedTransaction(base, transcript, categories, detectType, locale);
 }
