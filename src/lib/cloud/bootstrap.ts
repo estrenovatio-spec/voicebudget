@@ -13,6 +13,15 @@ function clearStaleCloudSession(): void {
   }
 }
 
+/** После смены секрета на сервере или 401 — перевыпустить токен из Telegram, не сбрасывать облако */
+export async function refreshCloudSessionFromTelegram(): Promise<boolean> {
+  if (isCloudPaused()) return false;
+  const auth = getCloudAuthBody();
+  if (!auth.initData && !auth.telegramLogin) return false;
+  await runHouseholdBootstrap();
+  return Boolean(useCloudStore.getState().token && useCloudStore.getState().household);
+}
+
 export async function runHouseholdBootstrap(): Promise<void> {
   if (isCloudPaused()) return;
 
@@ -58,7 +67,10 @@ export async function runHouseholdBootstrap(): Promise<void> {
       }
       return;
     }
-    if (isAuthSyncError(e)) clearStaleCloudSession();
+    if (isAuthSyncError(e)) {
+      const refreshed = await refreshCloudSessionFromTelegram();
+      if (!refreshed) clearStaleCloudSession();
+    }
   }
 }
 

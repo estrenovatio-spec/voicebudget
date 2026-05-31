@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
+import { refreshCloudSessionFromTelegram } from "@/lib/cloud/bootstrap";
 import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isAuthSyncError } from "@/lib/cloud/sync-errors";
 import { isTransientHttpError } from "@/lib/fetch-retry";
@@ -35,7 +36,12 @@ export function useCloudAutoSync() {
           useCloudStore.getState().touchSync();
         })
         .catch((e) => {
-          if (isAuthSyncError(e)) useCloudStore.getState().clearSession();
+          if (isAuthSyncError(e)) {
+            void refreshCloudSessionFromTelegram().then((ok) => {
+              if (!ok) useCloudStore.getState().clearSession();
+            });
+            return;
+          }
           /* transient deploy/network — next poll retries silently */
           if (isTransientHttpError(e)) return;
         });
