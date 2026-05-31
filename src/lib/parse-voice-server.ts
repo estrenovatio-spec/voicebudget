@@ -93,6 +93,18 @@ function extractParsedItems(raw: unknown): ParsedItem[] {
   throw new Error("AI JSON validation failed");
 }
 
+function applyOwnersToItems(
+  items: ParsedTransaction[],
+  fullText: string,
+  ownerOpts: OwnerDetectOptions,
+): ParsedTransaction[] {
+  const clauses = splitTranscriptClauses(fullText);
+  return items.map((item, index) => {
+    const clause = clauses[index]?.trim() || item.note?.trim() || fullText;
+    return applyDetectedOwner(item, clause, ownerOpts, item.owner ?? "me");
+  });
+}
+
 export async function parseTranscriptServerMany(
   transcript: string,
   locale: Locale,
@@ -106,11 +118,13 @@ export async function parseTranscriptServerMany(
   }
 
   const withOwner = (items: ParsedTransaction[]) =>
-    items.map((item) => applyDetectedOwner(item, text, ownerOpts, item.owner ?? "me"));
+    applyOwnersToItems(items, text, ownerOpts);
 
   if (!text) {
     return { items: withOwner([emptyFallback(locale, categories)]), fallback: true };
   }
+
+  const clauses = splitTranscriptClauses(text);
 
   if (!isLlmConfigured()) {
     return { items: withOwner(fallbackParseMany(text, locale, categories)), fallback: true };
@@ -147,7 +161,6 @@ export async function parseTranscriptServerMany(
 
     const raw: unknown = extractJsonFromLlmContent(content);
     const parsedItems = extractParsedItems(raw);
-    const clauses = splitTranscriptClauses(text);
 
     const items = parsedItems
       .map((item, index) =>

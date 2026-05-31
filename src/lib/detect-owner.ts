@@ -44,57 +44,110 @@ function mentionsByNeedles(text: string, needles: string[]): boolean {
   return false;
 }
 
-/** Ласкательные и роли — партнёр (не имя из настроек). */
-const PARTNER_WORDS_RU = [
+/** Ласкательные и роли — партнёр как субъект (именительный / явный агент). */
+const PARTNER_ROLE_SUBJECT_RU = [
   "любимая",
-  "любимой",
-  "любимую",
-  "любимые",
   "любимый",
-  "любимому",
+  "любимые",
   "дорогая",
   "дорогой",
-  "дорогую",
   "дорогие",
   "жена",
+  "муж",
+  "супруга",
+  "супруг",
+  "партнёр",
+  "партнер",
+  "зайка",
+  "котик",
+  "солнышко",
+  "милая",
+  "милый",
+  "милашка",
+  "лапочка",
+  "лапуля",
+  "зайчик",
+];
+
+/** Падеж «кому» — получатель подарка, не тот кто тратил */
+const PARTNER_DATIVE_RU = [
+  "жене",
+  "мужу",
+  "любимой",
+  "любимому",
+  "дорогой",
+  "дорогому",
+  "партнёру",
+  "партнеру",
+  "зайке",
+  "котику",
+  "солнышку",
+  "милой",
+  "милому",
+  "милашке",
+  "лапочке",
+  "зайчику",
+  "супруге",
+  "супругу",
+];
+
+const GIFT_VERBS_RU = [
+  "купил",
+  "купила",
+  "подарил",
+  "подарила",
+  "дал",
+  "дала",
+  "взял",
+  "взяла",
+  "заказал",
+  "заказала",
+  "перевёл",
+  "перевел",
+  "перевела",
+  "отправил",
+  "отправила",
+  "заплатил",
+  "заплатила",
+];
+
+/** «жена потратила», «потратила жена», «милая купила» */
+const PARTNER_AGENT_RE_RU =
+  /(?:^|[\s,.;:!?()—–-])(?:жена|муж|любим(?:ая|ый|ой|ому)|мила(?:я|ый|ому)|дорог(?:ая|ой|ому)|партн(?:ёр|ер)(?:ка)?|зайка|солнышко|милашка|лапочка|зайчик|супруг(?:а)?)\s+(?:потратил|потратила|купил|купила|заплатил|заплатила|оплатил|оплатила|получил|получила|отдал|отдала|заказал|заказала)(?:[\s,.;:!?()—–-]|$)|(?:^|[\s,.;:!?()—–-])(?:потратил|потратила|купил|купила|заплатил|заплатила|оплатил|оплатила|получил|получила|отдал|отдала|заказал|заказала)\s+(?:[\p{L}\s]{0,16}\s+)?(?:жена|муж|любим(?:ая|ый)|мила(?:я|ый)|дорог(?:ая|ой)|партн(?:ёр|ер)|зайка|солнышко|милашка|супруг(?:а)?)(?:[\s,.;:!?()—–-]|$)/iu;
+
+/** @deprecated — полный список для подсказок LLM; для detect используйте role-subject + agent/beneficiary */
+const PARTNER_WORDS_RU = [
+  ...PARTNER_ROLE_SUBJECT_RU,
+  "любимой",
+  "любимому",
+  "любимую",
+  "дорогой",
+  "дорогому",
+  "дорогую",
   "жене",
   "женой",
   "жену",
-  "муж",
   "мужу",
   "мужем",
   "мужа",
-  "супруга",
   "супруге",
   "супругой",
   "супругу",
-  "супруг",
-  "супругу",
-  "партнёр",
-  "партнер",
   "партнёру",
   "партнеру",
   "партнёра",
   "партнера",
-  "зайка",
   "зайке",
   "зайку",
-  "котик",
   "котику",
-  "солнышко",
   "солнышку",
-  "милая",
   "милой",
-  "милую",
-  "милый",
   "милому",
-  "милашка",
+  "милую",
   "милашке",
   "милашку",
-  "лапочка",
   "лапочке",
   "лапуля",
-  "зайчик",
   "зайчику",
 ];
 
@@ -106,6 +159,12 @@ const PARTNER_AFFECTIONATE_WITH_MOYA_RE = new RegExp(
   ].join("|"),
   "iu",
 );
+
+const PARTNER_BENEFICIARY_RE_EN =
+  /\b(?:bought|buy|bought|got|gave|gifted|ordered|paid\s+for|for)\s+(?:[\w\s]{0,35}\s+)?(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear|hubby|wifey)\b/i;
+
+const PARTNER_AGENT_RE_EN =
+  /\b(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear)\s+(?:spent|bought|paid|ordered|received)\b|\b(?:spent|bought|paid|ordered|received)\s+(?:[\w\s]{0,16}\s+)?(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear)\b/i;
 
 const PARTNER_WORDS_EN = [
   "wife",
@@ -120,6 +179,60 @@ const PARTNER_WORDS_EN = [
   "hubby",
   "wifey",
 ];
+
+function isPartnerBeneficiaryPhraseRu(text: string): boolean {
+  const lower = text.toLowerCase();
+  if (/\bдля\s+(?:жены|мужа|любимой|любимого|партн(?:ё|е)ра|супруги|супруга)\b/i.test(lower)) {
+    return true;
+  }
+  const verbHit = GIFT_VERBS_RU.some((verb) => lower.includes(verb));
+  if (!verbHit) return false;
+  return PARTNER_DATIVE_RU.some((word) => {
+    const idx = lower.indexOf(word);
+    if (idx < 0) return false;
+    const before = lower.slice(0, idx);
+    return GIFT_VERBS_RU.some((verb) => before.includes(verb));
+  });
+}
+
+function stripPartnerBeneficiaryRu(text: string): string {
+  let result = text;
+  for (const verb of GIFT_VERBS_RU) {
+    for (const word of PARTNER_DATIVE_RU) {
+      result = result.replace(
+        new RegExp(`${escapeRegExp(verb)}\\s+(?:[\\p{L}\\d\\s]{0,40}\\s+)?${escapeRegExp(word)}`, "giu"),
+        " ",
+      );
+    }
+  }
+  return result.replace(
+    /\bдля\s+(?:жены|мужа|любимой|любимого|партн(?:ё|е)ра|супруги|супруга)\b/giu,
+    " ",
+  );
+}
+
+function isPartnerBeneficiaryPhrase(text: string, locale: Locale): boolean {
+  if (locale === "ru") return isPartnerBeneficiaryPhraseRu(text);
+  return PARTNER_BENEFICIARY_RE_EN.test(text);
+}
+
+function stripPartnerBeneficiary(text: string, locale: Locale): string {
+  if (locale === "ru") {
+    return isPartnerBeneficiaryPhraseRu(text) ? stripPartnerBeneficiaryRu(text) : text;
+  }
+  return PARTNER_BENEFICIARY_RE_EN.test(text)
+    ? text.replace(PARTNER_BENEFICIARY_RE_EN, " ")
+    : text;
+}
+
+function mentionsPartnerAsAgent(text: string, locale: Locale): boolean {
+  if (locale === "ru") return PARTNER_AGENT_RE_RU.test(text);
+  return PARTNER_AGENT_RE_EN.test(text);
+}
+
+function textForPartnerRoleDetection(text: string, locale: Locale): string {
+  return stripPartnerBeneficiary(text, locale);
+}
 
 const ME_WORDS_RU = [
   "мне",
@@ -147,7 +260,10 @@ const ME_WORDS_RU = [
 const ME_WORDS_EN = ["my", "mine", "me", "i", "myself", "for me"];
 
 function partnerSynonymNeedles(locale: Locale): string[] {
-  const words = locale === "ru" ? PARTNER_WORDS_RU : PARTNER_WORDS_EN;
+  const words =
+    locale === "ru"
+      ? PARTNER_ROLE_SUBJECT_RU
+      : PARTNER_WORDS_EN;
   return words.filter((w) => w.length >= 3);
 }
 
@@ -162,6 +278,7 @@ function mentionsPartnerAffectionateCompoundRu(text: string): boolean {
 
 function mentionsPartnerSynonyms(text: string, locale: Locale): boolean {
   if (locale === "ru" && mentionsPartnerAffectionateCompoundRu(text)) return true;
+  if (mentionsPartnerAsAgent(text, locale)) return true;
   return mentionsByNeedles(text, partnerSynonymNeedles(locale));
 }
 
@@ -210,6 +327,11 @@ export function ownerHintsForPrompt(
       ? `- Также партнёр: ${syn} (например «милая моя потратила», «любимая потратила»).`
       : `- Also partner: ${syn}.`,
   );
+  lines.push(
+    locale === "ru"
+      ? `- «купил цветы жене», «подарил мужу» — owner "me" (покупка ДЛЯ партнёра, не его трата).`
+      : `- "bought flowers for wife" → owner "me" (gift for partner, not partner's expense).`,
+  );
   if (me) {
     lines.push(
       locale === "ru"
@@ -243,13 +365,14 @@ export function detectOwnerFromTranscript(
 
   const locale = options.locale ?? "ru";
   const hasPartner = options.hasPartner ?? Boolean(options.partnerName?.trim());
+  const scoped = textForPartnerRoleDetection(text, locale);
 
   const partnerCustom = options.partnerName?.trim();
-  if (partnerCustom && mentionsByNeedles(text, nameNeedles(partnerCustom))) {
+  if (partnerCustom && mentionsByNeedles(scoped, nameNeedles(partnerCustom))) {
     return "partner";
   }
 
-  if (hasPartner && mentionsPartnerSynonyms(text, locale)) {
+  if (hasPartner && mentionsPartnerSynonyms(scoped, locale)) {
     return "partner";
   }
 

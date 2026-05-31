@@ -47,6 +47,7 @@ Rules:
 - Examples: "500 на обед и 200 на такси" → 2 items; "потратил 300 на кофе, 1500 на продукты" → 2 items.
 - Each item: its own amount, categoryId, and short note (only that operation, NOT the whole phrase).
 - If only one operation → "transactions" array with exactly 1 element.
+- Owner is per operation: «купил цветы жене» = user spent (not partner); «жена потратила» = partner.
 - categoryId MUST be one of the allowed ids for the transaction type.
 - Expense categoryIds: ${expenseIds}
 - Income categoryIds: ${incomeIds}
@@ -91,10 +92,11 @@ export function splitTranscriptClauses(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
+  const splitRe =
+    /\s*[;,]\s*|\s+и\s+|\s+ещё?\s+|\s+потом\s+|\s+также\s+|\s+а\s+(?=потрат|куп|оплат|получ|заплат)|(?<=(?:на\s+[\p{L}\d-]+))\s+(?=\d[\d\s.,]*\s*(?:руб|₽|рубл(?:ей|я|ь)?))/iu;
+
   const parts = trimmed
-    .split(
-      /\s*[;,]\s*|\s+и\s+|\s+ещё?\s+|\s+потом\s+|\s+также\s+|\s+а\s+(?=потрат|куп|оплат|получ|заплат)/i,
-    )
+    .split(splitRe)
     .map((part) => part.trim())
     .filter(Boolean);
 

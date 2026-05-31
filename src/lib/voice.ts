@@ -1,7 +1,12 @@
 /**
  * Одна кнопка: запись → серверный STT → ИИ разбирает сумму и категорию.
  */
-import { fallbackParseMany } from "@/lib/ai";
+import { fallbackParseMany, splitTranscriptClauses } from "@/lib/ai";
+import {
+  applyDetectedOwner,
+  normalizeOwnerDetectOptions,
+} from "@/lib/detect-owner";
+import { hasPartnerBudget } from "@/lib/owner-labels";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
 import { transcribeUserAudioFile } from "@/lib/voice-transcribe-client";
 import type { DictKey } from "@/lib/i18n";
@@ -397,7 +402,18 @@ export async function parseVoiceTranscripts(
 
   const local = fallbackParseMany(text, locale, categories);
   if (local.length > 0) {
-    return { items: local, usedFallback: true };
+    const ownerOpts = normalizeOwnerDetectOptions(
+      typeof ownerCtx === "string" ? { partnerName: ownerCtx, locale } : { ...ownerCtx, locale },
+      locale,
+    );
+    if (ownerOpts.hasPartner === undefined) {
+      ownerOpts.hasPartner = hasPartnerBudget(ownerOpts.partnerName);
+    }
+    const clauses = splitTranscriptClauses(text);
+    const items = local.map((item, index) =>
+      applyDetectedOwner(item, clauses[index]?.trim() || item.note?.trim() || text, ownerOpts, "me"),
+    );
+    return { items, usedFallback: true };
   }
   return null;
 }

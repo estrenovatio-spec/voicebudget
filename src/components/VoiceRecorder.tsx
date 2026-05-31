@@ -5,10 +5,10 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { hasPartnerBudget } from "@/lib/owner-labels";
-import { parseVoiceTranscripts } from "@/lib/voice";
 import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
 import { t, ruPlural, enPlural } from "@/lib/i18n";
+import { parseVoiceTranscripts } from "@/lib/voice";
 import { useStore } from "@/store/useStore";
 
 export function VoiceRecorder() {
@@ -102,7 +102,7 @@ export function VoiceRecorder() {
       }
 
       for (const item of parsed.items) {
-        addTransaction(item, value);
+        addTransaction(item, item.note?.trim() || value);
       }
       setText("");
       toast(
