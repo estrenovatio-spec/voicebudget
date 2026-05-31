@@ -158,9 +158,9 @@ export const DICT = {
     liveRatesBtc: "BTC",
     liveRatesUnavailable: "Курсы временно недоступны",
     cloudSyncPull: "Скачать с облака",
-    cloudSyncPullHint: "Важнее облако — список на этом устройстве заменится",
+    cloudSyncPullHint: "Облако важнее — список здесь заменится",
     cloudSyncPush: "Отправить на облако",
-    cloudSyncPushHint: "Важнее это устройство — операции здесь допишутся в облако",
+    cloudSyncPushHint: "Это устройство важнее — допишется в облако",
     cloudSyncPullConfirm:
       "Заменить операции на этом устройстве данными из облака? Локальные записи, которых нет в облаке, пропадут с экрана.",
     cloudSyncPushConfirm:

@@ -97,7 +97,7 @@ export function HouseholdCloudPanel() {
 
   if (isActive && household) {
     return (
-      <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+      <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3">
         <div className="space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudActiveTitle")}</p>
           <p className="text-xs text-muted-foreground">

@@ -55,7 +55,13 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
   };
 
   return (
-    <div className={embedded ? "space-y-2" : "space-y-2 rounded-lg border bg-muted/30 p-3"}>
+    <div
+      className={
+        embedded
+          ? "min-w-0 space-y-2 overflow-hidden"
+          : "space-y-2 rounded-lg border bg-muted/30 p-3"
+      }
+    >
       {!embedded && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium">{t(locale, "cloudSyncTitle")}</p>
@@ -71,23 +77,23 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className={embedded ? "grid grid-cols-1 gap-2" : "grid grid-cols-1 gap-2 sm:grid-cols-2"}>
         <Button
           type="button"
           variant="secondary"
-          className="h-auto min-h-11 flex-col items-start gap-0.5 px-3 py-2 text-left"
+          className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
           disabled={loading}
           onClick={() => void handlePull()}
         >
-          <span className="flex w-full items-center gap-2 font-medium">
+          <span className="flex w-full min-w-0 items-center gap-2 font-medium leading-snug">
             {loading && lastAction === "pull" ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
             ) : (
               <CloudDownload className="h-4 w-4 shrink-0" />
             )}
-            {t(locale, "cloudSyncPull")}
+            <span className="min-w-0 break-words">{t(locale, "cloudSyncPull")}</span>
           </span>
-          <span className="text-xs font-normal text-muted-foreground">
+          <span className="w-full text-xs font-normal leading-snug text-muted-foreground break-words">
             {t(locale, "cloudSyncPullHint")}
           </span>
         </Button>
@@ -95,19 +101,19 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-11 flex-col items-start gap-0.5 px-3 py-2 text-left"
+          className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
           disabled={loading}
           onClick={() => void handlePush()}
         >
-          <span className="flex w-full items-center gap-2 font-medium">
+          <span className="flex w-full min-w-0 items-center gap-2 font-medium leading-snug">
             {loading && lastAction === "push" ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
             ) : (
               <CloudUpload className="h-4 w-4 shrink-0" />
             )}
-            {t(locale, "cloudSyncPush")}
+            <span className="min-w-0 break-words">{t(locale, "cloudSyncPush")}</span>
           </span>
-          <span className="text-xs font-normal text-muted-foreground">
+          <span className="w-full text-xs font-normal leading-snug text-muted-foreground break-words">
             {t(locale, "cloudSyncPushHint")}
           </span>
         </Button>
