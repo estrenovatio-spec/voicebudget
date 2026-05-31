@@ -222,9 +222,12 @@ export function tryParsePlanningInput(
   if (incomeGoal) return incomeGoal;
 
   const depositRe = locale === "ru" ? DEPOSIT_RU : DEPOSIT_EN;
-  if (depositRe.test(trimmed)) {
-    const parsed = parseGoalDepositFromText(trimmed, locale, goals);
-    if (parsed) return parsed;
+  const parsedDeposit = parseGoalDepositFromText(trimmed, locale, goals);
+  if (parsedDeposit) {
+    if (depositRe.test(trimmed)) return parsedDeposit;
+    // «5000 на отпуск» — без «отложил», если копилка с таким названием уже есть
+    const hasPrep = locale === "ru" ? GOAL_PREP_RU.test(trimmed) : GOAL_PREP_EN.test(trimmed);
+    if (hasPrep && findGoalMentionedInText(trimmed, goals)) return parsedDeposit;
   }
 
   return null;

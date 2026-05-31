@@ -1,4 +1,7 @@
+import { getTelegramBotMention, getTelegramBotName } from "@/lib/telegram/bot-name";
 import type { Locale } from "@/types";
+
+const BOT = getTelegramBotMention();
 
 export type FaqSection = {
   id: string;
@@ -13,13 +16,13 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "С чего начать", en: "Getting started" },
     body: {
       ru: [
-        "Откройте бота @VoiceBudgetBot → «Открыть Mini App».",
+        `Откройте бота ${BOT} → «Открыть Mini App».`,
         "Запишите трату: текст + «Добавить» в приложении или голосовое/текст боту.",
         "Вход только через Telegram — пароль не нужен.",
       ],
       en: [
-        "Open @VoiceBudgetBot → «Open Mini App».",
-        "Log an expense: mic in the app or a voice/text message to the bot.",
+        `Open ${BOT} → «Open Mini App».`,
+        "Log an expense: text + «Add» in the app or voice/text to the bot.",
         "Sign-in is via Telegram only — no password.",
       ],
     },
@@ -45,15 +48,14 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Как записывать", en: "How to log" },
     body: {
       ru: [
-        "В приложении: текст + «Добавить».",
-        "В боте: голосовое или текст — синхронизация с приложением при включённом облаке.",
-        "Список операций: редактирование и удаление на главном экране.",
+        "В приложении: поле внизу + «Добавить» (текст).",
+        "В боте: голосовое или текст — при облаке попадает в общий бюджет.",
+        "Список операций на главной — нажмите строку, чтобы изменить или удалить.",
       ],
       en: [
-        "In the app: red mic button or text + «Add».",
-        "In the bot: voice or text — syncs with the app when cloud is on.",
-        "Transaction list: edit or delete on the home screen.",
-        "If the mic misbehaves in Telegram — voice to the bot or open in Chrome (link under the mic).",
+        "In the app: text field at the bottom + «Add».",
+        "In the bot: voice or text — with cloud on, syncs to the household.",
+        "Transaction list on home — tap a row to edit or delete.",
       ],
     },
   },
@@ -62,22 +64,26 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Примеры фраз", en: "Phrase examples" },
     body: {
       ru: [
-        "Расход: 500 кофе · потратил 1500 в пятёрочке",
-        "Доход: зарплата 80000 · получил 5000 фриланс",
-        "Копилка: отложил 5000 на отпуск · закинул 2000 в подушку",
+        "Расход: потратил 500 на обед · 1500 в пятёрочке",
+        "Доход: зарплата 80000 · получил 5000 · своя категория — по ключевым словам (питер 20 тысяч)",
+        "Партнёр: переключатель «Кто» или фраза — любимая потратила 500 · имя из настроек",
+        "Копилка: отложил 5000 на отпуск · закинул 2000 в подушку · 5000 на отпуск (если копилка уже есть)",
+        "Создать копилку: создать цель отпуск цель 150000",
         "Доход + копилка: зарплата 100000, 20000 на отпуск",
-        "Партнёр: Маша 800 продукты (имя как в настройках)",
-        "Поддерживаются «1,5 млн», «сто тысяч». В фразе нужна цифра.",
+        "Несколько операций: 500 на обед и 200 на такси",
+        "Суммы: 1,5 млн · сто тысяч. В фразе нужна цифра.",
         "Категория — по словам (пятёрочка → Продукты). Свои слова — Настройки → Категории.",
       ],
       en: [
-        "Expense: 500 coffee · spent 1500 at the store",
-        "Income: salary 80000 · received 5000 freelance",
-        "Jar: saved 5000 for vacation",
+        "Expense: spent 500 on lunch · 1500 at the store",
+        "Income: salary 80000 · received 5000 · custom category — match your keywords",
+        "Partner: «Who» toggle or phrase — partner spent 500 · name from settings",
+        "Jar: saved 5000 for vacation · 5000 for vacation (if jar already exists)",
+        "Create jar: create goal vacation target 150000",
         "Income + jar: salary 100000, 20000 for vacation",
-        "Partner: Alex 800 groceries (name as in settings)",
-        "Supports «1.5m», «100k». A number is required.",
-        "Category from keywords (store → Groceries). Custom words — Settings → Categories.",
+        "Multiple: 500 lunch and 200 taxi",
+        "Amounts: 1.5m · 100k. Include a number.",
+        "Category from keywords. Custom — Settings → Categories.",
       ],
     },
   },
@@ -86,9 +92,10 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Партнёр и семья", en: "Partner & household" },
     body: {
       ru: [
-        "Без облака: укажите имя партнёра в настройках — метки «Я» / партнёр.",
-        "Облако «Веду один» — бэкап на сервере, один Telegram.",
-        "«Вдвоём» — код из 6 символов, второй: Настройки → Присоединиться.",
+        "Без облака: имя партнёра в шапке (⚙) — метки «Я» / партнёр только на этом телефоне.",
+        "В фразе: любимая потратила · милая моя 500 · имя из настроек.",
+        "Облако «Веду один» — бэкап, один Telegram.",
+        "«Вдвоём» — код 6 символов; второй: Настройки → Присоединиться.",
         "Фильтры Общий / Я / Партнёр — на главном экране.",
       ],
       en: [
@@ -142,14 +149,19 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Цели и планирование", en: "Goals & planning" },
     body: {
       ru: [
-        "На главной: Копилки · Лимиты · Подушка · Регулярные платежи.",
-        "День начала месяца (зарплата) — в блоке планирования.",
-        "Голосом: отложил 5000 на отпуск · создать цель отпуск цель 150000",
+        "Главная → «Цели и планирование»: Копилки · Лимиты · Подушка · Регулярные.",
+        "В копилку — нужна сумма и слово «на/в/для» + название цели, либо глагол:",
+        "отложил · закинул · положил · в копилку · накопил · кинул в копилку.",
+        "Примеры: отложил 5000 на отпуск · 5000 на отпуск (копилка «Отпуск» уже есть).",
+        "Доход сразу в копилку: зарплата 100000, 20000 на отпуск.",
+        "Новая цель: создать цель машина цель 500000.",
       ],
       en: [
-        "On home: Jars · Limits · Emergency fund · Recurring.",
-        "Budget month start day (payday) — in the planning block.",
-        "By voice: saved 5000 for vacation · create goal vacation target 150000",
+        "Home → «Goals & planning»: Jars · Limits · Emergency · Recurring.",
+        "To a jar — amount + for/to + goal name, or a verb: saved · deposited · put aside.",
+        "Examples: saved 5000 for vacation · 5000 for vacation (jar exists).",
+        "Income split: salary 100000, 20000 for vacation.",
+        "New goal: create goal car target 500000.",
       ],
     },
   },
@@ -256,25 +268,29 @@ export function buildFaqKnowledgeText(locale: Locale): string {
 export function faqCheatsheet(locale: Locale): string[] {
   return locale === "ru"
     ? [
-        "/start, /help — справка в боте",
-        "Текст в приложении или голос/текст боту — «потратил 500 на обед»",
-        "Копилка — «отложил 5000 на отпуск»",
-        "Mini App — бот → «Открыть приложение»",
-        "Партнёр вдвоём — Облако → Вдвоём → код → Присоединиться",
+        "Текст + «Добавить» или боту — «потратил 500 на обед»",
+        "Доход: «зарплата 80 000» · своя категория — по вашим ключевым словам",
+        "Партнёр: «любимая потратила» · имя из шапки (⚙)",
+        "Копилка: «отложил 5000 на отпуск» · «5000 на отпуск» (если цель уже есть)",
+        "Доход в копилку: «зарплата 100 000, 20 000 на отпуск»",
+        "Несколько трат: «500 на обед и 200 на такси»",
+        "Облако вдвоём: код → второй жмёт Присоединиться",
         "Подробнее — спросите ИИ ниже",
       ]
     : [
-        "/start, /help — bot guide",
-        "Text in app or voice/text to bot — «spent 500 on lunch»",
-        "Jar — «saved 5000 for vacation»",
-        "Mini App — bot → «Open app»",
-        "Partner — Cloud → Shared → invite code → Join",
+        "Text + «Add» or message the bot — «spent 500 on lunch»",
+        "Income: «salary 80000» · custom category — your keywords",
+        "Partner: name from header (⚙) or «partner spent 500»",
+        "Jar: «saved 5000 for vacation» · «5000 for vacation» (jar exists)",
+        "Income to jar: «salary 100000, 20000 for vacation»",
+        "Multiple: «500 lunch and 200 taxi»",
+        "Shared cloud: invite code → Join",
         "Details — ask AI below",
       ];
 }
 
 /** HTML for Telegram /help (keep under ~3500 chars) */
-export function formatBotHelpHtml(locale: Locale, botUsername = "VoiceBudgetBot"): string {
+export function formatBotHelpHtml(locale: Locale, botUsername = getTelegramBotName()): string {
   const bot = botUsername.replace(/^@/, "");
   if (locale === "en") {
     return (
@@ -285,7 +301,9 @@ export function formatBotHelpHtml(locale: Locale, botUsername = "VoiceBudgetBot"
       `<b>Examples</b>\n` +
       `• spent 500 on lunch\n` +
       `• salary 80000\n` +
-      `• saved 5000 for vacation\n\n` +
+      `• saved 5000 for vacation\n` +
+      `• 5000 for vacation (if jar exists)\n` +
+      `• salary 100000, 20000 for vacation\n\n` +
       `<b>Voice</b> — send a voice message; or type the same.\n` +
       `Syncs with the Mini App when cloud is on.\n\n` +
       `<b>App help</b> — Mini App → Settings → Help → ask AI (unlimited)\n\n` +
@@ -300,7 +318,9 @@ export function formatBotHelpHtml(locale: Locale, botUsername = "VoiceBudgetBot"
     `<b>Примеры</b>\n` +
     `• потратил 500 на обед\n` +
     `• зарплата 80000\n` +
-    `• отложил 5000 на отпуск\n\n` +
+    `• отложил 5000 на отпуск\n` +
+    `• 5000 на отпуск (если копилка уже есть)\n` +
+    `• зарплата 100000, 20000 на отпуск\n\n` +
     `<b>Голос</b> — голосовое в чат; или тот же текст.\n` +
     `Синхронизация с Mini App при включённом облаке.\n\n` +
     `<b>Справка по приложению</b> — Mini App → Настройки → Помощь → спросите ИИ (без лимита)\n\n` +
