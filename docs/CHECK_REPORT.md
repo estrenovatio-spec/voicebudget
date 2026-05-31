@@ -1,13 +1,12 @@
 # Отчёт проверки VoiceBudget
 
-**Дата:** 2026-05-30 08:07:55 MSK
+**Дата:** 2026-05-30 13:51:15 MSK
 
 ## Git
 ```
-b1a141f Polish home UI, balance privacy, planning voice, and docs.
+0734acb Fix transactions tab filter persistence and add subscription free-until date.
 ## main...origin/main
-?? docs/CHECK_REPORT.md
-?? scripts/run-checks.sh
+ M docs/CHECK_REPORT.md
 ```
 
 ## Node
@@ -23,7 +22,7 @@ v20.18.1
 
 Prisma schema loaded from prisma/schema.prisma
 
-✔ Generated Prisma Client (v6.19.3) to ./node_modules/@prisma/client in 315ms
+✔ Generated Prisma Client (v6.19.3) to ./node_modules/@prisma/client in 118ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
@@ -50,7 +49,7 @@ info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/d
    Collecting build traces ...
 
 Route (app)                                       Size     First Load JS
-┌ ○ /                                             60.8 kB         187 kB
+┌ ○ /                                             61.1 kB         187 kB
 ├ ○ /_not-found                                   876 B          88.3 kB
 ├ ƒ /api/admin/wipe-cloud                         0 B                0 B
 ├ ƒ /api/help-chat                                0 B                0 B

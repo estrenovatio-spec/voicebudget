@@ -114,7 +114,7 @@ export const DICT = {
     summaryCategoriesEmpty: "Нет операций за 30 дней",
     householdTitle: "Имена в балансе",
     householdHint:
-      "Как подписывать строки «ваши» и «партнёра» на этом телефоне. У каждого свои имена — облако их не меняет.",
+      "Подписи только на этом телефоне. Облако и второй телефон их не подставят — после сохранения имя не сбросится при синхронизации.",
     myNamePlaceholder: "Ваше имя (например, Ксюша)",
     myNameSave: "Сохранить моё имя",
     partnerNamePlaceholder: "Имя партнёра (например, Лёша)",
@@ -451,7 +451,7 @@ export const DICT = {
     summaryCategoriesEmpty: "No transactions in the last 30 days",
     householdTitle: "Balance labels",
     householdHint:
-      "How to label your row and your partner’s on this device. Each person sets their own — cloud won’t overwrite.",
+      "Labels are only on this device. Cloud and the other phone won’t apply them — after you save, sync won’t reset the names.",
     myNamePlaceholder: "Your name (e.g. Kate)",
     myNameSave: "Save my name",
     partnerNamePlaceholder: "Partner’s name (e.g. Alex)",

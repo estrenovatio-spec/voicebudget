@@ -20,11 +20,7 @@ function emptyPlanningDefaults(sync: SyncPayload): SyncPayload {
 }
 
 /** Слияние с локальными данными — обновление приложения не затирает операции */
-export function applyHouseholdSync(
-  sync: SyncPayload,
-  token: string,
-  opts?: { skipPartnerName?: boolean },
-) {
+export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const remote = emptyPlanningDefaults(sync);
   const local = useStore.getState();
   const cloud = useCloudStore.getState();
@@ -65,10 +61,8 @@ export function applyHouseholdSync(
     savingsGoals: merged.savingsGoals,
     categoryBudgets: merged.categoryBudgets,
     recurringTransactions: merged.recurringTransactions,
-    // Имя партнёра в балансе — только локальные настройки (у каждого своё).
-    ...(opts?.skipPartnerName === false
-      ? { partnerName: remote.household.partnerLabel?.trim() || null }
-      : {}),
+    // Имена в балансе (userName / partnerName) — только на этом телефоне, не из облака.
+    // household.partnerLabel в БД общий для семьи и не подставляется в UI.
   });
 
   for (const id of merged.localOnlyTransactionIds) {

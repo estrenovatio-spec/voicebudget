@@ -7,7 +7,6 @@ import { useStore } from "@/store/useStore";
 
 export function TelegramInit() {
   const setLocale = useStore((s) => s.setLocale);
-  const setUserName = useStore((s) => s.setUserName);
   const ensureTrackingStarted = useStore((s) => s.ensureTrackingStarted);
 
   useEffect(() => {
@@ -24,8 +23,9 @@ export function TelegramInit() {
     const offTheme = syncThemeFromTelegram();
 
     const user = tg.initDataUnsafe?.user;
-    if (user?.first_name && !useStore.getState().userName?.trim()) {
-      setUserName(user.first_name);
+    const { userName, userNameCustomized } = useStore.getState();
+    if (user?.first_name && !userNameCustomized && !userName?.trim()) {
+      useStore.setState({ userName: user.first_name });
     }
     if (user?.language_code) setLocale(detectLocale(user.language_code));
 
@@ -49,7 +49,7 @@ export function TelegramInit() {
         tg.BackButton.hide();
       }
     };
-  }, [ensureTrackingStarted, setLocale, setUserName]);
+  }, [ensureTrackingStarted, setLocale]);
 
   return null;
 }

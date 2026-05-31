@@ -69,7 +69,11 @@ interface StoreState {
   isRecording: boolean;
   locale: Locale;
   userName: string | null;
+  /** Пользователь вручную задал «моё имя» — не перезаписывать из Telegram */
+  userNameCustomized: boolean;
   partnerName: string | null;
+  /** Пользователь вручную задал имя партнёра в балансе */
+  partnerNameCustomized: boolean;
   entryOwner: BudgetOwner;
   householdFilter: HouseholdFilter;
   trackingStartedAt: string | null;
@@ -205,7 +209,9 @@ export const useStore = create<StoreState>()(
       isRecording: false,
       locale: "ru",
       userName: null,
+      userNameCustomized: false,
       partnerName: null,
+      partnerNameCustomized: false,
       entryOwner: "me",
       householdFilter: "all",
       trackingStartedAt: null,
@@ -382,11 +388,16 @@ export const useStore = create<StoreState>()(
       },
       setLocale: (locale) => set({ locale }),
       setIsRecording: (isRecording) => set({ isRecording }),
-      setUserName: (userName) => set({ userName }),
+      setUserName: (userName) =>
+        set({
+          userName: userName?.trim() || null,
+          userNameCustomized: true,
+        }),
       setPartnerName: (partnerName) => {
         const trimmed = partnerName?.trim() || null;
         set({
           partnerName: trimmed,
+          partnerNameCustomized: true,
           entryOwner: "me",
           householdFilter: "all",
         });
@@ -687,7 +698,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 15,
+      version: 16,
       migrate: (persisted, version) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);
@@ -721,7 +732,13 @@ export const useStore = create<StoreState>()(
           isRecording: false,
           locale: (raw.locale === "en" ? "en" : "ru") as Locale,
           userName: typeof raw.userName === "string" ? raw.userName : null,
+          userNameCustomized:
+            Boolean(raw.userNameCustomized) ||
+            (typeof raw.userName === "string" && raw.userName.trim().length > 0),
           partnerName: typeof raw.partnerName === "string" ? raw.partnerName : null,
+          partnerNameCustomized:
+            Boolean(raw.partnerNameCustomized) ||
+            (typeof raw.partnerName === "string" && raw.partnerName.trim().length > 0),
           entryOwner: raw.entryOwner === "partner" ? "partner" : "me",
           householdFilter:
             raw.householdFilter === "me" || raw.householdFilter === "partner"

@@ -92,6 +92,12 @@ export function TMAHeader() {
     setAmountsHidden(readAmountsHidden());
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    setMyNameInput(userName ?? "");
+    setPartnerInput(partnerName ?? "");
+  }, [open, userName, partnerName]);
+
   const toggleAmountsHidden = useCallback(() => {
     setAmountsHidden((prev) => {
       const next = !prev;
