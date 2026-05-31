@@ -21,6 +21,8 @@ export const DICT = {
     helpButton: "Помощь и вопросы",
     helpTitle: "Помощь — Бюджет",
     helpCheatsheetTitle: "Шпаргалка",
+    helpCheatsheetExample: "Пример",
+    helpCheatsheetFooter: "Не нашли ответ — спросите ИИ ниже, он знает интерфейс приложения.",
     helpChatTitle: "Спросите ИИ",
     helpChatHint:
       "Спросите своими словами — ИИ поймёт и подскажет по шагам. Про приложение и про ваши траты.",
@@ -374,6 +376,8 @@ export const DICT = {
     helpButton: "Help & questions",
     helpTitle: "Help — Budget",
     helpCheatsheetTitle: "Quick reference",
+    helpCheatsheetExample: "Example",
+    helpCheatsheetFooter: "Didn't find an answer — ask AI below; it knows the app.",
     helpChatTitle: "Ask AI",
     helpChatHint:
       "Ask in your own words — AI will guide you step by step. App help and your spending.",

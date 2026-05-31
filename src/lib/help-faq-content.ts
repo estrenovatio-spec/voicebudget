@@ -265,28 +265,118 @@ export function buildFaqKnowledgeText(locale: Locale): string {
   }).join("\n\n");
 }
 
-export function faqCheatsheet(locale: Locale): string[] {
-  return locale === "ru"
-    ? [
-        "Текст + «Добавить» или боту — «потратил 500 на обед»",
-        "Доход: «зарплата 80 000» · своя категория — по вашим ключевым словам",
-        "Партнёр: «любимая потратила» · имя из шапки (⚙)",
-        "Копилка: «отложил 5000 на отпуск» · «5000 на отпуск» (если цель уже есть)",
-        "Доход в копилку: «зарплата 100 000, 20 000 на отпуск»",
-        "Несколько трат: «500 на обед и 200 на такси»",
-        "Облако вдвоём: код → второй жмёт Присоединиться",
-        "Подробнее — спросите ИИ ниже",
-      ]
-    : [
-        "Text + «Add» or message the bot — «spent 500 on lunch»",
-        "Income: «salary 80000» · custom category — your keywords",
-        "Partner: name from header (⚙) or «partner spent 500»",
-        "Jar: «saved 5000 for vacation» · «5000 for vacation» (jar exists)",
-        "Income to jar: «salary 100000, 20000 for vacation»",
-        "Multiple: «500 lunch and 200 taxi»",
-        "Shared cloud: invite code → Join",
-        "Details — ask AI below",
-      ];
+export type FaqCheatsheetSection = {
+  title: Record<Locale, string>;
+  steps: Record<Locale, string[]>;
+  example?: Record<Locale, string>;
+};
+
+export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
+  {
+    title: { ru: "Запись операций", en: "Logging transactions" },
+    steps: {
+      ru: [
+        "На главной внизу — поле ввода. Напишите фразу и нажмите «Добавить».",
+        "Или отправьте то же текстом или голосовым боту — попадёт в общий бюджет при включённом облаке.",
+      ],
+      en: [
+        "On the home screen — text field at the bottom. Type a phrase and tap «Add».",
+        "Or send the same as text or voice to the bot — syncs when cloud is on.",
+      ],
+    },
+    example: {
+      ru: "потратил 500 на обед · зарплата 80 000",
+      en: "spent 500 on lunch · salary 80000",
+    },
+  },
+  {
+    title: { ru: "Категории", en: "Categories" },
+    steps: {
+      ru: [
+        "Категория подбирается по словам во фразе (пятёрочка → Продукты, такси → Транспорт).",
+        "Свои категории и ключевые слова: ⚙ → Категории.",
+        "Свой доход — добавьте ключевое слово в доходную категорию; дальше достаточно назвать его во фразе.",
+      ],
+      en: [
+        "Category is picked from words in your phrase (store → Groceries, taxi → Transport).",
+        "Custom categories and keywords: ⚙ → Categories.",
+        "Custom income — add a keyword to an income category, then use it in a phrase.",
+      ],
+    },
+    example: { ru: "питер 20 тысяч", en: "client name 5000" },
+  },
+  {
+    title: { ru: "Партнёр", en: "Partner" },
+    steps: {
+      ru: [
+        "⚙ в шапке — имя партнёра. Появятся метки «Я» / партнёр (только на этом телефоне).",
+        "В фразе можно не переключать «Кто» — скажите «любимая потратила», «милая моя 500» или имя из настроек.",
+        "Вдвоём с общим бюджетом — см. блок «Облако» ниже.",
+      ],
+      en: [
+        "⚙ in the header — partner name. «Me» / partner labels appear (this device only).",
+        "In a phrase: «partner spent 500» or the name from settings — no need to toggle «Who».",
+        "Shared household budget — see «Cloud» below.",
+      ],
+    },
+    example: { ru: "любимая потратила 800 на продукты", en: "Alex spent 800 on groceries" },
+  },
+  {
+    title: { ru: "Копилки (цели)", en: "Savings jars" },
+    steps: {
+      ru: [
+        "Создать: главная → «Цели и планирование» → Копилки, или фразой «создать цель отпуск цель 150 000».",
+        "Пополнить — сумма + «на/в/для» + название: «отложил 5000 на отпуск», «закинул в подушку 2000».",
+        "Если копилка уже есть — достаточно коротко: «5000 на отпуск».",
+        "Часть зарплаты сразу в цель: две суммы через запятую.",
+      ],
+      en: [
+        "Create: home → Goals & planning → Jars, or «create goal vacation target 150000».",
+        "Deposit — amount + for/to + name: «saved 5000 for vacation».",
+        "If the jar exists — short form works: «5000 for vacation».",
+        "Split salary to a jar: two amounts separated by a comma.",
+      ],
+    },
+    example: {
+      ru: "зарплата 100 000, 20 000 на отпуск",
+      en: "salary 100000, 20000 for vacation",
+    },
+  },
+  {
+    title: { ru: "Несколько операций", en: "Multiple at once" },
+    steps: {
+      ru: ["В одной фразе через «и» — каждая часть со своей суммой."],
+      en: ["One phrase with «and» — each part with its own amount."],
+    },
+    example: { ru: "500 на обед и 200 на такси", en: "500 lunch and 200 taxi" },
+  },
+  {
+    title: { ru: "Облако вдвоём", en: "Shared cloud" },
+    steps: {
+      ru: [
+        "⚙ → Облако и семья → «Вдвоём» → «Создать облачный бюджет» → скопируйте код.",
+        "Второй человек: ⚙ → Присоединиться → ввести код.",
+        "Операции синхронизируются; фильтры Общий / Я / Партнёр — на главной.",
+      ],
+      en: [
+        "⚙ → Cloud & family → Shared → create cloud budget → copy invite code.",
+        "Second person: ⚙ → Join → enter code.",
+        "Transactions sync; filters All / Me / Partner — on home screen.",
+      ],
+    },
+  },
+];
+
+export function faqCheatsheetSections(locale: Locale): {
+  title: string;
+  steps: string[];
+  example?: string;
+}[] {
+  return FAQ_CHEATSHEET_SECTIONS.map((s) => ({
+    title: s.title[locale],
+    steps: s.steps[locale],
+    example: s.example?.[locale],
+  }));
 }
 
 /** HTML for Telegram /help (keep under ~3500 chars) */

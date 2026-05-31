@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { HelpFaqChat } from "@/components/HelpFaqChat";
-import { faqCheatsheet } from "@/lib/help-faq-content";
+import { faqCheatsheetSections } from "@/lib/help-faq-content";
 import { t } from "@/lib/i18n";
 import type { Locale } from "@/types";
 
@@ -41,14 +41,33 @@ export function HelpFaqDialog({ locale, variant = "settings" }: HelpFaqDialogPro
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/40 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t(locale, "helpCheatsheetTitle")}
             </p>
-            <ul className="space-y-1 text-sm text-foreground">
-              {faqCheatsheet(locale).map((line) => (
-                <li key={line}>{line}</li>
+            <div className="space-y-4">
+              {faqCheatsheetSections(locale).map((section) => (
+                <div key={section.title}>
+                  <p className="mb-1 text-sm font-medium text-foreground">{section.title}</p>
+                  <ul className="space-y-1 pl-0.5 text-sm text-muted-foreground">
+                    {section.steps.map((step) => (
+                      <li key={step} className="flex gap-2">
+                        <span className="shrink-0 text-muted-foreground/70">·</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {section.example ? (
+                    <p className="mt-1.5 pl-0.5 text-sm">
+                      <span className="text-muted-foreground">{t(locale, "helpCheatsheetExample")}: </span>
+                      <span className="font-medium text-foreground">«{section.example}»</span>
+                    </p>
+                  ) : null}
+                </div>
               ))}
-            </ul>
+            </div>
+            <p className="mt-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+              {t(locale, "helpCheatsheetFooter")}
+            </p>
           </div>
           <HelpFaqChat locale={locale} />
         </div>
