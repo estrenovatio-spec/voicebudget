@@ -76,6 +76,7 @@ export const DICT = {
     voiceSttUnavailable: "Сервер распознавания недоступен — введите текст вручную",
     voiceProcessing: "ИИ слушает и разбирает…",
     voiceSuccess: "Транзакция добавлена",
+    voiceSuccessMany: "Добавлено {count} операций",
     voiceError: "Ошибка распознавания",
     micDenied:
       "Нет доступа к микрофону. В браузере нажмите «Разрешить» в адресной строке; в Telegram — в настройках приложения.",
@@ -413,6 +414,7 @@ export const DICT = {
     voiceSttUnavailable: "Speech server unavailable — type manually",
     voiceProcessing: "AI is listening and parsing…",
     voiceSuccess: "Transaction added",
+    voiceSuccessMany: "Added {count} entries",
     voiceError: "Recognition error",
     micDenied:
       "Microphone access denied. In the browser, allow the mic in the address bar; in Telegram, check app settings.",

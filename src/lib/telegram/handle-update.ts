@@ -12,7 +12,7 @@ import { subscriptionEnforced } from "@/lib/payments/config";
 import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { dbCategoryToApp } from "@/lib/household/sync-mapper";
 import { dbGoalToApp } from "@/lib/household/planning-mapper";
-import { parseTranscriptServer } from "@/lib/parse-voice-server";
+import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { tryParsePlanningInput } from "@/lib/planning/parse-input";
 import { transcribeTelegramVoice } from "@/lib/stt";
@@ -228,19 +228,42 @@ function formatSuccessReply(
   categories: ReturnType<typeof dbCategoryToApp>[],
   partnerLabel?: string | null,
 ): string {
-  const category = getCategoryLabel(parsed.categoryId, categories, locale);
-  const amount = formatAmount(parsed.amount, parsed.type, locale);
-  const ownerNote =
-    parsed.owner === "partner" && partnerLabel?.trim()
-      ? locale === "en"
-        ? ` · ${partnerLabel.trim()}`
-        : ` · ${partnerLabel.trim()}`
-      : "";
+  return formatMultiSuccessReply([parsed], transcript, locale, categories, partnerLabel);
+}
+
+function formatMultiSuccessReply(
+  items: ParsedTransaction[],
+  transcript: string,
+  locale: Locale,
+  categories: ReturnType<typeof dbCategoryToApp>[],
+  partnerLabel?: string | null,
+): string {
   const heard = escapeHtml(transcript.slice(0, 200));
+  const lines = items.map((parsed) => {
+    const category = getCategoryLabel(parsed.categoryId, categories, locale);
+    const amount = formatAmount(parsed.amount, parsed.type, locale);
+    const ownerNote =
+      parsed.owner === "partner" && partnerLabel?.trim()
+        ? locale === "en"
+          ? ` · ${partnerLabel.trim()}`
+          : ` · ${partnerLabel.trim()}`
+        : "";
+    return `${amount} · ${escapeHtml(category)}${escapeHtml(ownerNote)}`;
+  });
+
   if (locale === "en") {
-    return `✅ <b>Added:</b> ${amount} · ${escapeHtml(category)}${escapeHtml(ownerNote)}\n<i>${heard}</i>`;
+    const header =
+      items.length === 1
+        ? "✅ <b>Added:</b>"
+        : `✅ <b>Added ${items.length} entries:</b>`;
+    return `${header}\n${lines.join("\n")}\n<i>${heard}</i>`;
   }
-  return `✅ <b>Добавлено:</b> ${amount} · ${escapeHtml(category)}${escapeHtml(ownerNote)}\n<i>${heard}</i>`;
+
+  const header =
+    items.length === 1
+      ? "✅ <b>Добавлено:</b>"
+      : `✅ <b>Добавлено ${items.length} записей:</b>`;
+  return `${header}\n${lines.join("\n")}\n<i>${heard}</i>`;
 }
 
 async function saveParsedTransaction(
@@ -255,7 +278,7 @@ async function saveParsedTransaction(
     type: parsed.type,
     categoryId: parsed.categoryId,
     currency: parsed.currency,
-    note: parsed.note || transcript.slice(0, 120),
+    note: parsed.note?.trim() || transcript.slice(0, 120),
     date: parsed.date,
     owner: parsed.owner ?? "me",
   };
@@ -407,12 +430,13 @@ async function processTranscript(
     }
   }
 
-  const { data: parsed } = await parseTranscriptServer(text, locale, categories, {
+  const { items: parsedItems } = await parseTranscriptServerMany(text, locale, categories, {
     partnerName: partnerLabel,
     myName: from.first_name ?? null,
     hasPartner: Boolean(partnerLabel?.trim()),
   });
-  if (parsed.amount <= 0) {
+  const validItems = parsedItems.filter((item) => item.amount > 0);
+  if (validItems.length === 0) {
     await replyStatus(
       chatId,
       statusMsgId,
@@ -424,8 +448,14 @@ async function processTranscript(
     return;
   }
 
-  await saveParsedTransaction(user.id, membership.householdId, parsed, text);
-  await replyStatus(chatId, statusMsgId, formatSuccessReply(parsed, text, locale, categories, partnerLabel), {
+  for (const parsed of validItems) {
+    await saveParsedTransaction(user.id, membership.householdId, parsed, text);
+  }
+  await replyStatus(
+    chatId,
+    statusMsgId,
+    formatMultiSuccessReply(validItems, text, locale, categories, partnerLabel),
+    {
     parse_mode: "HTML",
     reply_markup: miniAppKeyboard(
       locale === "en" ? "Open app" : "Открыть приложение",

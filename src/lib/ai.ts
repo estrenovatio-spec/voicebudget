@@ -28,17 +28,25 @@ export const PARSE_PROMPT = (
     ? `${ownerHints}\n- «возврат» / refund for partner → income categoryId refund.`
     : "";
   return `
-Extract financial transaction from: "${transcript}"
+Extract financial transaction(s) from: "${transcript}"
 Return ONLY valid JSON matching this schema:
 {
-  "amount": number,
-  "type": "income" or "expense",
-  "categoryId": string,
-  "currency": "RUB",
-  "note": string,
-  "date": "YYYY-MM-DD"
+  "transactions": [
+    {
+      "amount": number,
+      "type": "income" or "expense",
+      "categoryId": string,
+      "currency": "RUB",
+      "note": string,
+      "date": "YYYY-MM-DD"
+    }
+  ]
 }
 Rules:
+- ONE voice phrase may contain SEVERAL operations — return each as a separate object in "transactions".
+- Examples: "500 на обед и 200 на такси" → 2 items; "потратил 300 на кофе, 1500 на продукты" → 2 items.
+- Each item: its own amount, categoryId, and short note (only that operation, NOT the whole phrase).
+- If only one operation → "transactions" array with exactly 1 element.
 - categoryId MUST be one of the allowed ids for the transaction type.
 - Expense categoryIds: ${expenseIds}
 - Income categoryIds: ${incomeIds}
@@ -46,7 +54,7 @@ Rules:
 - "потратил 100 тысяч на ремонт" → amount 100000, categoryId housing if available.
 - "ксюше возврат 100" / "вернули 100" → type income, categoryId refund.
 - currency MUST always be "RUB" (even if user says euro, dollar, €, $ — record amount as rubles).
-- If amount missing → 0. If type unclear → "expense". Locale: ${locale}.
+- If amount missing for an item → 0. If type unclear → "expense". Locale: ${locale}.
 ${partnerRule}
 `;
 };
@@ -77,6 +85,20 @@ export function detectType(transcript: string, locale: Locale): TxType {
   const isIncome = incomeKw.some((w) => lower.includes(w));
   const isExpense = expenseKw.some((w) => lower.includes(w));
   return isIncome && !isExpense ? "income" : "expense";
+}
+
+export function splitTranscriptClauses(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  const parts = trimmed
+    .split(
+      /\s*[;,]\s*|\s+и\s+|\s+ещё?\s+|\s+потом\s+|\s+также\s+|\s+а\s+(?=потрат|куп|оплат|получ|заплат)/i,
+    )
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return parts.length > 1 ? parts : [trimmed];
 }
 
 export function fallbackParse(
@@ -119,6 +141,22 @@ export function fallbackParse(
   };
 }
 
+export function fallbackParseMany(
+  transcript: string,
+  locale: Locale,
+  categories: CategoryDefinition[] = getDefaultCategories(),
+): ParsedTransaction[] {
+  const clauses = splitTranscriptClauses(transcript);
+  const items = clauses
+    .map((clause) => fallbackParse(clause, locale, categories))
+    .filter((item) => item.amount > 0);
+
+  if (items.length > 0) return items;
+
+  const single = fallbackParse(transcript, locale, categories);
+  return single.amount > 0 ? [single] : [];
+}
+
 export function normalizeAiParsed(
   raw: {
     amount: number;
@@ -146,7 +184,7 @@ export function normalizeAiParsed(
     type: raw.type,
     categoryId,
     currency: APP_CURRENCY,
-    note: sanitizeTransactionNote(raw.note, amount),
+    note: sanitizeTransactionNote(raw.note || transcript.slice(0, 120), amount),
     date: raw.date,
   };
 }

@@ -1,7 +1,7 @@
 /**
  * Одна кнопка: запись → серверный STT → ИИ разбирает сумму и категорию.
  */
-import { fallbackParse } from "@/lib/ai";
+import { fallbackParseMany } from "@/lib/ai";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
 import { transcribeUserAudioFile } from "@/lib/voice-transcribe-client";
 import type { DictKey } from "@/lib/i18n";
@@ -343,12 +343,12 @@ export type ParseVoiceOwnerContext = {
   hasPartner?: boolean;
 };
 
-export async function parseVoiceTranscript(
+export async function parseVoiceTranscripts(
   transcript: string,
   locale: Locale,
   categories: CategoryDefinition[],
   ownerCtx?: ParseVoiceOwnerContext | string | null,
-): Promise<{ data: ParsedTransaction; usedFallback: boolean } | null> {
+): Promise<{ items: ParsedTransaction[]; usedFallback: boolean } | null> {
   const text = cleanTranscript(transcript);
   if (!text || isGarbageTranscript(text)) return null;
 
@@ -378,11 +378,15 @@ export async function parseVoiceTranscript(
       const json = (await res.json()) as {
         success?: boolean;
         data?: ParsedTransaction;
+        items?: ParsedTransaction[];
         fallback?: boolean;
       };
-      if (json.success && json.data && json.data.amount > 0) {
+      const items = (json.items ?? (json.data ? [json.data] : [])).filter(
+        (item) => item.amount > 0,
+      );
+      if (json.success && items.length > 0) {
         return {
-          data: json.data,
+          items,
           usedFallback: Boolean(json.fallback),
         };
       }
@@ -391,11 +395,22 @@ export async function parseVoiceTranscript(
     /* локальный разбор ниже */
   }
 
-  const local = fallbackParse(text, locale, categories);
-  if (local.amount > 0) {
-    return { data: local, usedFallback: true };
+  const local = fallbackParseMany(text, locale, categories);
+  if (local.length > 0) {
+    return { items: local, usedFallback: true };
   }
   return null;
+}
+
+export async function parseVoiceTranscript(
+  transcript: string,
+  locale: Locale,
+  categories: CategoryDefinition[],
+  ownerCtx?: ParseVoiceOwnerContext | string | null,
+): Promise<{ data: ParsedTransaction; usedFallback: boolean } | null> {
+  const parsed = await parseVoiceTranscripts(transcript, locale, categories, ownerCtx);
+  if (!parsed?.items[0]) return null;
+  return { data: parsed.items[0], usedFallback: parsed.usedFallback };
 }
 
 export function mapVoiceError(code: VoiceErrorCode | undefined): DictKey {

@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { hasPartnerBudget } from "@/lib/owner-labels";
-import { parseVoiceTranscript } from "@/lib/voice";
+import { parseVoiceTranscripts } from "@/lib/voice";
 import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
@@ -60,16 +60,17 @@ export function VoiceRecorder() {
         return;
       }
 
-      const parsed = await parseVoiceTranscript(value, locale, categories, partnerName);
-      if (!parsed) {
+      const parsed = await parseVoiceTranscripts(value, locale, categories, partnerName);
+      if (!parsed || parsed.items.length === 0) {
         toast(t(locale, "voiceTryManual"), "error");
         return;
       }
 
       // ИИ не знает про копилки — если фраза про отложить, но правила не сработали раньше, пробуем ещё раз
+      const first = parsed.items[0];
       if (
         looksLikeGoalDeposit(value, locale) ||
-        parsed.data.categoryId === "goal_jar"
+        first.categoryId === "goal_jar"
       ) {
         const retry = tryParsePlanningInput(value, locale, savingsGoals);
         if (retry) {
@@ -100,9 +101,16 @@ export function VoiceRecorder() {
         }
       }
 
-      addTransaction(parsed.data, value);
+      for (const item of parsed.items) {
+        addTransaction(item, value);
+      }
       setText("");
-      toast(t(locale, "voiceSuccess"), "success");
+      toast(
+        parsed.items.length === 1
+          ? t(locale, "voiceSuccess")
+          : t(locale, "voiceSuccessMany", { count: String(parsed.items.length) }),
+        "success",
+      );
     } finally {
       setBusy(false);
     }

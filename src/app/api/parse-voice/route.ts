@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDefaultCategories } from "@/lib/categories";
-import { parseTranscriptServer } from "@/lib/parse-voice-server";
+import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
 import type { Locale } from "@/types";
 
 const TELEGRAM_ORIGIN_PATTERN = /\.telegram\.org$/;
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { transcript, locale, partnerName, myName, hasPartner } = parsed.data;
 
-    const { data, fallback } = await parseTranscriptServer(
+    const { items, fallback } = await parseTranscriptServerMany(
       transcript,
       locale as Locale,
       categories,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(
-      { success: true, data, fallback },
+      { success: true, data: items[0] ?? null, items, fallback },
       { headers: corsHeaders(origin) },
     );
   } catch {
