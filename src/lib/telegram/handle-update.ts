@@ -25,6 +25,8 @@ import {
   downloadTelegramFile,
   getTelegramFile,
 } from "@/lib/telegram/bot-api";
+import { recognitionPhraseUserKey } from "@/lib/recognition-phrases";
+import { RecognitionStatusDisplay } from "@/lib/telegram/recognition-status";
 import type { TelegramMessage, TelegramUpdate, TelegramUser } from "@/lib/telegram/bot-types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { formatBotHelpHtml } from "@/lib/help-faq-content";
@@ -440,19 +442,33 @@ async function handleVoiceMessage(message: TelegramMessage): Promise<void> {
   const chatId = message.chat.id;
   let statusMsgId: number | null = null;
 
+  const statusRef = { current: statusMsgId as number | null };
+  const phraseUserKey = recognitionPhraseUserKey(message.from?.id ?? chatId);
+  const recognitionStatus =
+    locale === "en"
+      ? null
+      : new RecognitionStatusDisplay(chatId, statusRef, phraseUserKey);
+
   try {
     await sendChatAction(chatId, "typing");
-    const status = await sendMessage(
-      chatId,
-      locale === "en" ? "🎙 Recognizing (Groq)…" : "🎙 Распознаю (Groq)…",
-    );
-    statusMsgId = status.message_id;
+    if (recognitionStatus) {
+      await recognitionStatus.start();
+      statusMsgId = statusRef.current;
+    } else {
+      const status = await sendMessage(chatId, "🎙 Recognizing…");
+      statusMsgId = status.message_id;
+      statusRef.current = statusMsgId;
+    }
 
     const fileMeta = await getTelegramFile(voice.file_id);
     if (!fileMeta.file_path) throw new Error("telegram_file_path_missing");
 
     const buffer = await downloadTelegramFile(fileMeta.file_path);
     const { transcript, lastError } = await transcribeVoiceFile(buffer, locale);
+
+    if (recognitionStatus) {
+      await recognitionStatus.finishBeforeResult();
+    }
 
     if (!transcript) {
       console.error("[telegram/voice] stt failed", {
@@ -474,6 +490,7 @@ async function handleVoiceMessage(message: TelegramMessage): Promise<void> {
 
     await processTranscript(message, transcript, locale, statusMsgId);
   } catch (err) {
+    recognitionStatus?.stop();
     console.error("[telegram/voice]", err);
     await replyStatus(
       chatId,

@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { CategoryManager } from "@/components/CategoryManager";
@@ -33,20 +33,29 @@ function BalanceRow({
   label,
   title,
   children,
+  onHideToggle,
 }: {
   label: string;
   title?: string;
   children: ReactNode;
+  onHideToggle?: () => void;
 }) {
   return (
     <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
-      <span
+      <button
+        type="button"
         title={title ?? label}
-        className="min-w-0 truncate px-0.5 text-center text-sm font-semibold text-foreground"
+        onClick={(e) => {
+          e.stopPropagation();
+          onHideToggle?.();
+        }}
+        className="min-w-0 truncate px-0.5 text-center text-sm font-semibold text-foreground rounded-md hover:bg-muted/40"
       >
         {label}
-      </span>
-      <div className="shrink-0 justify-self-end tabular-nums">{children}</div>
+      </button>
+      <div className="shrink-0 justify-self-end tabular-nums" data-balance-amount-zone>
+        {children}
+      </div>
     </div>
   );
 }
@@ -82,10 +91,24 @@ export function TMAHeader() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [amountsHidden, setAmountsHidden] = useState(false);
   const [savedFlash, setSavedFlash] = useState<"my" | "partner" | null>(null);
+  const [balanceEditDialogOpen, setBalanceEditDialogOpen] = useState(false);
+  const suppressBalanceToggleUntilRef = useRef(0);
 
   useEffect(() => {
     setAmountsHidden(readAmountsHidden());
   }, []);
+
+  const armBalanceToggleSuppress = useCallback((ms = 900) => {
+    suppressBalanceToggleUntilRef.current = Date.now() + ms;
+  }, []);
+
+  const handleBalanceEditDialogOpenChange = useCallback(
+    (editOpen: boolean) => {
+      setBalanceEditDialogOpen(editOpen);
+      if (!editOpen) armBalanceToggleSuppress();
+    },
+    [armBalanceToggleSuppress],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -101,13 +124,11 @@ export function TMAHeader() {
     });
   }, []);
 
-  const handleBalanceBlockClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if ((e.target as HTMLElement).closest("[data-balance-amount]")) return;
-      toggleAmountsHidden();
-    },
-    [toggleAmountsHidden],
-  );
+  const requestHideToggle = useCallback(() => {
+    if (balanceEditDialogOpen) return;
+    if (Date.now() < suppressBalanceToggleUntilRef.current) return;
+    toggleAmountsHidden();
+  }, [balanceEditDialogOpen, toggleAmountsHidden]);
 
   const handleClear = () => {
     if (!confirmClear) {
@@ -152,26 +173,16 @@ export function TMAHeader() {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div
-            role="button"
-            tabIndex={0}
-            onClick={handleBalanceBlockClick}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                if ((e.target as HTMLElement).closest("[data-balance-amount]")) return;
-                toggleAmountsHidden();
-              }
-            }}
             aria-label={
               amountsHidden ? t(locale, "balanceTapToShow") : t(locale, "balanceTapToHide")
             }
             className={cn(
               "rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm transition-colors",
-              "cursor-pointer hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              balanceEditDialogOpen && "pointer-events-none",
             )}
           >
             <div className="flex w-full flex-col gap-y-0.5">
-              <BalanceRow label={balanceWord}>
+              <BalanceRow label={balanceWord} onHideToggle={requestHideToggle}>
                 <BalanceQuickEdit
                   owner="all"
                   displayed={balances.all}
@@ -179,28 +190,34 @@ export function TMAHeader() {
                   label={t(locale, "balance")}
                   className={balanceAmountClass}
                   amountsHidden={amountsHidden}
+                  onEditDialogOpenChange={handleBalanceEditDialogOpenChange}
+                  onBeforeEditDialogClose={armBalanceToggleSuppress}
                 />
               </BalanceRow>
 
               {hasPartner ? (
                 <>
-                  <BalanceRow label={meLabel}>
+                  <BalanceRow label={meLabel} onHideToggle={requestHideToggle}>
                     <BalanceQuickEdit
                       owner="me"
                       displayed={balances.me}
                       label={meName}
                       className={balanceAmountClass}
                       amountsHidden={amountsHidden}
+                      onEditDialogOpenChange={handleBalanceEditDialogOpenChange}
+                      onBeforeEditDialogClose={armBalanceToggleSuppress}
                     />
                   </BalanceRow>
 
-                  <BalanceRow label={partnerLabel} title={partner}>
+                  <BalanceRow label={partnerLabel} title={partner} onHideToggle={requestHideToggle}>
                     <BalanceQuickEdit
                       owner="partner"
                       displayed={balances.partner}
                       label={partner}
                       className={balanceAmountClass}
                       amountsHidden={amountsHidden}
+                      onEditDialogOpenChange={handleBalanceEditDialogOpenChange}
+                      onBeforeEditDialogClose={armBalanceToggleSuppress}
                     />
                   </BalanceRow>
                 </>

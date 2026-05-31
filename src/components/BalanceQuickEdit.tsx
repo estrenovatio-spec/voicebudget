@@ -21,7 +21,15 @@ type BalanceQuickEditProps = {
   partnerDisplayed?: number;
   className?: string;
   amountsHidden?: boolean;
+  /** Сообщает родителю об открытии/закрытии — чтобы не переключать скрытие баланса кликом «сквозь» диалог */
+  onEditDialogOpenChange?: (open: boolean) => void;
+  /** Вызывается до закрытия (на pointerDown) — блокирует «пробивной» клик */
+  onBeforeEditDialogClose?: () => void;
 };
+
+function armDialogClose(onBeforeEditDialogClose?: () => void): void {
+  onBeforeEditDialogClose?.();
+}
 
 export function BalanceQuickEdit({
   owner,
@@ -30,6 +38,8 @@ export function BalanceQuickEdit({
   partnerDisplayed = 0,
   className = "",
   amountsHidden = false,
+  onEditDialogOpenChange,
+  onBeforeEditDialogClose,
 }: BalanceQuickEditProps) {
   const locale = useStore((s) => s.locale);
   const setActualCash = useStore((s) => s.setActualCash);
@@ -43,6 +53,15 @@ export function BalanceQuickEdit({
     if (open) setInput(String(displayed));
   }, [open, displayed]);
 
+  const closeDialog = () => {
+    setOpen(false);
+  };
+
+  const confirmDialogAction = (action: () => void) => {
+    armDialogClose(onBeforeEditDialogClose);
+    action();
+  };
+
   const save = () => {
     const n = Number(String(input).replace(/\s/g, "").replace(",", "."));
     if (!Number.isFinite(n)) return;
@@ -55,7 +74,7 @@ export function BalanceQuickEdit({
       // общий баланс → подгоняем «я», партнёр не трогаем
       setActualCash("me", value - partnerDisplayed);
     }
-    setOpen(false);
+    closeDialog();
   };
 
   const computedHint =
@@ -84,14 +103,26 @@ export function BalanceQuickEdit({
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
+          onEditDialogOpenChange?.(true);
         }}
         className={`rounded-md px-0.5 tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:bg-muted/60 hover:text-foreground ${className}`}
         aria-label={t(locale, "balanceTapToEdit")}
       >
         {formatMoney(displayed, locale)} {t(locale, "currency")}
       </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xs">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (open && !next) armDialogClose(onBeforeEditDialogClose);
+          setOpen(next);
+          onEditDialogOpenChange?.(next);
+        }}
+      >
+        <DialogContent
+          className="max-w-xs"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           <DialogHeader>
             <DialogTitle>{label}</DialogTitle>
           </DialogHeader>
@@ -105,14 +136,35 @@ export function BalanceQuickEdit({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") save();
+              if (e.key === "Enter") confirmDialogAction(save);
             }}
           />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                armDialogClose(onBeforeEditDialogClose);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeDialog();
+              }}
+            >
               {t(locale, "cancel")}
             </Button>
-            <Button type="button" onClick={save}>
+            <Button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                armDialogClose(onBeforeEditDialogClose);
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                save();
+              }}
+            >
               {t(locale, "balanceSaveActual")}
             </Button>
           </div>
