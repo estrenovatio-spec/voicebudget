@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { CategoryManager } from "@/components/CategoryManager";
@@ -28,30 +28,25 @@ import { useHouseholdBalances, useStore } from "@/store/useStore";
 const balanceAmountClass =
   "shrink-0 text-sm font-semibold tabular-nums text-foreground";
 
-/** Подпись и сумма в одной строке: короткий зазор, цифры в одной колонке */
+/** Подпись по центру слева (автоширина колонки), суммы — одна колонка справа */
 function BalanceRow({
   label,
-  labelWidthCh,
   title,
-  gapClass,
   children,
 }: {
   label: string;
-  labelWidthCh: number;
   title?: string;
-  gapClass: string;
   children: ReactNode;
 }) {
   return (
-    <div className={cn("flex w-full min-w-0 items-baseline", gapClass)}>
+    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
       <span
-        title={title}
-        className="shrink-0 truncate text-right text-sm font-semibold text-foreground"
-        style={{ width: `${labelWidthCh}ch` }}
+        title={title ?? label}
+        className="min-w-0 truncate px-0.5 text-center text-sm font-semibold text-foreground"
       >
         {label}
       </span>
-      <div className="min-w-0 shrink-0 ml-[0.5cm]">{children}</div>
+      <div className="shrink-0 justify-self-end tabular-nums">{children}</div>
     </div>
   );
 }
@@ -152,15 +147,6 @@ export function TMAHeader() {
   const meLabel = `${meName}:`;
   const partnerLabel = partner ? `${partner}:` : "";
 
-  const labelWidthCh = useMemo(() => {
-    const longest = hasPartner
-      ? Math.max(balanceWord.length, meLabel.length, partnerLabel.length)
-      : balanceWord.length;
-    return Math.min(Math.max(longest, 4), 14);
-  }, [balanceWord, hasPartner, meLabel, partnerLabel]);
-
-  const rowGap = "gap-x-1";
-
   return (
     <header className="space-y-2 pb-2 pt-1">
       <div className="flex items-start justify-between gap-2">
@@ -185,7 +171,7 @@ export function TMAHeader() {
             )}
           >
             <div className="flex w-full flex-col gap-y-0.5">
-              <BalanceRow label={balanceWord} labelWidthCh={labelWidthCh} gapClass={rowGap}>
+              <BalanceRow label={balanceWord}>
                 <BalanceQuickEdit
                   owner="all"
                   displayed={balances.all}
@@ -198,7 +184,7 @@ export function TMAHeader() {
 
               {hasPartner ? (
                 <>
-                  <BalanceRow label={meLabel} labelWidthCh={labelWidthCh} gapClass={rowGap}>
+                  <BalanceRow label={meLabel}>
                     <BalanceQuickEdit
                       owner="me"
                       displayed={balances.me}
@@ -208,12 +194,7 @@ export function TMAHeader() {
                     />
                   </BalanceRow>
 
-                  <BalanceRow
-                    label={partnerLabel}
-                    labelWidthCh={labelWidthCh}
-                    gapClass={rowGap}
-                    title={partner}
-                  >
+                  <BalanceRow label={partnerLabel} title={partner}>
                     <BalanceQuickEdit
                       owner="partner"
                       displayed={balances.partner}
