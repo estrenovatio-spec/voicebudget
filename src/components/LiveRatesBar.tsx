@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MarketRates } from "@/lib/market-rates";
 import { fetchWithRetry } from "@/lib/fetch-retry";
 import { useStore } from "@/store/useStore";
@@ -28,28 +28,101 @@ function formatMoexIndex(value: number, locale: "ru" | "en"): string {
   });
 }
 
-type RateChipProps = {
-  symbol: string;
-  symbolClassName: string;
-  value: string;
-  flash: boolean;
-  className?: string;
-};
-
-function RateChip({ symbol, symbolClassName, value, flash, className = "" }: RateChipProps) {
+function MoexBadge() {
   return (
-    <span
-      className={`inline-flex items-baseline gap-0.5 rounded px-0.5 transition-colors duration-700 tabular-nums ${
-        flash ? "bg-emerald-500/15" : ""
-      } ${className}`}
+    <svg
+      viewBox="0 0 36 14"
+      className="h-3.5 w-[2.15rem] shrink-0"
+      role="img"
+      aria-label="MOEX"
     >
-      <span className={`text-[12px] font-bold leading-none ${symbolClassName}`}>{symbol}</span>
-      <span className="text-xs font-semibold">{value}</span>
-    </span>
+      <rect width="36" height="14" rx="2" fill="#E30613" />
+      <text
+        x="18"
+        y="10.2"
+        textAnchor="middle"
+        fill="#ffffff"
+        fontSize="7.5"
+        fontWeight="700"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        letterSpacing="0.04em"
+      >
+        MOEX
+      </text>
+    </svg>
   );
 }
 
-/** Компактные курсы под статусом облака в шапке */
+function BtcCoinBadge() {
+  const gradId = useId().replace(/:/g, "");
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-4 w-4 shrink-0 drop-shadow-sm"
+      role="img"
+      aria-label="Bitcoin"
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FFE566" />
+          <stop offset="45%" stopColor="#F5A623" />
+          <stop offset="100%" stopColor="#C7860A" />
+        </linearGradient>
+      </defs>
+      <circle cx="8" cy="8" r="7.25" fill={`url(#${gradId})`} stroke="#A66B00" strokeWidth="0.6" />
+      <circle cx="8" cy="8" r="6.1" fill="none" stroke="#FFEB99" strokeWidth="0.35" opacity="0.85" />
+      <text
+        x="8"
+        y="11.4"
+        textAnchor="middle"
+        fill="#5C3D00"
+        fontSize="9"
+        fontWeight="800"
+        fontFamily="system-ui, -apple-system, sans-serif"
+      >
+        B
+      </text>
+    </svg>
+  );
+}
+
+type RateCellProps = {
+  badge: ReactNode;
+  value: string;
+  flash: boolean;
+  title?: string;
+  badgeClassName?: string;
+};
+
+function RateCell({
+  badge,
+  value,
+  flash,
+  title,
+  badgeClassName,
+}: RateCellProps) {
+  return (
+    <div
+      title={title}
+      className={`inline-flex w-full min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-0.5 py-0.5 transition-colors duration-700 ${
+        flash ? "bg-emerald-500/15" : ""
+      }`}
+    >
+      <div
+        className={`flex shrink-0 items-center justify-center ${badgeClassName ?? ""}`}
+      >
+        {badge}
+      </div>
+      <span className="text-[11px] font-semibold leading-none tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+const FIAT_BADGE_SLOT = "w-3.5";
+const MOEX_BADGE_SLOT = "w-[2.15rem]";
+const BTC_BADGE_SLOT = "w-[2.15rem]";
+
+/** Курсы: сверху $ и MOEX, снизу € под $ и BTC под MOEX */
 export function LiveRatesBar() {
   const locale = useStore((s) => s.locale);
   const [rates, setRates] = useState<MarketRates | null>(null);
@@ -97,7 +170,7 @@ export function LiveRatesBar() {
 
   if (loading && !rates) {
     return (
-      <div className="flex h-8 w-[5.5rem] items-center justify-end">
+      <div className="flex h-7 items-center justify-end">
         <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden />
       </div>
     );
@@ -106,35 +179,38 @@ export function LiveRatesBar() {
   if (!rates) return null;
 
   return (
-    <div className="max-w-[9rem] leading-tight" aria-live="polite">
-      <div className="flex justify-end gap-x-2.5">
-        <RateChip
-          symbol="$"
-          symbolClassName="text-emerald-500"
-          value={formatFiatRate(rates.usdRub, locale)}
-          flash={flash.usd}
-        />
-        <RateChip
-          symbol="€"
-          symbolClassName="text-blue-500"
-          value={formatFiatRate(rates.eurRub, locale)}
-          flash={flash.eur}
-        />
-      </div>
-      <div className="mt-0.5 flex justify-center gap-x-3">
-        <RateChip
-          symbol="₿"
-          symbolClassName="text-amber-400"
-          value={`$${formatBtcUsd(rates.btcUsd, locale)}`}
-          flash={flash.btc}
-        />
-        <RateChip
-          symbol="◆"
-          symbolClassName="text-red-500"
-          value={formatMoexIndex(rates.moexIndex, locale)}
-          flash={flash.moex}
-        />
-      </div>
+    <div
+      className="inline-grid w-max max-w-full grid-cols-[auto_auto] justify-items-start gap-x-1.5 gap-y-0.5 leading-none"
+      aria-live="polite"
+    >
+      <RateCell
+        badge={<span className="text-[13px] font-bold leading-none text-emerald-500">$</span>}
+        badgeClassName={FIAT_BADGE_SLOT}
+        value={formatFiatRate(rates.usdRub, locale)}
+        flash={flash.usd}
+        title="USD/RUB"
+      />
+      <RateCell
+        badge={<MoexBadge />}
+        badgeClassName={MOEX_BADGE_SLOT}
+        value={formatMoexIndex(rates.moexIndex, locale)}
+        flash={flash.moex}
+        title="IMOEX"
+      />
+      <RateCell
+        badge={<span className="text-[13px] font-bold leading-none text-blue-500">€</span>}
+        badgeClassName={FIAT_BADGE_SLOT}
+        value={formatFiatRate(rates.eurRub, locale)}
+        flash={flash.eur}
+        title="EUR/RUB"
+      />
+      <RateCell
+        badge={<BtcCoinBadge />}
+        badgeClassName={BTC_BADGE_SLOT}
+        value={`$${formatBtcUsd(rates.btcUsd, locale)}`}
+        flash={flash.btc}
+        title="BTC/USD"
+      />
     </div>
   );
 }

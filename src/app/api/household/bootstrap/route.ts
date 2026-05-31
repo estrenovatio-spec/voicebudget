@@ -5,7 +5,7 @@ import { householdAuthSchema } from "@/lib/household/auth-body";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { requireTelegramUser } from "@/lib/household/require-telegram-user";
 import { signHouseholdSession } from "@/lib/household/token";
-import { logHouseholdMemberToGoogleSheet } from "@/lib/google-sheets";
+import { scheduleHouseholdMemberGoogleSheetLog } from "@/lib/google-sheets-schedule";
 import {
   buildSyncPayload,
   getUserMembership,
@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
     });
     const user = await upsertTelegramUser(tgUser);
     if (!existingUser) {
-      void logHouseholdMemberToGoogleSheet({
+      scheduleHouseholdMemberGoogleSheetLog({
         action: "open",
         tgUser,
         household: null,
-      }).catch((err) => console.error("[household/bootstrap] Google Sheets", err));
+        logTag: "household/bootstrap",
+      });
     }
     await ensureTrialForUser(user.id);
     const subscription = await getSubscriptionForUser(user.id);

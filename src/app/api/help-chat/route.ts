@@ -3,7 +3,10 @@ import { z } from "zod";
 import { requireSession } from "@/lib/api/household-auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { householdAuthBaseSchema } from "@/lib/household/auth-body";
-import { formatBuiltinHelpAnswer } from "@/lib/help-app-knowledge";
+import {
+  classifyHelpQuestion,
+  formatBuiltinHelpAnswer,
+} from "@/lib/help-app-knowledge";
 import {
   assertMember,
   buildSyncPayload,
@@ -27,6 +30,9 @@ import { requireTelegramUser } from "@/lib/household/require-telegram-user";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
 
+/** LLM может занимать до минуты — иначе Vercel обрывает запрос и клиент видит «ошибка сети». */
+export const maxDuration = 60;
+
 const txSchema = z.object({
   id: z.string(),
   amount: z.number(),
@@ -42,7 +48,12 @@ const txSchema = z.object({
 
 const categorySchema = z.object({
   id: z.string(),
-  labels: z.object({ ru: z.string(), en: z.string() }),
+  labels: z
+    .object({ ru: z.string().optional(), en: z.string().optional() })
+    .transform((l) => ({
+      ru: (l.ru ?? l.en ?? "").trim() || "—",
+      en: (l.en ?? l.ru ?? "").trim() || "—",
+    })),
   keywords: z.array(z.string()).optional(),
   type: z.enum(["income", "expense", "both"]).optional(),
 });
@@ -178,6 +189,11 @@ export async function POST(request: NextRequest) {
         transactionCount: transactions.length,
         ...extra,
       });
+
+    // «Как подключить жену» и похожие — сразу по шпаргалке, без ожидания LLM
+    if (builtin && classifyHelpQuestion(question) === "app") {
+      return payload(builtin, { fallback: true, builtin: true });
+    }
 
     if (!isLlmConfigured()) {
       return payload(builtin ?? genericFallback, { fallback: true, builtin: Boolean(builtin) });

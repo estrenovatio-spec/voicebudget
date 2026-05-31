@@ -6,7 +6,7 @@ import { householdAuthBaseSchema } from "@/lib/household/auth-body";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { requireTelegramUser } from "@/lib/household/require-telegram-user";
 import { signHouseholdSession } from "@/lib/household/token";
-import { logHouseholdMemberToGoogleSheet } from "@/lib/google-sheets";
+import { scheduleHouseholdMemberGoogleSheetLog } from "@/lib/google-sheets-schedule";
 import { joinHousehold, upsertTelegramUser } from "@/lib/household/service";
 
 const bodySchema = householdAuthBaseSchema
@@ -34,9 +34,12 @@ export async function POST(req: NextRequest) {
     const user = await upsertTelegramUser(tgUser);
     const { household, sync, isNew } = await joinHousehold(user.id, body.inviteCode);
     if (isNew) {
-      void logHouseholdMemberToGoogleSheet({ action: "join", tgUser, household }).catch((err) =>
-        console.error("[household/join] Google Sheets", err),
-      );
+      scheduleHouseholdMemberGoogleSheetLog({
+        action: "join",
+        tgUser,
+        household,
+        logTag: "household/join",
+      });
     }
     const token = signHouseholdSession({ userId: user.id, householdId: household.id });
     return NextResponse.json({ ok: true, household, token, sync });

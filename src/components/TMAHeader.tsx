@@ -21,7 +21,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { t } from "@/lib/i18n";
-import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import {
+  balanceNameLabelLines,
+  balanceNameLabelWithColon,
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+} from "@/lib/owner-labels";
 import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
 import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
@@ -29,20 +35,30 @@ import { useHouseholdBalances, useStore } from "@/store/useStore";
 const balanceAmountClass =
   "shrink-0 text-sm font-semibold tabular-nums text-foreground";
 
-/** Подпись по центру слева (автоширина колонки), суммы — одна колонка справа */
+/** Подпись слева (до 2 строк для длинных имён), суммы — справа */
 function BalanceRow({
   label,
+  labelLines,
   title,
   children,
   onHideToggle,
 }: {
   label: string;
+  /** 2 строки для имени партнёра — приоритетнее label */
+  labelLines?: string[];
   title?: string;
   children: ReactNode;
   onHideToggle?: () => void;
 }) {
+  const lines = labelLines && labelLines.length > 0 ? labelLines : null;
+  const multiline = Boolean(lines && lines.length > 1);
+
   return (
-    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2">
+    <div
+      className={`grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 ${
+        multiline ? "items-start" : "items-baseline"
+      }`}
+    >
       <button
         type="button"
         title={title ?? label}
@@ -50,9 +66,24 @@ function BalanceRow({
           e.stopPropagation();
           onHideToggle?.();
         }}
-        className="min-w-0 truncate px-0.5 text-center text-sm font-semibold text-foreground rounded-md hover:bg-muted/40"
+        className={`min-w-0 rounded-md px-0.5 text-sm font-semibold text-foreground hover:bg-muted/40 ${
+          multiline ? "text-left leading-snug" : "truncate text-center"
+        }`}
       >
-        {label}
+        {lines ? (
+          <span className="block min-w-0">
+            {lines.map((line, i) => (
+              <span
+                key={i}
+                className="block break-words leading-snug [overflow-wrap:anywhere]"
+              >
+                {line}
+              </span>
+            ))}
+          </span>
+        ) : (
+          label
+        )}
       </button>
       <div className="shrink-0 justify-self-end tabular-nums" data-balance-amount-zone>
         {children}
@@ -169,6 +200,9 @@ export function TMAHeader() {
   const hasPartner = hasPartnerBudget(partnerName);
   const balanceWord = `${t(locale, "balance")}:`;
   const meLabel = `${meName}:`;
+  const partnerLabelLines = partner
+    ? balanceNameLabelWithColon(balanceNameLabelLines(partner))
+    : [];
   const partnerLabel = partner ? `${partner}:` : "";
 
   return (
@@ -209,7 +243,12 @@ export function TMAHeader() {
                     />
                   </BalanceRow>
 
-                  <BalanceRow label={partnerLabel} title={partner} onHideToggle={requestHideToggle}>
+                  <BalanceRow
+                    label={partnerLabel}
+                    labelLines={partnerLabelLines.length > 1 ? partnerLabelLines : undefined}
+                    title={partner}
+                    onHideToggle={requestHideToggle}
+                  >
                     <BalanceQuickEdit
                       owner="partner"
                       displayed={balances.partner}

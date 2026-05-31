@@ -15,3 +15,22 @@ export function partnerDisplayName(partnerName: string | null | undefined): stri
 export function hasPartnerBudget(partnerName: string | null | undefined): boolean {
   return Boolean(partnerDisplayName(partnerName));
 }
+
+/** Имя в блоке баланса: 2 слова → 2 строки («любимая» / «красотка»). */
+export function balanceNameLabelLines(name: string): string[] {
+  const clean = name.trim();
+  if (!clean) return [];
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const mid = Math.ceil(words.length / 2);
+    return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  }
+  return [clean];
+}
+
+export function balanceNameLabelWithColon(lines: string[]): string[] {
+  if (lines.length === 0) return [];
+  if (lines.length === 1) return [`${lines[0]}:`];
+  return [...lines.slice(0, -1), `${lines[lines.length - 1]}:`];
+}

@@ -140,11 +140,38 @@ curl -sS -L -X POST "https://script.google.com/macros/s/ВАШ_ID/exec" \
   -d '{"type":"voicebudget_member","createdAt":"2026-05-28T12:00:00.000Z","actionLabel":"Тест curl","firstName":"Маша","lastName":"","telegram":"@masha","telegramUserId":987654321,"mode":"Вдвоём","memberCount":2,"inviteCode":"XYZ789","householdId":"id-test","siteUrl":"https://voicebudget.vercel.app"}'
 ```
 
+### Проверка через production API (без удаления пользователей)
+
+Только **добавляет строку в таблицу**, базу не трогает:
+
+```bash
+# Тестовая строка (id 999999001, имя «Тест VoiceBudget»)
+curl -sS -X POST "https://voicebudget.vercel.app/api/admin/test-google-sheets" \
+  -H "Authorization: Bearer ВАШ_HOUSEHOLD_SESSION_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Догоняющая запись по уже существующему пользователю (данные из БД → строка в таблице):
+
+```bash
+curl -sS -X POST "https://voicebudget.vercel.app/api/admin/test-google-sheets" \
+  -H "Authorization: Bearer ВАШ_HOUSEHOLD_SESSION_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"telegramUserId":5118400621,"action":"create"}'
+```
+
+Локально (если в `.env.local` есть `GOOGLE_SHEETS_WEBHOOK_URL`):
+
+```bash
+node scripts/with-env-local.cjs node scripts/test-google-sheets.cjs
+```
+
+**Не удаляйте пользователей из БД для теста** — реальный первый вход проверяется только новым Telegram-аккаунтом или догоняющей записью выше.
+
 ---
 
 ## Когда пишется строка
-
-| Событие | Колонка «действие» |
 |---------|-------------------|
 | Первое открытие Mini App (новый Telegram-аккаунт в базе) | Открыл приложение |
 | Первое создание облачного бюджета | Создал семью |

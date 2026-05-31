@@ -3,6 +3,7 @@
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatBuiltinHelpAnswer } from "@/lib/help-app-knowledge";
 import type { HelpChatMessage } from "@/lib/help-chat";
 import { getCloudAuthBody } from "@/lib/cloud/auth-payload";
 import { t } from "@/lib/i18n";
@@ -12,6 +13,8 @@ import type { Locale } from "@/types";
 
 const CHAT_STORAGE_KEY = "voicebudget-help-chat-v1";
 const STORED_MESSAGES_MAX = 200;
+/** В API уходят только последние операции — иначе тяжёлый JSON и сбои в Telegram WebView */
+const HELP_CHAT_TX_SNAPSHOT_MAX = 150;
 
 function readStoredChat(): HelpChatMessage[] {
   if (typeof window === "undefined") return [];
@@ -95,7 +98,7 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
           partnerLabel: partnerName,
           ...auth,
           clientSnapshot: {
-            transactions,
+            transactions: transactions.slice(-HELP_CHAT_TX_SNAPSHOT_MAX),
             categories,
             savingsGoals,
             categoryBudgets,
@@ -104,16 +107,29 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
         }),
       });
 
-      const json = (await res.json()) as {
+      const raw = await res.text();
+      let json: {
         success?: boolean;
         reply?: string;
         dataSource?: string;
         error?: string;
         builtin?: boolean;
-      };
+      } = {};
+      if (raw.trim()) {
+        try {
+          json = JSON.parse(raw) as typeof json;
+        } catch {
+          /* HTML 504 от прокси и т.п. */
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(json.error ?? `http_${res.status}`);
+        const builtin = formatBuiltinHelpAnswer(q, locale);
+        if (builtin) {
+          json = { success: true, reply: builtin, builtin: true };
+        } else {
+          throw new Error(json.error ?? `http_${res.status}`);
+        }
       }
 
       const reply =
@@ -134,10 +150,12 @@ export function HelpFaqChat({ locale }: HelpFaqChatProps) {
       setChat(withReply);
       writeStoredChat(withReply);
     } catch {
-      const errMsg =
-        locale === "ru"
-          ? "Ошибка сети. Проверьте интернет."
-          : "Network error. Check your connection.";
+      const builtin = formatBuiltinHelpAnswer(q, locale);
+      const errMsg = builtin
+        ? builtin
+        : locale === "ru"
+          ? "Сейчас не удалось связаться с сервером. Проверьте интернет или посмотрите шпаргалку выше."
+          : "Could not reach the server. Check your connection or use the quick reference above.";
       const withReply: HelpChatMessage[] = [...nextChat, { role: "assistant", content: errMsg }];
       setChat(withReply);
       writeStoredChat(withReply);

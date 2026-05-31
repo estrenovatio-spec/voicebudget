@@ -26,22 +26,23 @@ export function CloudHeaderStatus() {
 
   if (paused && !isActive) {
     return (
-      <p className="max-w-[9rem] text-right text-xs leading-tight text-amber-700">
+      <p className="text-right text-xs leading-tight text-amber-700">
         {t(locale, "cloudPausedTitle")}
       </p>
     );
   }
 
   if (isActive) {
+    const timeLabel = formatLastSync(lastSyncedAt, locale);
     return (
-      <p className="max-w-[9rem] text-right text-xs leading-tight text-muted-foreground">
-        {t(locale, "cloudSyncLast", { time: formatLastSync(lastSyncedAt, locale) })}
+      <p className="text-right text-xs leading-tight text-muted-foreground" title={lastSyncedAt ?? undefined}>
+        {t(locale, "cloudSyncLast", { time: timeLabel })}
       </p>
     );
   }
 
   return (
-    <p className="max-w-[9rem] text-right text-xs leading-tight text-muted-foreground">
+    <p className="text-right text-xs leading-tight text-muted-foreground">
       {t(locale, "cloudHeaderOff")}
     </p>
   );

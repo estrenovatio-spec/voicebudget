@@ -6,6 +6,9 @@
   "functions": {
     "src/app/api/telegram/webhook/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/help-chat/route.ts": {
+      "maxDuration": 60
     }
   }
 }
