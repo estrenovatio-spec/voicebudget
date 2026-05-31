@@ -83,7 +83,29 @@ const PARTNER_WORDS_RU = [
   "котику",
   "солнышко",
   "солнышку",
+  "милая",
+  "милой",
+  "милую",
+  "милый",
+  "милому",
+  "милашка",
+  "милашке",
+  "милашку",
+  "лапочка",
+  "лапочке",
+  "лапуля",
+  "зайчик",
+  "зайчику",
 ];
+
+/** «милая моя», «моя милая» — обращение к партнёру, не «моя операция». */
+const PARTNER_AFFECTIONATE_WITH_MOYA_RE = new RegExp(
+  [
+    String.raw`\b(?:милая|милый|милой|милому|милашка|милашке|лапочка|лапуля|зайчик|зайка|любимая|любимый|любимой|дорогая|дорогой|дорогому|солнышко)\s+моя\b`,
+    String.raw`\bмоя\s+(?:милая|милый|милой|милашка|лапочка|лапуля|зайчик|зайка|любимая|любимый|любимой|дорогая|дорогой|солнышко)\b`,
+  ].join("|"),
+  "iu",
+);
 
 const PARTNER_WORDS_EN = [
   "wife",
@@ -134,12 +156,33 @@ function meSynonymNeedles(locale: Locale): string[] {
   return words.filter((w) => w.length >= 2);
 }
 
+function mentionsPartnerAffectionateCompoundRu(text: string): boolean {
+  return PARTNER_AFFECTIONATE_WITH_MOYA_RE.test(text);
+}
+
 function mentionsPartnerSynonyms(text: string, locale: Locale): boolean {
+  if (locale === "ru" && mentionsPartnerAffectionateCompoundRu(text)) return true;
   return mentionsByNeedles(text, partnerSynonymNeedles(locale));
 }
 
+const ME_POSSESSIVE_RU = new Set([
+  "мой",
+  "моя",
+  "моё",
+  "мои",
+  "моей",
+  "моему",
+  "моим",
+  "моих",
+  "моего",
+]);
+
 function mentionsMeSynonyms(text: string, locale: Locale): boolean {
-  return mentionsByNeedles(text, meSynonymNeedles(locale));
+  let needles = meSynonymNeedles(locale);
+  if (locale === "ru" && mentionsPartnerAffectionateCompoundRu(text)) {
+    needles = needles.filter((w) => !ME_POSSESSIVE_RU.has(w));
+  }
+  return mentionsByNeedles(text, needles);
 }
 
 /** Подсказка для LLM — те же слова, что и в detect-owner */
@@ -151,7 +194,7 @@ export function ownerHintsForPrompt(
   const partner = partnerName?.trim();
   const me = myName?.trim();
   const synRu =
-    "любимая, дорогая, жена, муж, партнёр, зайка, солнышко";
+    "любимая, милая, дорогая, жена, муж, партнёр, зайка, солнышко; «милая моя» / «моя милая» — партнёр";
   const synEn = "wife, husband, partner, darling, honey, sweetheart";
   const syn = locale === "ru" ? synRu : synEn;
   const lines: string[] = [];
@@ -164,7 +207,7 @@ export function ownerHintsForPrompt(
   }
   lines.push(
     locale === "ru"
-      ? `- Также партнёр: ${syn} (например «любимая потратила», «дорогой купил»).`
+      ? `- Также партнёр: ${syn} (например «милая моя потратила», «любимая потратила»).`
       : `- Also partner: ${syn}.`,
   );
   if (me) {
