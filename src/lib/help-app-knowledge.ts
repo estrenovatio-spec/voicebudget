@@ -7,14 +7,14 @@ const BOT = getTelegramBotMention();
 export function buildAppScreenMap(locale: Locale): string {
   if (locale === "en") {
     return `APP UI MAP (exact labels):
-- Home: balance, filters All / Me / Partner, text field + "Add", transaction list (tap to edit/delete)
+- Home: balance (tap block to hide amounts; tap a figure for «Cash on hand»), filters All / Me / Partner, text field + "Add", transaction list (tap to edit/delete)
 - Planning block: "Goals & planning" → tabs Jars, Limits, Emergency fund, Recurring
 - Chart & tips: statistics, "Tips & AI" (weekly/monthly analysis)
 - Settings (gear): Help, Categories, Cloud & family, partner name, subscription, clear data
 - Cloud & family: "Solo" / "Shared", "Create cloud budget", invite code, "Join", Sync / Download / Upload`;
   }
   return `КАРТА ПРИЛОЖЕНИЯ (точные названия кнопок):
-- Главная: баланс, фильтры Общий / Я / Партнёр, поле ввода + «Добавить», список операций (нажать — изменить/удалить)
+- Главная: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), фильтры Общий / Я / Партнёр, поле ввода + «Добавить», список операций (нажать — изменить/удалить)
 - Блок «Цели и планирование»: вкладки Копилки · Лимиты · Подушка · Регулярные
 - Ниже: «Статистика», «Советы и AI» (разбор недели/месяца)
 - Настройки (шестерёнка): «Помощь и вопросы», «Категории», «Облако и семья», имя партнёра, подписка, «Очистить данные»
@@ -40,7 +40,7 @@ const PLAYBOOKS: Playbook[] = [
         "Откройте Mini App (бот → «Открыть приложение»).",
         "На главной внизу поле ввода — напишите, например: «потратил 500 на обед».",
         "Нажмите «Добавить» — операция появится в списке.",
-        `Или отправьте то же голосовым/текстом боту ${BOT} (нужно облако/подписка для бота).`,
+        `Или отправьте то же текстом боту ${BOT}; голосом — только боту (голосовое в чат, не в приложении).`,
       ],
       en: [
         "Open Mini App (bot → Open app).",
@@ -118,6 +118,24 @@ const PLAYBOOKS: Playbook[] = [
       en: [
         "Home screen shows Balance; use All / Me / Partner filters.",
         "Use finance JSON for exact numbers.",
+      ],
+    },
+  },
+  {
+    id: "balance",
+    keywords:
+      /баланс|карман|скрыт|спрят|подогн|реально|сумм|•••|balance|hide|cash|adjust/i,
+    title: { ru: "Баланс и «в кармане»", en: "Balance & cash on hand" },
+    steps: {
+      ru: [
+        "В шапке главной — блок баланса. Нажмите на подпись или строку — суммы скроются (••••), ещё раз — покажутся.",
+        "Нажмите на цифру (Общий / Я / партнёр) — «Реально в кармане»: сколько денег сейчас.",
+        "Можно подогнать общий баланс или отдельно «я» и партнёра, если в кошельке не совпадает с операциями.",
+      ],
+      en: [
+        "Home header — balance block. Tap label or row to hide amounts (••••), tap again to show.",
+        "Tap a figure (All / Me / Partner) — «Cash on hand».",
+        "Adjust All, Me, or Partner if real cash differs from transaction totals.",
       ],
     },
   },

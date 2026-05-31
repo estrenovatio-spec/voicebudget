@@ -17,12 +17,12 @@ export const FAQ_SECTIONS: FaqSection[] = [
     body: {
       ru: [
         `Откройте бота ${BOT} → «Открыть Mini App».`,
-        "Запишите трату: текст + «Добавить» в приложении или голосовое/текст боту.",
+        "Запишите трату: текст + «Добавить» в приложении; голосом — боту в Telegram.",
         "Вход только через Telegram — пароль не нужен.",
       ],
       en: [
         `Open ${BOT} → «Open Mini App».`,
-        "Log an expense: text + «Add» in the app or voice/text to the bot.",
+        "Log an expense: text + «Add» in the app; voice — message the bot in Telegram.",
         "Sign-in is via Telegram only — no password.",
       ],
     },
@@ -48,13 +48,13 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Как записывать", en: "How to log" },
     body: {
       ru: [
-        "В приложении: поле внизу + «Добавить» (текст).",
-        "В боте: голосовое или текст — при облаке попадает в общий бюджет.",
+        "В приложении: поле внизу + «Добавить» (только текст).",
+        `Голосом — боту ${BOT}: голосовое или текст в чат (не в Mini App).`,
         "Список операций на главной — нажмите строку, чтобы изменить или удалить.",
       ],
       en: [
-        "In the app: text field at the bottom + «Add».",
-        "In the bot: voice or text — with cloud on, syncs to the household.",
+        "In the app: text field at the bottom + «Add» (text only).",
+        "Voice — message the bot in Telegram (not in the Mini App).",
         "Transaction list on home — tap a row to edit or delete.",
       ],
     },
@@ -84,6 +84,22 @@ export const FAQ_SECTIONS: FaqSection[] = [
         "Multiple: 500 lunch and 200 taxi",
         "Amounts: 1.5m · 100k. Include a number.",
         "Category from keywords. Custom — Settings → Categories.",
+      ],
+    },
+  },
+  {
+    id: "balance",
+    title: { ru: "Баланс и «в кармане»", en: "Balance & cash on hand" },
+    body: {
+      ru: [
+        "В шапке главной — блок баланса. Нажмите на подпись или строку — суммы скроются (••••), ещё раз — покажутся.",
+        "Нажмите на цифру (Общий / Я / партнёр) — окно «Реально в кармане»: укажите, сколько денег сейчас.",
+        "Удобно, если по операциям одна сумма, а в кошельке другая — можно подогнать общий баланс или отдельно «я» и партнёра.",
+      ],
+      en: [
+        "On the home header — balance block. Tap the label or row to hide amounts (••••), tap again to show.",
+        "Tap a figure (All / Me / Partner) — «Cash on hand»: enter what you actually have now.",
+        "Useful when transactions and real cash differ — adjust All, Me, or Partner separately.",
       ],
     },
   },
@@ -277,11 +293,13 @@ export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
     steps: {
       ru: [
         "На главной внизу — поле ввода. Напишите фразу и нажмите «Добавить».",
-        "Или отправьте то же текстом или голосовым боту — попадёт в общий бюджет при включённом облаке.",
+        `Голосом — только боту ${BOT} (голосовое в чат). В Mini App микрофона нет.`,
+        "При включённом облаке записи из бота попадают в общий бюджет.",
       ],
       en: [
         "On the home screen — text field at the bottom. Type a phrase and tap «Add».",
-        "Or send the same as text or voice to the bot — syncs when cloud is on.",
+        "Voice — bot only (voice message in chat). No mic in the Mini App.",
+        "With cloud on, bot entries sync to the household.",
       ],
     },
     example: {
@@ -349,6 +367,21 @@ export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
       en: ["One phrase with «and» — each part with its own amount."],
     },
     example: { ru: "500 на обед и 200 на такси", en: "500 lunch and 200 taxi" },
+  },
+  {
+    title: { ru: "Баланс в шапке", en: "Balance (header)" },
+    steps: {
+      ru: [
+        "Нажмите на блок баланса — суммы скроются (••••), нажмите снова — покажутся.",
+        "Нажмите на сумму (Общий, «Я» или партнёр) — «Реально в кармане»: введите, сколько денег сейчас.",
+        "Если в кошельке не совпадает с суммой по операциям — подгоните общий или отдельно «я» / партнёр.",
+      ],
+      en: [
+        "Tap the balance block — amounts hide (••••), tap again to show.",
+        "Tap an amount (All, Me, or Partner) — «Cash on hand»: enter what you actually have.",
+        "If cash differs from transaction totals — adjust All, Me, or Partner separately.",
+      ],
+    },
   },
   {
     title: { ru: "Облако вдвоём", en: "Shared cloud" },

@@ -401,7 +401,7 @@ export async function parseVoiceTranscripts(
       const rawItems = (json.items ?? (json.data ? [json.data] : [])).filter(
         (item) => item.amount > 0,
       );
-      if (rawItems.length > 0) {
+      if (json.success && rawItems.length > 0) {
         const clauses = splitTranscriptClauses(text);
         const items = rawItems.map((item, index) =>
           refineParsedTransaction(
