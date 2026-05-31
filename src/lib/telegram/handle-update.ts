@@ -27,6 +27,7 @@ import {
 } from "@/lib/telegram/bot-api";
 import { recognitionPhraseUserKey } from "@/lib/recognition-phrases";
 import { RecognitionStatusDisplay } from "@/lib/telegram/recognition-status";
+import { ruPlural, enPlural } from "@/lib/i18n";
 import type { TelegramMessage, TelegramUpdate, TelegramUser } from "@/lib/telegram/bot-types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { formatBotHelpHtml } from "@/lib/help-faq-content";
@@ -255,14 +256,14 @@ function formatMultiSuccessReply(
     const header =
       items.length === 1
         ? "✅ <b>Added:</b>"
-        : `✅ <b>Added ${items.length} entries:</b>`;
+        : `✅ <b>Added ${items.length} ${enPlural(items.length, "entry", "entries")}:</b>`;
     return `${header}\n${lines.join("\n")}\n<i>${heard}</i>`;
   }
 
   const header =
     items.length === 1
       ? "✅ <b>Добавлено:</b>"
-      : `✅ <b>Добавлено ${items.length} записей:</b>`;
+      : `✅ <b>Добавлено ${items.length} ${ruPlural(items.length, "запись", "записи", "записей")}:</b>`;
   return `${header}\n${lines.join("\n")}\n<i>${heard}</i>`;
 }
 

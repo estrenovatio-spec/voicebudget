@@ -8,7 +8,7 @@ import { hasPartnerBudget } from "@/lib/owner-labels";
 import { parseVoiceTranscripts } from "@/lib/voice";
 import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
-import { t } from "@/lib/i18n";
+import { t, ruPlural, enPlural } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
 export function VoiceRecorder() {
@@ -108,7 +108,13 @@ export function VoiceRecorder() {
       toast(
         parsed.items.length === 1
           ? t(locale, "voiceSuccess")
-          : t(locale, "voiceSuccessMany", { count: String(parsed.items.length) }),
+          : t(locale, "voiceSuccessMany", {
+              count: String(parsed.items.length),
+              word:
+                locale === "ru"
+                  ? ruPlural(parsed.items.length, "операция", "операции", "операций")
+                  : enPlural(parsed.items.length, "entry", "entries"),
+            }),
         "success",
       );
     } finally {

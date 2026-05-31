@@ -76,7 +76,7 @@ export const DICT = {
     voiceSttUnavailable: "Сервер распознавания недоступен — введите текст вручную",
     voiceProcessing: "ИИ слушает и разбирает…",
     voiceSuccess: "Транзакция добавлена",
-    voiceSuccessMany: "Добавлено {count} операций",
+    voiceSuccessMany: "Добавлено {count} {word}",
     voiceError: "Ошибка распознавания",
     micDenied:
       "Нет доступа к микрофону. В браузере нажмите «Разрешить» в адресной строке; в Telegram — в настройках приложения.",
@@ -414,7 +414,7 @@ export const DICT = {
     voiceSttUnavailable: "Speech server unavailable — type manually",
     voiceProcessing: "AI is listening and parsing…",
     voiceSuccess: "Transaction added",
-    voiceSuccessMany: "Added {count} entries",
+    voiceSuccessMany: "Added {count} {word}",
     voiceError: "Recognition error",
     micDenied:
       "Microphone access denied. In the browser, allow the mic in the address bar; in Telegram, check app settings.",
@@ -678,6 +678,25 @@ export const DICT = {
 } as const;
 
 export type DictKey = keyof (typeof DICT)["ru"];
+
+/** Русское склонение: 1 запись, 2 записи, 5 записей */
+export function ruPlural(
+  count: number,
+  one: string,
+  few: string,
+  many: string,
+): string {
+  const abs = Math.abs(count) % 100;
+  const mod10 = abs % 10;
+  if (abs > 10 && abs < 20) return many;
+  if (mod10 > 1 && mod10 < 5) return few;
+  if (mod10 === 1) return one;
+  return many;
+}
+
+export function enPlural(count: number, one: string, many: string): string {
+  return Math.abs(count) === 1 ? one : many;
+}
 
 export function t(locale: Locale, key: DictKey, vars?: Record<string, string>): string {
   let text: string = DICT[locale][key];
