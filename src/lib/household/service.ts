@@ -374,9 +374,9 @@ export async function deleteCloudCategory(userId: string, householdId: string, i
     where: { householdId_id: { householdId, id } },
   });
   if (!existing) throw new Error("not_found");
-  if (existing.isSystem) throw new Error("cannot_delete_system");
 
   const fallback = getFallbackCategoryId(existing.type);
+  if (existing.id === fallback) throw new Error("cannot_delete_fallback");
   await prisma.transaction.updateMany({
     where: { householdId, categoryId: id },
     data: { categoryId: fallback },

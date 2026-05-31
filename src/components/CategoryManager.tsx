@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { useCategories, useStore } from "@/store/useStore";
 import type { TxType } from "@/types";
 
@@ -25,6 +26,7 @@ export function CategoryManager() {
   const addCategory = useStore((s) => s.addCategory);
   const updateCategory = useStore((s) => s.updateCategory);
   const removeCategory = useStore((s) => s.removeCategory);
+  const restoreDefaultCategories = useStore((s) => s.restoreDefaultCategories);
   const { toast } = useToast();
 
   const [tab, setTab] = useState<TxType>("expense");
@@ -92,6 +94,13 @@ export function CategoryManager() {
       return;
     }
     setPendingDeleteId(null);
+  };
+
+  const handleRestoreDefaults = () => {
+    restoreDefaultCategories();
+    setPendingDeleteId(null);
+    setEditingId(null);
+    toast(t(locale, "categoryRestored"), "success");
   };
 
   const pendingCat = pendingDeleteId
@@ -177,11 +186,6 @@ export function CategoryManager() {
                           ),
                         })}
                       </p>
-                      {pendingCat.isSystem && (
-                        <p className="text-xs text-muted-foreground">
-                          {t(locale, "categoryDeleteSystemNote")}
-                        </p>
-                      )}
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -244,8 +248,17 @@ export function CategoryManager() {
             </div>
           )}
 
-          <div className="space-y-2 border-t pt-2">
-            <p className="text-xs font-medium">{t(locale, "categoryAdd")}</p>
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex justify-center py-1">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full bg-emerald-600 px-5 py-2",
+                  "text-sm font-semibold text-white shadow-sm",
+                )}
+              >
+                {t(locale, "categoryAdd")}
+              </span>
+            </div>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -258,11 +271,21 @@ export function CategoryManager() {
             />
             <Button type="button" className="w-full" variant="secondary" onClick={handleAdd}>
               <Plus className="mr-1 h-4 w-4" />
-              {t(locale, "categoryAdd")}
+              {t(locale, "categoryAddSubmit")}
             </Button>
           </div>
         </TabsContent>
       </Tabs>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full text-xs"
+        onClick={handleRestoreDefaults}
+      >
+        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+        {t(locale, "categoryRestoreDefaults")}
+      </Button>
     </div>
   );
 }

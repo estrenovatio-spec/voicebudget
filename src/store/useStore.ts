@@ -116,6 +116,7 @@ interface StoreState {
     patch: Partial<Pick<CategoryDefinition, "labels" | "keywords">>,
   ) => void;
   removeCategory: (id: string) => boolean;
+  restoreDefaultCategories: () => void;
   clearAll: () => void;
   setReminderEnabled: (enabled: boolean) => void;
   setReminderTime: (time: string) => void;
@@ -451,6 +452,21 @@ export const useStore = create<StoreState>()(
         useCloudStore.getState().removeFromLastSyncedRemoteCategoryIds(id);
         void cloudPushCategoryDelete(id);
         return true;
+      },
+      restoreDefaultCategories: () => {
+        const defaults = getDefaultCategories();
+        const defaultIds = new Set(defaults.map((c) => c.id));
+        const prev = get().categories;
+        set((state) => ({
+          categories: defaults.map((c) => ({ ...c, keywords: [...c.keywords] })),
+          transactions: state.transactions.map((tx) =>
+            defaultIds.has(tx.categoryId) ? tx : { ...tx, categoryId: getFallbackCategoryId(tx.type) },
+          ),
+        }));
+        for (const cat of defaults) void cloudPushCategory(cat);
+        for (const cat of prev) {
+          if (!defaultIds.has(cat.id)) void cloudPushCategoryDelete(cat.id);
+        }
       },
       clearAll: () => set({ transactions: [], trackingStartedAt: null }),
       setReminderEnabled: (reminderEnabled) => set({ reminderEnabled }),

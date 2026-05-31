@@ -86,6 +86,7 @@ export function TMAHeader() {
   const [partnerInput, setPartnerInput] = useState(partnerName ?? "");
   const [confirmClear, setConfirmClear] = useState(false);
   const [amountsHidden, setAmountsHidden] = useState(false);
+  const [savedFlash, setSavedFlash] = useState<"my" | "partner" | null>(null);
 
   useEffect(() => {
     setAmountsHidden(readAmountsHidden());
@@ -121,12 +122,21 @@ export function TMAHeader() {
     return () => window.clearTimeout(timer);
   }, [confirmClear]);
 
+  const flashSaved = useCallback((which: "my" | "partner") => {
+    setSavedFlash(which);
+    window.setTimeout(() => {
+      setSavedFlash((current) => (current === which ? null : current));
+    }, 2000);
+  }, []);
+
   const saveMyName = () => {
     setUserName(myNameInput.trim() || null);
+    flashSaved("my");
   };
 
   const savePartner = () => {
     setPartnerName(partnerInput.trim() || null);
+    flashSaved("partner");
   };
 
   const meName = myDisplayName(locale, userName);
@@ -253,6 +263,17 @@ export function TMAHeader() {
                       <Button type="button" variant="secondary" className="w-full" onClick={saveMyName}>
                         {t(locale, "myNameSave")}
                       </Button>
+                      {savedFlash === "my" && (
+                        <p
+                          className="flex justify-center"
+                          role="status"
+                          aria-live="polite"
+                        >
+                          <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
+                            {t(locale, "settingsSaved")}
+                          </span>
+                        </p>
+                      )}
                       <Input
                         value={partnerInput}
                         onChange={(e) => setPartnerInput(e.target.value)}
@@ -261,6 +282,17 @@ export function TMAHeader() {
                       <Button type="button" variant="secondary" className="w-full" onClick={savePartner}>
                         {t(locale, "partnerSave")}
                       </Button>
+                      {savedFlash === "partner" && (
+                        <p
+                          className="flex justify-center"
+                          role="status"
+                          aria-live="polite"
+                        >
+                          <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
+                            {t(locale, "settingsSaved")}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     <div className="border-t pt-3">
                       <p className="mb-2 text-sm text-muted-foreground">{t(locale, "clearConfirm")}</p>
