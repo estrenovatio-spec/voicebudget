@@ -32,14 +32,14 @@ export const FAQ_SECTIONS: FaqSection[] = [
     title: { ru: "Команды бота", en: "Bot commands" },
     body: {
       ru: [
-        "/start и /help — краткая справка и кнопка приложения.",
+        "/start — приветствие и зачем приложение.",
+        "/help — шпаргалка: как записывать, копилки, облако вдвоём.",
         'Других команд нет. Любой текст без "/" — запись операции (как голосовое).',
-        "Примеры: потратил 500 на обед · зарплата 80000 · отложил 5000 на отпуск",
       ],
       en: [
-        "/start and /help — short guide and app button.",
+        "/start — welcome and what the app does for you.",
+        "/help — quick guide: logging, jars, shared cloud.",
         "No other commands. Any text without / logs a transaction (like voice).",
-        "Examples: spent 500 on lunch · salary 80000 · saved 5000 for vacation",
       ],
     },
   },
@@ -379,41 +379,94 @@ export function faqCheatsheetSections(locale: Locale): {
   }));
 }
 
-/** HTML for Telegram /help (keep under ~3500 chars) */
-export function formatBotHelpHtml(locale: Locale, botUsername = getTelegramBotName()): string {
+/** Ежемесячные взносы, сложный процент ~15% годовых, 10 лет (упрощённо). */
+const SAVINGS_10Y_LOW = 1_376_000;
+const SAVINGS_10Y_HIGH = 2_752_000;
+
+function formatRubles(n: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US").format(n);
+}
+
+/** HTML для Telegram /start — приветствие и ценность приложения */
+export function formatBotStartHtml(locale: Locale, botUsername = getTelegramBotName()): string {
   const bot = botUsername.replace(/^@/, "");
+  const low = formatRubles(SAVINGS_10Y_LOW, locale);
+  const high = formatRubles(SAVINGS_10Y_HIGH, locale);
+
   if (locale === "en") {
     return (
-      `<b>Budget — bot help</b>\n\n` +
-      `<b>Commands</b>\n` +
-      `/start · /help — this message\n` +
-      `Other text (no /) = log a transaction\n\n` +
-      `<b>Examples</b>\n` +
-      `• spent 500 on lunch\n` +
-      `• salary 80000\n` +
-      `• saved 5000 for vacation\n` +
-      `• 5000 for vacation (if jar exists)\n` +
-      `• salary 100000, 20000 for vacation\n\n` +
-      `<b>Voice</b> — send a voice message; or type the same.\n` +
-      `Syncs with the Mini App when cloud is on.\n\n` +
-      `<b>App help</b> — Mini App → Settings → Help → ask AI (unlimited)\n\n` +
-      `Bot: @${bot}`
+      `<b>Welcome to Budget 👋</b>\n\n` +
+      `Glad you're here. We wish you calm finances, fewer money worries, and more room for what truly matters.\n\n` +
+      `<b>What you'll get right away</b>\n` +
+      `• <b>Log in one phrase</b> — text or voice: «spent 500 on lunch»\n` +
+      `• <b>See where money goes</b> — categories fill in automatically\n` +
+      `• <b>Shared budget</b> — you and your partner, one cloud\n` +
+      `• <b>Savings jars</b> — vacation, emergency fund, big goals\n` +
+      `• <b>AI tips</b> — what's worth cutting this week\n\n` +
+      `<b>The hidden win</b>\n` +
+      `Most people find <b>₽5–10k/month</b> they didn't notice — subscriptions, impulse buys, duplicates.\n` +
+      `If you redirect that to savings at ~15% a year for 10 years, it can grow to roughly <b>${low}–${high} ₽</b> (monthly deposits, simplified math).\n\n` +
+      `Tap the button below — first expense takes 10 seconds.\n` +
+      `Cheatsheet anytime: /help\n\n` +
+      `@${bot}`
     );
   }
+
   return (
-    `<b>Бюджет — справка бота</b>\n\n` +
-    `<b>Команды</b>\n` +
-    `/start · /help — это сообщение\n` +
-    `Любой текст без / = запись операции\n\n` +
-    `<b>Примеры</b>\n` +
-    `• потратил 500 на обед\n` +
-    `• зарплата 80000\n` +
-    `• отложил 5000 на отпуск\n` +
-    `• 5000 на отпуск (если копилка уже есть)\n` +
-    `• зарплата 100000, 20000 на отпуск\n\n` +
-    `<b>Голос</b> — голосовое в чат; или тот же текст.\n` +
-    `Синхронизация с Mini App при включённом облаке.\n\n` +
-    `<b>Справка по приложению</b> — Mini App → Настройки → Помощь → спросите ИИ (без лимита)\n\n` +
-    `Бот: @${bot}`
+    `<b>Добро пожаловать в Бюджет 👋</b>\n\n` +
+    `Рады, что вы здесь. Желаем спокойных финансов, меньше тревоги из‑за денег и больше сил на то, что правда важно.\n\n` +
+    `<b>Что получите сразу</b>\n` +
+    `• <b>Запись одной фразой</b> — текст или голос: «потратил 500 на обед»\n` +
+    `• <b>Видно, куда уходят деньги</b> — категории подставляются сами\n` +
+    `• <b>Бюджет вдвоём</b> — вы и партнёр, одно облако\n` +
+    `• <b>Копилки на цели</b> — отпуск, подушка, крупные покупки\n` +
+    `• <b>Советы ИИ</b> — что можно подрезать уже на этой неделе\n\n` +
+    `<b>Незаметный, но сильный эффект</b>\n` +
+    `У многих находится <b>5–10 тыс. ₽ в месяц</b>, которые «утекают» — подписки, импульсные покупки, дубли.\n` +
+    `Если перенаправить их в накопления под ~15% годовых на 10 лет, это может вырасти примерно до <b>${low}–${high} ₽</b> (ежемесячные взносы, упрощённый расчёт).\n\n` +
+    `Жмите кнопку ниже — первая трата займёт 10 секунд.\n` +
+    `Шпаргалка в любой момент: /help\n\n` +
+    `@${bot}`
+  );
+}
+
+function formatCheatsheetBlock(locale: Locale): string {
+  const exampleLabel = locale === "ru" ? "Пример" : "Example";
+  return faqCheatsheetSections(locale)
+    .map((section) => {
+      const steps = section.steps.map((s) => `• ${s}`).join("\n");
+      const ex = section.example
+        ? `\n<i>${exampleLabel}:</i> «${section.example}»`
+        : "";
+      return `<b>${section.title}</b>\n${steps}${ex}`;
+    })
+    .join("\n\n");
+}
+
+/** HTML для Telegram /help — шпаргалка из приложения (до ~3500 символов) */
+export function formatBotHelpHtml(locale: Locale, botUsername = getTelegramBotName()): string {
+  const bot = botUsername.replace(/^@/, "");
+  const sheet = formatCheatsheetBlock(locale);
+
+  if (locale === "en") {
+    return (
+      `<b>Quick guide</b>\n\n` +
+      `${sheet}\n\n` +
+      `<b>Bot</b>\n` +
+      `Any text without / = log a transaction · voice works too.\n` +
+      `/start — welcome\n` +
+      `More: Mini App → Settings → Help → ask AI\n\n` +
+      `@${bot}`
+    );
+  }
+
+  return (
+    `<b>Шпаргалка</b>\n\n` +
+    `${sheet}\n\n` +
+    `<b>Бот</b>\n` +
+    `Любой текст без / = запись операции · можно голосом.\n` +
+    `/start — приветствие\n` +
+    `Подробнее: Mini App → Настройки → Помощь → спросите ИИ\n\n` +
+    `@${bot}`
   );
 }

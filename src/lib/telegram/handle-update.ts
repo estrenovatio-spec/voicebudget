@@ -1,4 +1,5 @@
 import { detectCategoryId, getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
+import { inferParseLocale } from "@/lib/locale-infer";
 import { prisma } from "@/lib/db";
 import {
   createCloudTransaction,
@@ -31,7 +32,8 @@ import { RecognitionStatusDisplay } from "@/lib/telegram/recognition-status";
 import { ruPlural, enPlural } from "@/lib/i18n";
 import type { TelegramMessage, TelegramUpdate, TelegramUser } from "@/lib/telegram/bot-types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
-import { formatBotHelpHtml } from "@/lib/help-faq-content";
+import { formatBotHelpHtml, formatBotStartHtml } from "@/lib/help-faq-content";
+import { getTelegramBotName } from "@/lib/telegram/bot-name";
 import type { Locale, ParsedTransaction, Transaction } from "@/types";
 import type { SavingsGoal } from "@/types/planning";
 
@@ -418,7 +420,9 @@ async function processTranscript(
   const partnerLabel = await householdPartnerLabel(membership.householdId);
   const goals = await householdGoals(membership.householdId);
 
-  const planningAction = tryParsePlanningInput(text, locale, goals);
+  const parseLocale = inferParseLocale(text, locale);
+
+  const planningAction = tryParsePlanningInput(text, parseLocale, goals);
   if (planningAction) {
     const reply = await applyPlanningFromBot(
       user.id,
@@ -426,7 +430,7 @@ async function processTranscript(
       planningAction,
       goals,
       categories,
-      locale,
+      parseLocale,
     );
     if (reply) {
       await replyStatus(chatId, statusMsgId, reply, {
@@ -440,7 +444,7 @@ async function processTranscript(
     }
   }
 
-  const { items: parsedItems } = await parseTranscriptServerMany(text, locale, categories, {
+  const { items: parsedItems } = await parseTranscriptServerMany(text, parseLocale, categories, {
     partnerName: partnerLabel,
     myName: from.first_name ?? null,
     hasPartner: Boolean(partnerLabel?.trim()),
@@ -464,7 +468,7 @@ async function processTranscript(
   await replyStatus(
     chatId,
     statusMsgId,
-    formatMultiSuccessReply(validItems, text, locale, categories, partnerLabel),
+    formatMultiSuccessReply(validItems, text, parseLocale, categories, partnerLabel),
     {
     parse_mode: "HTML",
     reply_markup: miniAppKeyboard(
@@ -540,9 +544,22 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   const chatId = message.chat.id;
   const lower = text.toLowerCase();
 
-  if (lower === "/start" || lower === "/help") {
+  if (lower === "/start") {
     const webApp = siteUrl();
-    const botName = process.env.NEXT_PUBLIC_TG_BOT_NAME?.replace(/^@/, "") ?? "VoiceBudgetBot";
+    const botName = getTelegramBotName();
+    await sendMessage(chatId, formatBotStartHtml(locale, botName), {
+      parse_mode: "HTML",
+      reply_markup: miniAppKeyboard(
+        locale === "en" ? "Open Mini App" : "Открыть Mini App",
+        webApp,
+      ),
+    });
+    return;
+  }
+
+  if (lower === "/help") {
+    const webApp = siteUrl();
+    const botName = getTelegramBotName();
     await sendMessage(chatId, formatBotHelpHtml(locale, botName), {
       parse_mode: "HTML",
       reply_markup: miniAppKeyboard(
