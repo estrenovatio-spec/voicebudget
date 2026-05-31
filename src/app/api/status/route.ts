@@ -3,8 +3,14 @@ import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { isLlmConfigured } from "@/lib/llm";
 import { isPaymentsConfigured } from "@/lib/payments/config";
 import { listSttProviderIds } from "@/lib/stt-providers";
+import {
+  formatRecognitionStatus,
+  nextRecognitionPhrase,
+} from "@/lib/recognition-phrases";
 
 export const dynamic = "force-dynamic";
+
+const BUILD_TAG = "recognition-phrases-v2";
 
 export async function GET() {
   const telegramToken = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());
@@ -51,6 +57,10 @@ export async function GET() {
 
   return NextResponse.json({
     ok: dbTables && telegramToken && llm,
+    buildTag: BUILD_TAG,
+    recognitionPhraseSample: formatRecognitionStatus(
+      nextRecognitionPhrase("healthcheck"),
+    ),
     telegramToken,
     databaseUrl,
     sessionSecret,

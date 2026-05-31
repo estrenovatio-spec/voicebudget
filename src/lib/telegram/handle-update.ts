@@ -444,21 +444,12 @@ async function handleVoiceMessage(message: TelegramMessage): Promise<void> {
 
   const statusRef = { current: statusMsgId as number | null };
   const phraseUserKey = recognitionPhraseUserKey(message.from?.id ?? chatId);
-  const recognitionStatus =
-    locale === "en"
-      ? null
-      : new RecognitionStatusDisplay(chatId, statusRef, phraseUserKey);
+  const recognitionStatus = new RecognitionStatusDisplay(chatId, statusRef, phraseUserKey);
 
   try {
     await sendChatAction(chatId, "typing");
-    if (recognitionStatus) {
-      await recognitionStatus.start();
-      statusMsgId = statusRef.current;
-    } else {
-      const status = await sendMessage(chatId, "🎙 Recognizing…");
-      statusMsgId = status.message_id;
-      statusRef.current = statusMsgId;
-    }
+    await recognitionStatus.start();
+    statusMsgId = statusRef.current;
 
     const fileMeta = await getTelegramFile(voice.file_id);
     if (!fileMeta.file_path) throw new Error("telegram_file_path_missing");
@@ -466,9 +457,7 @@ async function handleVoiceMessage(message: TelegramMessage): Promise<void> {
     const buffer = await downloadTelegramFile(fileMeta.file_path);
     const { transcript, lastError } = await transcribeVoiceFile(buffer, locale);
 
-    if (recognitionStatus) {
-      await recognitionStatus.finishBeforeResult();
-    }
+    await recognitionStatus.finishBeforeResult();
 
     if (!transcript) {
       console.error("[telegram/voice] stt failed", {
