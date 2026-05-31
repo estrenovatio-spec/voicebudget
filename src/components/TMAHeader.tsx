@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { CategoryManager } from "@/components/CategoryManager";
 import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
+import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
 import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -311,6 +312,7 @@ export function TMAHeader() {
             </Dialog>
           </div>
           <CloudHeaderStatus />
+          <LiveRatesBar />
         </div>
       </div>
     </header>

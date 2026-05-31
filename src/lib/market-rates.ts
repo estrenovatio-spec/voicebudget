@@ -1,7 +1,7 @@
 export type MarketRates = {
   usdRub: number;
   eurRub: number;
-  btcRub: number;
+  btcUsd: number;
   updatedAt: string;
 };
 
@@ -34,18 +34,18 @@ async function fetchCbrRates(): Promise<{ usdRub: number; eurRub: number }> {
   return { usdRub, eurRub };
 }
 
-async function fetchBtcRub(): Promise<number> {
+async function fetchBtcUsd(): Promise<number> {
   const url =
-    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=rub";
+    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd";
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("CoinGecko fetch failed");
 
-  const json = (await res.json()) as { bitcoin?: { rub?: number } };
-  const btcRub = json.bitcoin?.rub;
-  if (!Number.isFinite(btcRub) || !btcRub || btcRub <= 0) {
+  const json = (await res.json()) as { bitcoin?: { usd?: number } };
+  const btcUsd = json.bitcoin?.usd;
+  if (!Number.isFinite(btcUsd) || !btcUsd || btcUsd <= 0) {
     throw new Error("CoinGecko parse failed");
   }
-  return btcRub;
+  return btcUsd;
 }
 
 export async function getMarketRates(): Promise<MarketRates> {
@@ -53,11 +53,11 @@ export async function getMarketRates(): Promise<MarketRates> {
     return cache.data;
   }
 
-  const [cbr, btcRub] = await Promise.all([fetchCbrRates(), fetchBtcRub()]);
+  const [cbr, btcUsd] = await Promise.all([fetchCbrRates(), fetchBtcUsd()]);
   const data: MarketRates = {
     usdRub: cbr.usdRub,
     eurRub: cbr.eurRub,
-    btcRub,
+    btcUsd,
     updatedAt: new Date().toISOString(),
   };
   cache = { data, at: Date.now() };

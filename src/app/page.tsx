@@ -1,8 +1,6 @@
 "use client";
 
-import { CloudSyncSection } from "@/components/CloudSyncSection";
 import { HomeSections } from "@/components/HomeSections";
-import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
 import { TMAHeader } from "@/components/TMAHeader";
@@ -35,8 +33,6 @@ export default function HomePage() {
     >
       <HouseholdCloudBootstrap />
       <TMAHeader />
-      <CloudSyncSection />
-      <LiveRatesBar />
       <VoiceRecorder />
       <TransactionList />
       <HomeSections />
