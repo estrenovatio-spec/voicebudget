@@ -56,7 +56,7 @@ Rules:
 - Russian amounts: "100 тысяч" / "100 тыс" = 100000; "1.5 млн" = 1500000; "100.000" rubles = 100000 (dot as thousands separator, NOT 100.0).
 - "потратил 100 тысяч на ремонт" → amount 100000, categoryId housing if available.
 - "ксюше возврат 100" / "вернули 100" → type income, categoryId refund.
-- Rental income: "субаренда", "арендный доход", "за аренду", "сдача квартиры" → type income (freelance or income_other), NOT expense rent.
+- Rental income: "субаренда", "арендный доход", "получил за аренду", "сдача квартиры" → type income (freelance or custom), NOT expense rent.
 - currency MUST always be "RUB" (even if user says euro, dollar, €, $ — record amount as rubles).
 - If amount missing for an item → 0. If type unclear → "expense". Locale: ${locale}.
 ${partnerRule}
@@ -88,9 +88,10 @@ const INCOME_KEYWORDS_RU = [
   "сдача квартиры",
   "сдаю квартиру",
   "сдали квартиру",
-  "за аренду",
-  "оплата аренды",
-  "арендная плата",
+  "получил за аренду",
+  "поступило за аренду",
+  "пришла арендная плата",
+  "поступила арендная плата",
 ];
 const INCOME_KEYWORDS_EN = ["received", "salary", "income", "earned", "got paid"];
 const EXPENSE_KEYWORDS_RU = ["потратил", "купил", "оплатил", "расход", "потратила"];
