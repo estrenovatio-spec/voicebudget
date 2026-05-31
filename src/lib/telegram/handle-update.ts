@@ -405,7 +405,11 @@ async function processTranscript(
     }
   }
 
-  const { data: parsed } = await parseTranscriptServer(text, locale, categories, partnerLabel);
+  const { data: parsed } = await parseTranscriptServer(text, locale, categories, {
+    partnerName: partnerLabel,
+    myName: from.first_name ?? null,
+    hasPartner: Boolean(partnerLabel?.trim()),
+  });
   if (parsed.amount <= 0) {
     await replyStatus(
       chatId,

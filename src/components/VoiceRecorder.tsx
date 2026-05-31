@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { hasPartnerBudget } from "@/lib/owner-labels";
 import { parseVoiceTranscript } from "@/lib/voice";
 import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
@@ -14,6 +15,7 @@ export function VoiceRecorder() {
   const locale = useStore((s) => s.locale);
   const categories = useStore((s) => s.categories);
   const savingsGoals = useStore((s) => s.savingsGoals);
+  const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const addTransaction = useStore((s) => s.addTransaction);
   const applyPlanningInput = useStore((s) => s.applyPlanningInput);
@@ -104,7 +106,18 @@ export function VoiceRecorder() {
     } finally {
       setBusy(false);
     }
-  }, [addTransaction, applyPlanningInput, busy, categories, locale, partnerName, savingsGoals, text, toast]);
+  }, [
+    addTransaction,
+    applyPlanningInput,
+    busy,
+    categories,
+    locale,
+    partnerName,
+    savingsGoals,
+    text,
+    toast,
+    userName,
+  ]);
 
   return (
     <section className="flex flex-col items-center py-2">

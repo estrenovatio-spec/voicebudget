@@ -10,6 +10,7 @@ import {
 import { APP_CURRENCY } from "@/lib/app-currency";
 import { parseAmountFromTranscript, resolveTransactionAmount } from "@/lib/parse-amount";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
+import { ownerHintsForPrompt } from "@/lib/detect-owner";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import type { Locale, ParsedTransaction, TxType } from "@/types";
 
@@ -18,13 +19,13 @@ export const PARSE_PROMPT = (
   locale: Locale,
   categories: CategoryDefinition[] = getDefaultCategories(),
   partnerName?: string | null,
+  myName?: string | null,
 ) => {
   const expenseIds = getCategoryIdsForPrompt(categories, "expense", locale);
   const incomeIds = getCategoryIdsForPrompt(categories, "income", locale);
-  const partnerRule = partnerName?.trim()
-    ? locale === "ru"
-      ? `- Если в фразе имя партнёра «${partnerName.trim()}» (или склонение: «${partnerName.trim().slice(0, -1)}е», «для ${partnerName.trim()}») — это доход/расход партнёра, categoryId подбирай по смыслу; «возврат» → refund.`
-      : `- If the phrase mentions partner «${partnerName.trim()}», treat as their transaction; refunds → refund category.`
+  const ownerHints = ownerHintsForPrompt(locale, partnerName, myName);
+  const partnerRule = ownerHints
+    ? `${ownerHints}\n- «возврат» / refund for partner → income categoryId refund.`
     : "";
   return `
 Extract financial transaction from: "${transcript}"

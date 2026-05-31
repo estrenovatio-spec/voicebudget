@@ -10,6 +10,8 @@ const bodySchema = z.object({
   transcript: z.string().min(1),
   locale: z.enum(["ru", "en"]),
   partnerName: z.string().nullable().optional(),
+  myName: z.string().nullable().optional(),
+  hasPartner: z.boolean().optional(),
 });
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -42,13 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { transcript, locale, partnerName } = parsed.data;
+    const { transcript, locale, partnerName, myName, hasPartner } = parsed.data;
 
     const { data, fallback } = await parseTranscriptServer(
       transcript,
       locale as Locale,
       categories,
-      partnerName,
+      { partnerName, myName, hasPartner },
     );
 
     return NextResponse.json(

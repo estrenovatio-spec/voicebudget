@@ -16,6 +16,7 @@ import {
 import { getTrackingStartDate } from "@/lib/budget-analytics";
 import { clampMonthStartDay, getCurrentBudgetPeriod, isDateInBudgetPeriod } from "@/lib/budget-period";
 import { applyDetectedOwner } from "@/lib/detect-owner";
+import { hasPartnerBudget } from "@/lib/owner-labels";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import { roundMoneyUp } from "@/lib/format-money";
@@ -240,9 +241,13 @@ export const useStore = create<StoreState>()(
           const withOwner = applyDetectedOwner(
             normalized,
             transcript ?? normalized.note,
-            state.partnerName,
+            {
+              partnerName: state.partnerName,
+              myName: state.userName,
+              locale: state.locale,
+              hasPartner: hasPartnerBudget(state.partnerName),
+            },
             data.owner ?? state.entryOwner,
-            state.locale,
           );
           const owner = withOwner.owner ?? state.entryOwner;
           let goalId = data.goalId ?? null;

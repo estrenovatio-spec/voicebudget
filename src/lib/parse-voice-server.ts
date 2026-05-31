@@ -10,7 +10,12 @@ import {
   isLlmConfigured,
 } from "@/lib/llm";
 import { extractJsonFromLlmContent } from "@/lib/llm-json";
-import { applyDetectedOwner } from "@/lib/detect-owner";
+import {
+  applyDetectedOwner,
+  normalizeOwnerDetectOptions,
+  type OwnerDetectOptions,
+} from "@/lib/detect-owner";
+import { hasPartnerBudget } from "@/lib/owner-labels";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
@@ -32,9 +37,14 @@ export async function parseTranscriptServer(
   transcript: string,
   locale: Locale,
   categories: CategoryDefinition[] = getDefaultCategories(),
-  partnerName?: string | null,
+  ownerCtx?: OwnerDetectOptions | string | null,
 ): Promise<{ data: ParsedTransaction; fallback: boolean }> {
   const text = transcript.trim();
+  const ownerOpts = normalizeOwnerDetectOptions(ownerCtx, locale);
+  if (ownerOpts.hasPartner === undefined) {
+    ownerOpts.hasPartner = hasPartnerBudget(ownerOpts.partnerName);
+  }
+
   if (!text) {
     return {
       data: fallbackParse(text, locale, categories),
@@ -43,7 +53,7 @@ export async function parseTranscriptServer(
   }
 
   const withOwner = (data: ParsedTransaction) =>
-    applyDetectedOwner(data, text, partnerName, data.owner ?? "me", locale);
+    applyDetectedOwner(data, text, ownerOpts, data.owner ?? "me");
 
   if (!isLlmConfigured()) {
     return { data: withOwner(fallbackParse(text, locale, categories)), fallback: true };
@@ -63,7 +73,13 @@ export async function parseTranscriptServer(
         },
         {
           role: "user",
-          content: PARSE_PROMPT(text, locale, categories, partnerName),
+          content: PARSE_PROMPT(
+            text,
+            locale,
+            categories,
+            ownerOpts.partnerName,
+            ownerOpts.myName,
+          ),
         },
       ],
     });

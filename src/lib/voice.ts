@@ -337,11 +337,17 @@ export async function finalizeVoiceCapture(
   return { text: "", error: server.error ?? "stt_failed" };
 }
 
+export type ParseVoiceOwnerContext = {
+  partnerName?: string | null;
+  myName?: string | null;
+  hasPartner?: boolean;
+};
+
 export async function parseVoiceTranscript(
   transcript: string,
   locale: Locale,
   categories: CategoryDefinition[],
-  partnerName?: string | null,
+  ownerCtx?: ParseVoiceOwnerContext | string | null,
 ): Promise<{ data: ParsedTransaction; usedFallback: boolean } | null> {
   const text = cleanTranscript(transcript);
   if (!text || isGarbageTranscript(text)) return null;
@@ -353,7 +359,17 @@ export async function parseVoiceTranscript(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ transcript: text, locale, partnerName: partnerName ?? null }),
+      body: JSON.stringify({
+        transcript: text,
+        locale,
+        partnerName:
+          typeof ownerCtx === "string"
+            ? ownerCtx
+            : (ownerCtx?.partnerName ?? null),
+        myName: typeof ownerCtx === "string" ? null : (ownerCtx?.myName ?? null),
+        hasPartner:
+          typeof ownerCtx === "string" ? undefined : ownerCtx?.hasPartner,
+      }),
       signal: controller.signal,
     });
     window.clearTimeout(timer);
