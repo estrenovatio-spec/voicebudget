@@ -28,6 +28,7 @@ import {
 } from "@/lib/planning/analytics";
 import type { GoalMonthlyPlans } from "@/lib/planning/analytics";
 import { t } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
@@ -648,15 +649,26 @@ export function PlanningPanel() {
             </TabsContent>
 
             <TabsContent value="recurring" className="space-y-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t(locale, "planningRecurringHint")}
+              </p>
               {recurringTransactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t(locale, "planningRecurringEmpty")}</p>
               ) : (
                 recurringTransactions.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    className={cn(
+                      "flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between",
+                      !item.enabled && "border-dashed opacity-70",
+                    )}
                   >
                     <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">
+                        {item.enabled
+                          ? t(locale, "planningRecurringStatusActive")
+                          : t(locale, "planningRecurringStatusPaused")}
+                      </p>
                       <p className="font-medium">
                         {formatMoney(item.amount, locale)} —{" "}
                         {item.note || getCategoryLabel(item.categoryId, categories, locale)}
@@ -689,8 +701,8 @@ export function PlanningPanel() {
                         onClick={() => updateRecurring(item.id, { enabled: !item.enabled })}
                       >
                         {item.enabled
-                          ? t(locale, "planningRecurringDisable")
-                          : t(locale, "planningRecurringEnable")}
+                          ? t(locale, "planningRecurringPause")
+                          : t(locale, "planningRecurringResume")}
                       </Button>
                       <Button
                         variant="ghost"

@@ -10,7 +10,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const BUILD_TAG = "planning-sync-keep-local-v1";
+const BUILD_TAG = "copy-labels-recurring-hint-v1";
 
 export async function GET() {
   const telegramToken = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());

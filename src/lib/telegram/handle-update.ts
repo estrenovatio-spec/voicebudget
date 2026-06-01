@@ -200,8 +200,8 @@ async function applyPlanningFromBot(
     );
     const monthlyLine = plans
       ? locale === "en"
-        ? `\nIn account: ~${plans.onAccount} ₽/mo · If invested: ~${plans.ifInvested} ₽/mo`
-        : `\nНа счёте: ~${plans.onAccount} ₽/мес · Если инвестировать: ~${plans.ifInvested} ₽/мес`
+        ? `\nSave only: ~${plans.onAccount} ₽/mo · If invested: ~${plans.ifInvested} ₽/mo`
+        : `\nПросто копить: ~${plans.onAccount} ₽/мес · Если инвестировать: ~${plans.ifInvested} ₽/мес`
       : "";
     return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}${monthlyLine}`;
   }
