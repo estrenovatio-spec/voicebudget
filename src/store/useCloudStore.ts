@@ -91,7 +91,22 @@ export const useCloudStore = create<CloudState>()(
           lastSyncedRemoteRecurringIds: [],
         }),
     }),
-    { name: "voicebudget-cloud" },
+    {
+      name: "voicebudget-cloud",
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as CloudState;
+        if (version < 1) {
+          return {
+            ...state,
+            lastSyncedRemoteGoalIds: [],
+            lastSyncedRemoteBudgetCategoryIds: [],
+            lastSyncedRemoteRecurringIds: [],
+          };
+        }
+        return state;
+      },
+    },
   ),
 );
 

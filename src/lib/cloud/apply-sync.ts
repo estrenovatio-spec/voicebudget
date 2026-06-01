@@ -1,3 +1,4 @@
+import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import { mergeSyncPayload } from "@/lib/cloud/merge-sync";
 import {
   cloudPushCategory,
@@ -37,12 +38,9 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     remote,
     previouslySynced,
     previouslySyncedCategories,
-    {
-      goalIds: new Set(cloud.lastSyncedRemoteGoalIds),
-      budgetCategoryIds: new Set(cloud.lastSyncedRemoteBudgetCategoryIds),
-      recurringIds: new Set(cloud.lastSyncedRemoteRecurringIds),
-    },
   );
+
+  const savingsGoals = merged.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
 
   useCloudStore.getState().setSession(token, remote.household);
   useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
@@ -62,7 +60,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   useStore.setState({
     transactions: merged.transactions,
     categories: merged.categories,
-    savingsGoals: merged.savingsGoals,
+    savingsGoals,
     categoryBudgets: merged.categoryBudgets,
     recurringTransactions: merged.recurringTransactions,
     // Имена в балансе (userName / partnerName) — только на этом телефоне, не из облака.
@@ -77,7 +75,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     void cloudPushCategory(cat);
   }
   for (const id of merged.localOnlyGoalIds) {
-    const goal = merged.savingsGoals.find((g) => g.id === id);
+    const goal = savingsGoals.find((g) => g.id === id);
     if (goal) void cloudPushGoal(goal);
   }
   for (const categoryId of merged.localOnlyBudgetCategoryIds) {

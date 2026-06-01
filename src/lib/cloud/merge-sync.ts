@@ -104,37 +104,62 @@ function mergeByKey<T extends { updatedAt?: string }>(
   return Array.from(map.values());
 }
 
+/** Цели, лимиты, регулярные: локальное не удаляем, если в облаке пусто или push не дошёл. */
+function mergePlanningByKey<T extends { updatedAt?: string }>(
+  local: T[],
+  remote: T[],
+  getKey: (item: T) => string,
+): T[] {
+  const map = new Map<string, T>();
+
+  for (const item of remote) {
+    map.set(getKey(item), item);
+  }
+
+  for (const item of local) {
+    const key = getKey(item);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+    if (itemTime(item) >= itemTime(existing)) {
+      map.set(key, item);
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 export function mergeSavingsGoals(
   local: SavingsGoal[],
   remote: SavingsGoal[],
-  previouslySynced?: ReadonlySet<string>,
+  _previouslySynced?: ReadonlySet<string>,
 ): SavingsGoal[] {
-  return mergeByKey(local, remote, (g) => g.id, previouslySynced);
+  return mergePlanningByKey(local, remote, (g) => g.id);
 }
 
 export function mergeCategoryBudgets(
   local: CategoryBudget[],
   remote: CategoryBudget[],
-  previouslySynced?: ReadonlySet<string>,
+  _previouslySynced?: ReadonlySet<string>,
 ): CategoryBudget[] {
-  return mergeByKey(
+  return mergePlanningByKey(
     local.map((b) => ({ ...b, categoryId: migrateCategoryId(b.categoryId) })),
     remote.map((b) => ({ ...b, categoryId: migrateCategoryId(b.categoryId) })),
     (b) => b.categoryId,
-    previouslySynced,
   );
 }
 
 export function mergeRecurringTransactions(
   local: RecurringTransaction[],
   remote: RecurringTransaction[],
-  previouslySynced?: ReadonlySet<string>,
+  _previouslySynced?: ReadonlySet<string>,
 ): RecurringTransaction[] {
-  return mergeByKey(
+  return mergePlanningByKey(
     local.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     remote.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     (r) => r.id,
-    previouslySynced,
   );
 }
 
@@ -213,16 +238,13 @@ export function mergeSyncPayload(
   );
   const localOnlyGoalIds = localPlanning.savingsGoals
     .map((g) => g.id)
-    .filter((id) => !remoteGoalIds.has(id))
-    .filter((id) => !previouslySyncedPlanning?.goalIds?.has(id));
+    .filter((id) => !remoteGoalIds.has(id));
   const localOnlyBudgetCategoryIds = localPlanning.categoryBudgets
     .map((b) => b.categoryId)
-    .filter((id) => !remoteBudgetIds.has(id))
-    .filter((id) => !previouslySyncedPlanning?.budgetCategoryIds?.has(id));
+    .filter((id) => !remoteBudgetIds.has(id));
   const localOnlyRecurringIds = localPlanning.recurringTransactions
     .map((r) => r.id)
-    .filter((id) => !remoteRecurringIds.has(id))
-    .filter((id) => !previouslySyncedPlanning?.recurringIds?.has(id));
+    .filter((id) => !remoteRecurringIds.has(id));
 
   return {
     transactions,
