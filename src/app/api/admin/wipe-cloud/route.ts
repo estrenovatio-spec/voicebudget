@@ -3,29 +3,19 @@ import { dbUnavailable } from "@/lib/api/household-response";
 import { isDatabaseConfigured } from "@/lib/db";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { wipeAllCloudData } from "@/lib/household/wipe-cloud";
+import { isAdminAuthorized, requireAdminSecrets } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
-
-function adminSecret(): string | undefined {
-  return (
-    process.env.CLOUD_WIPE_SECRET?.trim() ||
-    process.env.HOUSEHOLD_SESSION_SECRET?.trim() ||
-    process.env.RATE_LIMIT_SECRET?.trim()
-  );
-}
 
 /** POST with header: Authorization: Bearer <HOUSEHOLD_SESSION_SECRET or CLOUD_WIPE_SECRET> */
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
-  const secret = adminSecret();
-  if (!secret) {
+  if (!requireAdminSecrets()) {
     return NextResponse.json({ error: "wipe_not_configured" }, { status: 503 });
   }
 
-  const header = req.headers.get("authorization");
-  const token = header?.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token || token !== secret) {
+  if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -23,8 +23,13 @@ import {
   TRANSACTIONS_HIDDEN_KEY,
   TRANSACTIONS_TYPE_FILTER_KEY,
 } from "@/lib/storage-reset";
+import { hasPartnerBudget } from "@/lib/owner-labels";
 import { displayTransactionNote } from "@/lib/transaction-note";
-import { useCategories, useFilteredTransactions, useStore } from "@/store/useStore";
+import {
+  useCategories,
+  useFilteredTransactions,
+  useStore,
+} from "@/store/useStore";
 import type { Transaction, TxType } from "@/types";
 
 function readHidden(): boolean {
@@ -70,10 +75,11 @@ type TransactionRowProps = {
   locale: "ru" | "en";
   categories: ReturnType<typeof useCategories>;
   partnerName: string | null;
+  userName: string | null;
   onEdit: (tx: Transaction) => void;
 };
 
-function TransactionRow({ tx, locale, categories, partnerName, onEdit }: TransactionRowProps) {
+function TransactionRow({ tx, locale, categories, partnerName, userName, onEdit }: TransactionRowProps) {
   const note = displayTransactionNote(tx.note, tx.amount);
   const savingsGoals = useStore((s) => s.savingsGoals);
   const goalName = tx.goalId ? savingsGoals.find((g) => g.id === tx.goalId)?.name : null;
@@ -84,28 +90,45 @@ function TransactionRow({ tx, locale, categories, partnerName, onEdit }: Transac
           amount: formatMoney(tx.goalAmount, locale),
         })
       : null;
+  const owner = tx.owner === "partner" ? "partner" : "me";
+  const showNames = hasPartnerBudget(partnerName);
   const ownerPart =
-    tx.owner === "partner" && partnerName?.trim() ? partnerName.trim() : null;
+    owner === "partner" && partnerName?.trim()
+      ? partnerName.trim()
+      : owner === "me" && showNames && userName?.trim()
+        ? userName.trim()
+        : null;
   const meta = [formatTransactionDate(tx.date, locale), ownerPart, note, goalPart]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <li className="flex items-center justify-between gap-2 rounded-md border-2 border-border p-2 text-sm">
-      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onEdit(tx)}>
-        <p className="truncate font-medium">{getCategoryLabel(tx.categoryId, categories, locale)}</p>
-        {meta ? <p className="truncate text-xs text-muted-foreground tabular-nums">{meta}</p> : null}
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md border-2 border-border p-2 text-sm">
+      <button
+        type="button"
+        className="min-w-0 text-left"
+        onClick={() => onEdit(tx)}
+      >
+        <p className="truncate font-medium leading-tight">
+          {getCategoryLabel(tx.categoryId, categories, locale)}
+        </p>
+        {meta ? (
+          <p className="truncate text-xs leading-snug text-muted-foreground tabular-nums">
+            {meta}
+          </p>
+        ) : null}
       </button>
-      <div className="flex shrink-0 items-center gap-1">
-        <div className="flex flex-col items-end gap-1">
-          <Badge variant={tx.type === "income" ? "success" : "danger"}>
-            {tx.type === "income" ? t(locale, "income") : t(locale, "expense")}
-          </Badge>
-          <span className="font-semibold tabular-nums">
-            {tx.type === "income" ? "+" : "-"}
-            {formatMoney(tx.amount, locale)} {t(locale, "currency")}
-          </span>
-        </div>
+      <div className="flex shrink-0 items-center gap-1.5 self-center">
+        <Badge
+          variant={tx.type === "income" ? "success" : "danger"}
+          className="shrink-0 px-1.5 py-0 text-[10px]"
+        >
+          {tx.type === "income" ? t(locale, "income") : t(locale, "expense")}
+        </Badge>
+        <span className="whitespace-nowrap text-right font-semibold tabular-nums leading-none">
+          {tx.type === "income" ? "+" : "−"}
+          {formatMoney(tx.amount, locale)}
+        </span>
         <Button
           type="button"
           variant="ghost"
@@ -124,6 +147,7 @@ function TransactionRow({ tx, locale, categories, partnerName, onEdit }: Transac
 export function TransactionList() {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
+  const userName = useStore((s) => s.userName);
   const categories = useCategories();
   const [filter, setFilter] = useState<"all" | TxType>("all");
   const transactions = useFilteredTransactions(filter);
@@ -233,6 +257,7 @@ export function TransactionList() {
                   locale={locale}
                   categories={categories}
                   partnerName={partnerName}
+                  userName={userName}
                   onEdit={setEditing}
                 />
               ))}

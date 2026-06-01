@@ -6,6 +6,15 @@ export interface SubscriptionPublic {
   priceRub: number;
   periodDays: number;
   trialDays: number;
+  /** User never completed a payment — trial / promo access. */
+  onFreeAccess: boolean;
+  /** Show trial strip above header (server-computed). */
+  showTrialBanner: boolean;
+  /** Days until expiresAt (ceil), null if unknown. */
+  daysRemaining: number | null;
+  /** Billing UX test mode (no live charge required). */
+  testMode: boolean;
+  paymentsConfigured: boolean;
 }
 
 export interface YookassaPaymentObject {

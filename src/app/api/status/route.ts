@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { isLlmConfigured } from "@/lib/llm";
-import { isPaymentsConfigured } from "@/lib/payments/config";
+import {
+  isPaymentsConfigured,
+  subscriptionBillingTestMode,
+  subscriptionEnforced,
+  subscriptionTrialDays,
+} from "@/lib/payments/config";
 import { listSttProviderIds } from "@/lib/stt-providers";
 import {
   formatRecognitionStatus,
@@ -10,7 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const BUILD_TAG = "copy-labels-recurring-hint-v1";
+const BUILD_TAG = "header-buttons-v1";
 
 export async function GET() {
   const telegramToken = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());
@@ -25,6 +30,8 @@ export async function GET() {
 
   let dbTables = false;
   let planningTables = false;
+  let planningColumnsOk = false;
+  let vehicleGarageTables = false;
   let dbError: string | undefined;
 
   if (databaseUrl) {
@@ -46,6 +53,37 @@ export async function GET() {
           )
       `;
       planningTables = planningRows.length >= 5;
+
+      const requiredCols = await prisma.$queryRaw<{ column_name: string }[]>`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND (
+            (table_name = 'SavingsGoal' AND column_name = 'monthlyContribution')
+            OR (table_name = 'Household' AND column_name = 'balanceOffsets')
+            OR (table_name = 'Transaction' AND column_name = 'confirmed')
+          )
+      `;
+      const names = new Set(requiredCols.map((r) => r.column_name));
+      planningColumnsOk =
+        names.has("monthlyContribution") &&
+        names.has("balanceOffsets") &&
+        names.has("confirmed");
+
+      const garageRows = await prisma.$queryRaw<{ ok: number }[]>`
+        SELECT 1 AS ok
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'Vehicle'
+        LIMIT 1
+      `;
+      const garageCols = await prisma.$queryRaw<{ column_name: string }[]>`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'Household'
+          AND column_name IN ('vehicleGarageMode', 'vehicleMemberPrefs')
+      `;
+      vehicleGarageTables = garageRows.length > 0 && garageCols.length >= 2;
     } catch (e) {
       dbError = e instanceof Error ? e.message.slice(0, 280) : "unknown";
     }
@@ -68,8 +106,28 @@ export async function GET() {
     sttProviders: listSttProviderIds(),
     sttReady: listSttProviderIds().length > 0,
     paymentsConfigured: isPaymentsConfigured(),
+    vercelEnv: process.env.VERCEL_ENV ?? null,
+    billingTestMode: subscriptionBillingTestMode(),
+    subscriptionEnforced: subscriptionEnforced(),
+    subscriptionTrialDays: subscriptionTrialDays(),
+    trialBannerServerReady:
+      subscriptionBillingTestMode() && subscriptionEnforced() && subscriptionTrialDays() > 0,
     dbTables,
     planningTables,
+    planningColumnsOk,
+    vehicleGarageTables,
+    ...(planningTables && !planningColumnsOk
+      ? {
+          dbMigrateHint:
+            "В Supabase SQL Editor выполните файл prisma/migrate-planning-and-balance.sql",
+        }
+      : {}),
+    ...(!vehicleGarageTables
+      ? {
+          vehicleGarageHint:
+            "Гараж опционален: prisma/vehicle-garage-v2.sql только на нужной БД (см. prisma/MIGRATIONS.md)",
+        }
+      : {}),
     googleSheetsConfigured: Boolean(process.env.GOOGLE_SHEETS_WEBHOOK_URL?.trim()),
     dbError,
     databaseUrlHint,

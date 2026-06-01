@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Деплой на Vercel. Сборка на серверах Vercel (Linux) — иначе Prisma с Mac не работает в production.
+# PRODUCTION деплой — попадает клиентам (voicebudget.vercel.app + @Fin_BU_bot).
+# Для теста без клиентов используйте: npm run deploy:preview
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$ROOT/.node/bin:$PATH"

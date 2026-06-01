@@ -2,7 +2,11 @@ import type OpenAI from "openai";
 import type { OpenAI as OpenAIType } from "openai";
 import { telegramVoiceToWavFile } from "@/lib/audio/telegram-ogg-to-wav";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
-import { getSttProviders, listSttProviderIds } from "@/lib/stt-providers";
+import {
+  getSttProviders,
+  getTelegramSttProviders,
+  listSttProviderIds,
+} from "@/lib/stt-providers";
 import { transcribeWhisperFetch } from "@/lib/stt-whisper-fetch";
 import { getLlmBaseUrl, getLlmClient, getLlmModel, getSttClient, getSttModel, isLlmConfigured } from "@/lib/llm";
 
@@ -167,7 +171,7 @@ export async function transcribeTelegramVoice(
   locale: string,
   budgetMs = 45_000,
 ): Promise<TranscribeResult> {
-  const providers = getSttProviders();
+  const providers = getTelegramSttProviders();
   if (providers.length === 0) {
     return { transcript: "", lastError: "no_stt_key" };
   }
@@ -178,35 +182,88 @@ export async function transcribeTelegramVoice(
 
   const oggFile = new File([buffer], "voice.ogg", { type: "audio/ogg" });
   const wavFile = await telegramVoiceToWavFile(buffer);
-  const files: File[] = [oggFile];
-  if (wavFile) files.push(wavFile);
+  const files: File[] = wavFile ? [wavFile, oggFile] : [oggFile];
 
   let lastError = "";
   const started = Date.now();
 
+  const tryFile = async (
+    provider: (typeof providers)[0],
+    file: File,
+    timeoutMs: number,
+  ): Promise<TranscribeResult> => {
+    const method = `${provider.id}-${file.name}`;
+    const transcript = await transcribeWhisperFetch(provider, file, locale, timeoutMs);
+    if (transcript && !isGarbageTranscript(transcript)) {
+      return { transcript, method };
+    }
+    if (transcript) throw new Error("garbage_filtered");
+    throw new Error("empty_transcript");
+  };
+
   for (const provider of providers) {
+    const remaining = budgetMs - (Date.now() - started);
+    if (remaining < 4_000) {
+      lastError = lastError || "budget_exhausted";
+      break;
+    }
+
+    const timeoutMs = Math.min(remaining, 38_000);
+
+    if (provider.id === "groq" && files.length > 1) {
+      const parallel = await Promise.allSettled(
+        files.map((file) => tryFile(provider, file, timeoutMs)),
+      );
+      const ok = parallel.find(
+        (r): r is PromiseFulfilledResult<TranscribeResult> => r.status === "fulfilled",
+      );
+      if (ok) return ok.value;
+      for (const r of parallel) {
+        if (r.status === "rejected") {
+          const reason =
+            r.reason instanceof Error ? r.reason.message.slice(0, 220) : "error";
+          lastError = reason;
+          console.warn("[stt/telegram] groq-parallel", reason, "bytes", buffer.byteLength);
+        }
+      }
+      continue;
+    }
+
     for (const file of files) {
-      const remaining = budgetMs - (Date.now() - started);
-      if (remaining < 4_000) {
+      const left = budgetMs - (Date.now() - started);
+      if (left < 4_000) {
         lastError = lastError || "budget_exhausted";
         break;
       }
 
       const method = `${provider.id}-${file.name}`;
       try {
-        const transcript = await transcribeWhisperFetch(
-          provider,
-          file,
+        return await tryFile(provider, file, Math.min(left, 38_000));
+      } catch (e) {
+        lastError = e instanceof Error ? e.message.slice(0, 220) : "error";
+        console.warn("[stt/telegram]", method, lastError, "bytes", buffer.byteLength);
+      }
+    }
+  }
+
+  if (isLlmConfigured()) {
+    const client = getLlmClient();
+    const fallbackFile = wavFile ?? oggFile;
+    if (client) {
+      try {
+        const transcript = await transcribeViaChat(
+          client,
+          fallbackFile,
           locale,
-          Math.min(remaining, 38_000),
+          fallbackFile.name.endsWith(".wav") ? "wav" : "ogg",
         );
         if (transcript && !isGarbageTranscript(transcript)) {
-          return { transcript, method };
+          return { transcript, method: "llm-audio-fallback" };
         }
         if (transcript) lastError = "garbage_filtered";
       } catch (e) {
         lastError = e instanceof Error ? e.message.slice(0, 220) : "error";
-        console.warn("[stt/telegram]", method, lastError, "bytes", buffer.byteLength);
+        console.warn("[stt/telegram] llm-fallback", lastError);
       }
     }
   }

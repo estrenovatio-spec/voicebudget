@@ -9,9 +9,14 @@ const patchSchema = z.object({
   amount: z.number().positive().optional(),
   categoryId: z.string().optional(),
   owner: z.enum(["me", "partner"]).optional(),
+  createdBy: z.string().nullable().optional(),
   type: z.enum(["income", "expense"]).optional(),
   goalId: z.string().nullable().optional(),
   goalAmount: z.number().nullable().optional(),
+  confirmed: z.boolean().optional(),
+  recurringId: z.string().nullable().optional(),
+  odometerKm: z.number().finite().min(0).nullable().optional(),
+  vehicleId: z.string().min(1).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

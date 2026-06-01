@@ -17,7 +17,7 @@
 **Сервис VoiceBudget** — программный комплекс для учёта личного и семейного бюджета, включающий:
 - веб-приложение (https://voicebudget.vercel.app);
 - Telegram Mini App;
-- Telegram-бот (@VoiceBudgetBot).
+- Telegram-бот (@Fin_BU_bot).
 
 **Облачный доступ** — функции синхронизации данных на сервере, совместного семейного бюджета и использования Telegram-бота для голосового/текстового ввода (при наличии активной подписки, если включена платная модель).
 
@@ -232,7 +232,7 @@
 | **Email** | [email] |
 | **Telegram (поддержка)** | [@username] |
 | **Сайт** | https://voicebudget.vercel.app |
-| **Telegram-бот** | @VoiceBudgetBot |
+| **Telegram-бот** | @Fin_BU_bot |
 
 ---
 

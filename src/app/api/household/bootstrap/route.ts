@@ -42,12 +42,15 @@ export async function POST(req: NextRequest) {
         tgUser,
         household: householdForSheet,
         logTag: "household/bootstrap",
-        onSuccess: async () => {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { googleSheetsOpenLogged: true },
-          });
-        },
+        // Без облака флаг не ставим — после create/join запишем строку с кодом приглашения
+        onSuccess: householdForSheet
+          ? async () => {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { googleSheetsOpenLogged: true },
+              });
+            }
+          : undefined,
       });
     }
 
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (subscription.enforced && !subscription.active) {
-      const householdRow = await buildSyncPayload(membership.householdId);
+      const householdRow = await buildSyncPayload(membership.householdId, user.id);
       return NextResponse.json({
         ok: true,
         user: { id: user.id, firstName: user.firstName },
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const sync = await buildSyncPayload(membership.householdId);
+    const sync = await buildSyncPayload(membership.householdId, user.id);
 
     return NextResponse.json({
       ok: true,

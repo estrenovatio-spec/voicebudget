@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { getTelegramBotToken } from "@/lib/telegram/bot-token";
 
 export interface TelegramWebAppUser {
   id: number;
@@ -12,7 +13,7 @@ export function parseTelegramInitData(initData: string): {
   user: TelegramWebAppUser;
   authDate: number;
 } | null {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const botToken = getTelegramBotToken();
   if (!botToken || !initData.trim()) return null;
 
   const params = new URLSearchParams(initData);

@@ -20,11 +20,23 @@ export interface Transaction {
   note: string;
   date: string;
   owner: BudgetOwner;
+  /** Кто создал операцию (user id в облаке) — для корректного «я/партнёр» на втором телефоне */
+  createdBy?: string | null;
   /** Сумма, переведённая в копилку из этой операции */
   goalId?: string | null;
   goalAmount?: number | null;
   /** ISO — с облака; для слияния при синхронизации */
   updatedAt?: string;
+  /** false — регулярный расход, ждёт подтверждения (не в балансе) */
+  confirmed?: boolean;
+  /** Шаблон регулярного платежа */
+  recurringId?: string | null;
+  /** Пробег на спидометре (заправка / ТО) */
+  odometerKm?: number | null;
+  /** Какая машина из гаража */
+  vehicleId?: string | null;
+  /** Связка пары переводов me ↔ partner */
+  transferPairId?: string | null;
 }
 export type Locale = "ru" | "en";
 
@@ -38,6 +50,12 @@ export interface ParsedTransaction {
   owner?: BudgetOwner;
   goalId?: string | null;
   goalAmount?: number | null;
+  confirmed?: boolean;
+  recurringId?: string | null;
+  odometerKm?: number | null;
+  vehicleId?: string | null;
+  transferPairId?: string | null;
+  createdBy?: string | null;
 }
 
 /** @deprecated persisted legacy shape */

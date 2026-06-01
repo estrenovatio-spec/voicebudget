@@ -145,11 +145,28 @@ export function getCategoryLabel(
   return label?.trim() || categoryId;
 }
 
+export function sortCategoriesByLabel(
+  list: CategoryDefinition[],
+  allCategories: CategoryDefinition[],
+  locale: Locale,
+): CategoryDefinition[] {
+  const collator = locale === "ru" ? "ru" : "en";
+  return [...list].sort((a, b) =>
+    getCategoryLabel(a.id, allCategories, locale).localeCompare(
+      getCategoryLabel(b.id, allCategories, locale),
+      collator,
+      { sensitivity: "base" },
+    ),
+  );
+}
+
 export function getCategoriesByType(
   categories: CategoryDefinition[],
   type: TxType,
+  locale?: Locale,
 ): CategoryDefinition[] {
-  return categories.filter((c) => c.type === type);
+  const filtered = categories.filter((c) => c.type === type);
+  return locale ? sortCategoriesByLabel(filtered, categories, locale) : filtered;
 }
 
 export function getFallbackCategoryId(type: TxType): string {
@@ -170,6 +187,11 @@ function keywordMatches(text: string, kw: string): boolean {
 }
 
 const EXPENSE_PHRASE_CATEGORY: { pattern: RegExp; categoryId: string }[] = [
+  { pattern: /фестивал|festival/i, categoryId: "entertainment" },
+  { pattern: /ретрит|retreat/i, categoryId: "entertainment" },
+  { pattern: /аква[\s-]?парк|aquapark|water\s*park/i, categoryId: "entertainment" },
+  { pattern: /остров\s+мечты|острове\s+мечты|dream\s*island/i, categoryId: "entertainment" },
+  { pattern: /парк\s+развлеч|тематическ\w*\s+парк|legoland|диснейленд|disneyland/i, categoryId: "entertainment" },
   { pattern: /(?:на|за|в)\s+обед/u, categoryId: "dining_out" },
   { pattern: /(?:на|за|в)\s+ужин/u, categoryId: "dining_out" },
   { pattern: /(?:на|за|в)\s+завтрак/u, categoryId: "dining_out" },
@@ -189,12 +211,62 @@ function detectCategoryFromPhrases(text: string, type: TxType): string | null {
   return null;
 }
 
+const RU_EXPENSE_TYPE_HINTS = [
+  "потратил",
+  "потратила",
+  "потратили",
+  "купил",
+  "купила",
+  "купили",
+  "оплатил",
+  "оплатила",
+  "оплатили",
+  "отдал",
+  "отдала",
+  "отдали",
+  "заплатил",
+  "заплатила",
+  "заплатили",
+  "списали",
+  "списалось",
+  "расход",
+];
+const RU_INCOME_TYPE_HINTS = [
+  "получил",
+  "получила",
+  "получили",
+  "зарплата",
+  "доход",
+  "пришло",
+  "пришли",
+  "зачислили",
+  "поступило",
+  "поступили",
+  "возврат",
+  "вернули",
+];
+const EN_EXPENSE_TYPE_HINTS = ["spent", "bought", "paid", "expense"];
+const EN_INCOME_TYPE_HINTS = ["received", "salary", "income", "earned", "got paid"];
+
+/** «Потратил», «отдал» и т.д. важнее одинакового keyword «мастер» в доходах и расходах */
+export function detectTypeFromVerbs(text: string, locale: Locale): TxType | null {
+  const lower = text.toLowerCase();
+  const incomeHints = locale === "ru" ? RU_INCOME_TYPE_HINTS : EN_INCOME_TYPE_HINTS;
+  const expenseHints = locale === "ru" ? RU_EXPENSE_TYPE_HINTS : EN_EXPENSE_TYPE_HINTS;
+  const isIncome = incomeHints.some((w) => lower.includes(w));
+  const isExpense = expenseHints.some((w) => lower.includes(w));
+  if (isExpense && !isIncome) return "expense";
+  if (isIncome && !isExpense) return "income";
+  return null;
+}
+
 export function scoreCategoryKeywords(text: string, category: CategoryDefinition): number {
   const lower = text.toLowerCase();
   let score = 0;
   for (const kw of category.keywords) {
     if (kw && keywordMatches(lower, kw)) {
-      score += kw.length >= 5 ? 3 : 2;
+      const base = kw.length >= 5 ? 3 : 2;
+      score += kw.includes(" ") ? base + 6 : base;
     }
   }
   const labelRu = category.labels?.ru?.toLowerCase() ?? "";
@@ -217,8 +289,8 @@ export function detectTypeFromCategories(
     if (cat.type === "income") incomeScore = Math.max(incomeScore, score);
     else if (cat.type === "expense") expenseScore = Math.max(expenseScore, score);
   }
-  if (incomeScore > 0 && incomeScore >= expenseScore) return "income";
   if (expenseScore > incomeScore) return "expense";
+  if (incomeScore > expenseScore) return "income";
   return null;
 }
 
@@ -232,14 +304,17 @@ export function refineParsedTransaction(
 ): ParsedTransaction {
   const text = `${clause} ${item.note ?? ""}`.trim();
   const merged = sanitizeCategories(categories);
+  const fromVerbs = detectTypeFromVerbs(text, locale);
   const fromCats = detectTypeFromCategories(text, merged);
   const fromKw = detectTypeFn(text, locale, merged);
   let type: TxType = item.type;
-  if (fromCats === "income" || (fromKw === "income" && fromCats !== "expense")) {
-    type = "income";
+  if (fromVerbs) {
+    type = fromVerbs;
   } else if (fromCats === "expense") {
     type = "expense";
-  } else if (!fromCats && fromKw) {
+  } else if (fromCats === "income") {
+    type = "income";
+  } else {
     type = fromKw;
   }
   const categoryId = detectCategoryId(text, type, merged);
@@ -359,11 +434,13 @@ export function normalizeParsedCategory(
   categories: CategoryDefinition[],
 ): string {
   const text = `${transcript} ${rawCategory ?? ""}`.trim();
+  const fallback = getFallbackCategoryId(type);
+  const fromSpeech = detectCategoryId(text, type, categories);
+  if (fromSpeech !== fallback) return fromSpeech;
   if (rawCategory?.trim()) {
-    const matched = matchCategoryIdFromText(rawCategory, type, categories);
-    if (matched !== getFallbackCategoryId(type)) return matched;
+    return matchCategoryIdFromText(rawCategory, type, categories);
   }
-  return detectCategoryId(text, type, categories);
+  return fallback;
 }
 
 export function getCategoryIdsForPrompt(
@@ -371,7 +448,7 @@ export function getCategoryIdsForPrompt(
   type: TxType,
   locale: Locale,
 ): string {
-  return getCategoriesByType(categories, type)
+  return getCategoriesByType(categories, type, locale)
     .map((c) => `${c.id} (${locale === "ru" ? c.labels.ru : c.labels.en})`)
     .join(", ");
 }

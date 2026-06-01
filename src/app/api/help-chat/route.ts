@@ -92,7 +92,7 @@ async function loadSyncFromRequest(
     const session = requireSession(req);
     if (session) {
       await assertMember(session.userId, session.householdId);
-      return buildSyncPayload(session.householdId);
+      return buildSyncPayload(session.householdId, session.userId);
     }
 
     if (auth.initData?.trim() || auth.telegramLogin) {

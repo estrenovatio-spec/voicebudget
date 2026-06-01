@@ -1,9 +1,10 @@
 import type { TelegramFile, TelegramMessage } from "@/lib/telegram/bot-types";
+import { getTelegramBotToken } from "@/lib/telegram/bot-token";
 
 type TgResponse<T> = { ok: true; result: T } | { ok: false; description?: string };
 
 export function getBotToken(): string {
-  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const token = getTelegramBotToken();
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN missing");
   return token;
 }

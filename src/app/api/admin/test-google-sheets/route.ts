@@ -7,16 +7,9 @@ import { getUserMembership } from "@/lib/household/service";
 import { logHouseholdMemberToGoogleSheet, type HouseholdMemberLogAction } from "@/lib/google-sheets";
 import type { HouseholdPublic } from "@/lib/household/types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
+import { isAdminAuthorized, requireAdminSecrets } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
-
-function adminSecret(): string | undefined {
-  return (
-    process.env.CLOUD_WIPE_SECRET?.trim() ||
-    process.env.HOUSEHOLD_SESSION_SECRET?.trim() ||
-    process.env.RATE_LIMIT_SECRET?.trim()
-  );
-}
 
 function toPublicFromRow(
   h: {
@@ -50,14 +43,11 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
-  const secret = adminSecret();
-  if (!secret) {
+  if (!requireAdminSecrets()) {
     return NextResponse.json({ error: "admin_not_configured" }, { status: 503 });
   }
 
-  const header = req.headers.get("authorization");
-  const token = header?.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token || token !== secret) {
+  if (!isAdminAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

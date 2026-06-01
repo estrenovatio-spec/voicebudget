@@ -24,8 +24,13 @@ export function dbTransactionToApp(row: DbTransaction): Transaction {
     note: row.note,
     date: row.date,
     owner: (row.owner === "partner" ? "partner" : "me") as Transaction["owner"],
+    createdBy: row.createdBy ?? null,
     goalId: row.goalId ?? null,
     goalAmount: row.goalAmount ?? null,
+    confirmed: row.confirmed,
+    recurringId: row.recurringId ?? null,
+    odometerKm: row.odometerKm ?? null,
+    vehicleId: row.vehicleId ?? null,
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -63,5 +68,12 @@ export function appTransactionToDb(
     createdBy: createdBy ?? null,
     goalId: tx.goalId ?? null,
     goalAmount: tx.goalAmount ?? null,
+    confirmed: tx.confirmed !== false,
+    recurringId: tx.recurringId ?? null,
+    odometerKm:
+      tx.odometerKm != null && Number.isFinite(tx.odometerKm)
+        ? Math.max(0, Math.round(tx.odometerKm))
+        : null,
+    vehicleId: tx.vehicleId?.trim() || null,
   };
 }

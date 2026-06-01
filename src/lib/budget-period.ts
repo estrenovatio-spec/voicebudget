@@ -1,4 +1,4 @@
-import { formatTransactionDate } from "@/lib/format-date";
+import { formatMonthYearLong, formatTransactionDate } from "@/lib/format-date";
 import type { Locale } from "@/types";
 
 export interface BudgetPeriod {
@@ -42,6 +42,14 @@ export function getCurrentBudgetPeriod(monthStartDay: number, ref = new Date()):
   return { from: toIsoDate(periodStart), to: toIsoDate(periodEnd), monthStartDay: startDay };
 }
 
+/** Предыдущий отчётный месяц (бюджетный период до текущего) */
+export function getPreviousBudgetPeriod(monthStartDay: number, ref = new Date()): BudgetPeriod {
+  const current = getCurrentBudgetPeriod(monthStartDay, ref);
+  const anchor = new Date(`${current.from}T12:00:00`);
+  anchor.setDate(anchor.getDate() - 1);
+  return getCurrentBudgetPeriod(monthStartDay, anchor);
+}
+
 export function isDateInBudgetPeriod(
   dateIso: string,
   period: BudgetPeriod,
@@ -51,11 +59,7 @@ export function isDateInBudgetPeriod(
 
 export function formatBudgetPeriodLabel(period: BudgetPeriod, locale: Locale): string {
   if (period.monthStartDay === 1) {
-    const d = new Date(`${period.from}T12:00:00`);
-    return d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
-      month: "long",
-      year: "numeric",
-    });
+    return formatMonthYearLong(period.from, locale);
   }
   return `${formatTransactionDate(period.from, locale)} — ${formatTransactionDate(period.to, locale)}`;
 }

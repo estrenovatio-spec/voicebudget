@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS "RecurringTransaction" (
     "dayOfMonth" INTEGER,
     "nextRunDate" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "skippedDates" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "RecurringTransaction_pkey" PRIMARY KEY ("id")
@@ -72,6 +73,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 ALTER TABLE "SavingsGoal" ADD COLUMN IF NOT EXISTS "monthlyContribution" DOUBLE PRECISION;
+ALTER TABLE "Household" ADD COLUMN IF NOT EXISTS "balanceOffsets" JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalId" TEXT;
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalAmount" DOUBLE PRECISION;

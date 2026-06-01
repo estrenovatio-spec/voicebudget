@@ -20,6 +20,8 @@ function normalizeTx(tx: Transaction): Transaction {
     ...tx,
     categoryId: migrateCategoryId(tx.categoryId),
     owner: tx.owner === "partner" ? "partner" : "me",
+    confirmed: tx.confirmed !== false,
+    recurringId: tx.recurringId ?? null,
   };
 }
 
@@ -65,14 +67,33 @@ export function mergeCategories(
   previouslySyncedRemoteIds?: ReadonlySet<string>,
 ): CategoryDefinition[] {
   const remoteIds = new Set(remote.map((c) => c.id));
-  const filteredLocal = local.filter((cat) => {
-    if (previouslySyncedRemoteIds?.has(cat.id) && !remoteIds.has(cat.id)) {
-      return false;
+  const localById = new Map(local.map((c) => [c.id, c]));
+  const merged: CategoryDefinition[] = [];
+
+  for (const remoteCat of remote) {
+    const localCat = localById.get(remoteCat.id);
+    if (!localCat) {
+      merged.push(remoteCat);
+      continue;
     }
-    if (remoteIds.has(cat.id)) return false;
-    return true;
-  });
-  return sanitizeCategories([...remote, ...filteredLocal]);
+    merged.push({
+      ...remoteCat,
+      labels: {
+        ru: localCat.labels.ru?.trim() || remoteCat.labels.ru,
+        en: localCat.labels.en?.trim() || remoteCat.labels.en,
+      },
+      keywords: [...new Set([...(remoteCat.keywords ?? []), ...(localCat.keywords ?? [])])],
+      isSystem: remoteCat.isSystem ?? localCat.isSystem,
+    });
+  }
+
+  for (const localCat of local) {
+    if (remoteIds.has(localCat.id)) continue;
+    if (previouslySyncedRemoteIds?.has(localCat.id)) continue;
+    merged.push(localCat);
+  }
+
+  return sanitizeCategories(merged);
 }
 
 function mergeByKey<T extends { updatedAt?: string }>(
@@ -155,12 +176,15 @@ export function mergeRecurringTransactions(
   local: RecurringTransaction[],
   remote: RecurringTransaction[],
   _previouslySynced?: ReadonlySet<string>,
+  deletedIds?: ReadonlySet<string>,
 ): RecurringTransaction[] {
-  return mergePlanningByKey(
+  const merged = mergePlanningByKey(
     local.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     remote.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     (r) => r.id,
   );
+  if (!deletedIds?.size) return merged;
+  return merged.filter((r) => !deletedIds.has(r.id));
 }
 
 export interface MergedSyncResult {
@@ -196,6 +220,7 @@ export function mergeSyncPayload(
   previouslySyncedRemoteIds?: ReadonlySet<string>,
   previouslySyncedRemoteCategoryIds?: ReadonlySet<string>,
   previouslySyncedPlanning?: PreviouslySyncedPlanning,
+  deletedRecurringIds?: ReadonlySet<string>,
 ): MergedSyncResult {
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const remoteCategoryIds = new Set(remote.categories.map((c) => c.id));
@@ -227,6 +252,7 @@ export function mergeSyncPayload(
     localPlanning.recurringTransactions,
     remote.recurringTransactions ?? [],
     previouslySyncedPlanning?.recurringIds,
+    deletedRecurringIds,
   );
 
   const localOnlyTransactionIds = localTransactions

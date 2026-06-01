@@ -14,11 +14,31 @@ import {
   dbRecurringToApp,
 } from "./planning-mapper";
 import {
+  fetchVehicleGarageForHousehold,
+  saveVehicleGarage,
+  VehicleGarageDbNotConfiguredError,
+} from "./vehicle-garage-db";
+export { VehicleGarageDbNotConfiguredError };
+import { isMissingDbObject } from "./db-capabilities";
+import {
+  createTransactionForHousehold,
+  deleteTransactionForHousehold,
+  fetchTransactionsForHousehold,
+  findTransactionInHousehold,
+  stripUnsupportedTransactionFields,
+  updateTransactionForHousehold,
+} from "./safe-transactions";
+import { getHouseholdDbCapabilities } from "./db-capabilities";
+import {
   appCategoryToDb,
   appTransactionToDb,
   dbCategoryToApp,
   dbTransactionToApp,
 } from "./sync-mapper";
+import {
+  parseBalanceOffsets,
+  type BalanceOffsetsByUser,
+} from "@/lib/balance-offsets";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { generateInviteCode } from "./invite-code";
@@ -26,18 +46,68 @@ import type { HouseholdPublic, SyncPayload } from "@/lib/household/types";
 
 export type { HouseholdPublic, SyncPayload };
 
+function isMissingDbColumn(err: unknown): boolean {
+  return isMissingDbObject(err);
+}
+
+async function fetchSavingsGoalsSafe(householdId: string): Promise<SavingsGoal[]> {
+  try {
+    const rows = await prisma.savingsGoal.findMany({ where: { householdId } });
+    return rows.map(dbGoalToApp);
+  } catch (err) {
+    if (!isMissingDbColumn(err)) throw err;
+    console.warn("[household] SavingsGoal schema outdated — run prisma/migrate-planning-and-balance.sql");
+    const rows = await prisma.$queryRaw<
+      {
+        id: string;
+        householdId: string;
+        name: string;
+        targetAmount: number;
+        savedAmount: number;
+        deadline: string | null;
+        kind: string | null;
+        emergencyMonths: number | null;
+      }[]
+    >`
+      SELECT id, "householdId", name, "targetAmount", "savedAmount", deadline, kind, "emergencyMonths"
+      FROM "SavingsGoal"
+      WHERE "householdId" = ${householdId}
+    `;
+    return rows.map(
+      (row): SavingsGoal => ({
+        id: row.id,
+        name: row.name,
+        targetAmount: row.targetAmount,
+        savedAmount: row.savedAmount,
+        deadline: row.deadline,
+        monthlyContribution: null,
+        kind: row.kind === "emergency" ? "emergency" : "custom",
+        emergencyMonths: row.emergencyMonths,
+      }),
+    );
+  }
+}
+
 async function fetchPlanningForHousehold(householdId: string) {
   try {
     const [savingsGoals, categoryBudgets, recurringTransactions] = await Promise.all([
-      prisma.savingsGoal.findMany({ where: { householdId } }),
-      prisma.categoryBudget.findMany({ where: { householdId } }),
-      prisma.recurringTransaction.findMany({ where: { householdId } }),
+      fetchSavingsGoalsSafe(householdId),
+      prisma.categoryBudget
+        .findMany({ where: { householdId } })
+        .then((rows) => rows.map(dbCategoryBudgetToApp))
+        .catch((err) => {
+          if (isMissingDbColumn(err)) return [];
+          throw err;
+        }),
+      prisma.recurringTransaction
+        .findMany({ where: { householdId } })
+        .then((rows) => rows.map(dbRecurringToApp))
+        .catch((err) => {
+          if (isMissingDbColumn(err)) return [];
+          throw err;
+        }),
     ]);
-    return {
-      savingsGoals: savingsGoals.map(dbGoalToApp),
-      categoryBudgets: categoryBudgets.map(dbCategoryBudgetToApp),
-      recurringTransactions: recurringTransactions.map(dbRecurringToApp),
-    };
+    return { savingsGoals, categoryBudgets, recurringTransactions };
   } catch (err) {
     console.warn("[household] planning tables unavailable — run prisma/planning-tables.sql", err);
     return {
@@ -46,6 +116,76 @@ async function fetchPlanningForHousehold(householdId: string) {
       recurringTransactions: [],
     };
   }
+}
+
+export async function getHouseholdSavingsGoals(householdId: string): Promise<SavingsGoal[]> {
+  const { savingsGoals } = await fetchPlanningForHousehold(householdId);
+  return savingsGoals;
+}
+
+async function readHouseholdBalanceOffsets(householdId: string): Promise<BalanceOffsetsByUser> {
+  try {
+    const row = await prisma.household.findUnique({
+      where: { id: householdId },
+      select: { balanceOffsets: true },
+    });
+    return parseBalanceOffsets(row?.balanceOffsets);
+  } catch (err) {
+    if (!isMissingDbColumn(err)) throw err;
+    try {
+      const rows = await prisma.$queryRaw<{ balanceOffsets: unknown }[]>`
+        SELECT "balanceOffsets" FROM "Household" WHERE id = ${householdId} LIMIT 1
+      `;
+      return parseBalanceOffsets(rows[0]?.balanceOffsets);
+    } catch {
+      return {};
+    }
+  }
+}
+
+export async function patchHouseholdBalanceOffset(
+  userId: string,
+  householdId: string,
+  targetUserId: string,
+  offset: number,
+): Promise<BalanceOffsetsByUser> {
+  await assertMember(userId, householdId);
+  const members = await prisma.householdMember.findMany({
+    where: { householdId },
+    select: { userId: true },
+  });
+  if (!members.some((m) => m.userId === targetUserId)) {
+    throw new Error("forbidden");
+  }
+
+  const current = await readHouseholdBalanceOffsets(householdId);
+  const next = { ...current, [targetUserId]: offset };
+
+  try {
+    await prisma.household.update({
+      where: { id: householdId },
+      data: { balanceOffsets: next },
+    });
+  } catch (err) {
+    if (!isMissingDbColumn(err)) throw err;
+    await prisma.$executeRaw`
+      UPDATE "Household"
+      SET "balanceOffsets" = ${JSON.stringify(next)}::jsonb
+      WHERE id = ${householdId}
+    `;
+  }
+
+  return next;
+}
+
+export async function saveVehicleGarageForHousehold(
+  userId: string,
+  householdId: string,
+  vehicles: Parameters<typeof saveVehicleGarage>[1],
+  vehiclePrefs: Parameters<typeof saveVehicleGarage>[2],
+) {
+  await assertMember(userId, householdId);
+  return saveVehicleGarage(householdId, vehicles, vehiclePrefs);
 }
 
 async function uniqueInviteCode(): Promise<string> {
@@ -235,7 +375,10 @@ function toPublicHousehold(
   };
 }
 
-export async function buildSyncPayload(householdId: string): Promise<SyncPayload> {
+export async function buildSyncPayload(
+  householdId: string,
+  viewerUserId?: string,
+): Promise<SyncPayload> {
   await refreshHouseholdCategories(householdId);
 
   const household = await prisma.household.findUniqueOrThrow({
@@ -243,19 +386,25 @@ export async function buildSyncPayload(householdId: string): Promise<SyncPayload
     include: { members: true },
   });
 
-  const [transactions, categories, planning] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { householdId },
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    }),
+  const [transactions, categories, planning, garage] = await Promise.all([
+    fetchTransactionsForHousehold(householdId),
     prisma.category.findMany({ where: { householdId } }),
     fetchPlanningForHousehold(householdId),
+    fetchVehicleGarageForHousehold(householdId),
   ]);
+
+  const balanceOffsets = await readHouseholdBalanceOffsets(householdId);
 
   return {
     household: toPublicHousehold(household, household.members.length),
-    transactions: transactions.map(dbTransactionToApp),
+    memberUserIds: household.members.map((m) => m.userId),
+    ...(viewerUserId ? { viewerUserId } : {}),
+    transactions,
     categories: categories.map(dbCategoryToApp),
+    balanceOffsets,
+    vehicles: garage.vehicles,
+    vehiclePrefs: garage.vehiclePrefs,
+    vehicleGarageAvailable: garage.available,
     ...planning,
   };
 }
@@ -291,11 +440,23 @@ export async function importLocalSnapshot(
     }
   }
 
+  const memberIds = (
+    await prisma.householdMember.findMany({
+      where: { householdId },
+      select: { userId: true },
+    })
+  ).map((m) => m.userId);
+
+  const caps = await getHouseholdDbCapabilities();
   for (const tx of data.transactions) {
-    await prisma.transaction.upsert({
-      where: { id: tx.id },
-      create: { ...appTransactionToDb(householdId, tx, userId), createdAt: new Date() },
-      update: {
+    const createdBy =
+      tx.createdBy && memberIds.includes(tx.createdBy) ? tx.createdBy : userId;
+    const createPayload = stripUnsupportedTransactionFields(
+      { ...appTransactionToDb(householdId, tx, createdBy), createdAt: new Date() },
+      caps,
+    );
+    const updatePayload = stripUnsupportedTransactionFields(
+      {
         amount: tx.amount,
         type: tx.type,
         categoryId: tx.categoryId,
@@ -305,11 +466,22 @@ export async function importLocalSnapshot(
         owner: tx.owner ?? "me",
         goalId: tx.goalId ?? null,
         goalAmount: tx.goalAmount ?? null,
+        confirmed: tx.confirmed !== false,
+        recurringId: tx.recurringId ?? null,
+        ...(tx.createdBy && memberIds.includes(tx.createdBy)
+          ? { createdBy: tx.createdBy }
+          : {}),
       },
+      caps,
+    );
+    await prisma.transaction.upsert({
+      where: { id: tx.id },
+      create: createPayload as never,
+      update: updatePayload as never,
     });
   }
 
-  return buildSyncPayload(householdId);
+  return buildSyncPayload(householdId, userId);
 }
 
 export async function createCloudTransaction(
@@ -318,10 +490,16 @@ export async function createCloudTransaction(
   tx: Transaction,
 ) {
   await assertMember(userId, householdId);
-  await prisma.transaction.create({
-    data: { ...appTransactionToDb(householdId, tx, userId), createdAt: new Date() },
-  });
-  return tx;
+  const memberIds = (
+    await prisma.householdMember.findMany({
+      where: { householdId },
+      select: { userId: true },
+    })
+  ).map((m) => m.userId);
+  const createdBy =
+    tx.createdBy && memberIds.includes(tx.createdBy) ? tx.createdBy : userId;
+  await createTransactionForHousehold(householdId, { ...tx, createdBy }, createdBy);
+  return { ...tx, createdBy };
 }
 
 export async function updateCloudTransaction(
@@ -329,31 +507,55 @@ export async function updateCloudTransaction(
   householdId: string,
   id: string,
   patch: Partial<
-    Pick<Transaction, "amount" | "categoryId" | "owner" | "type" | "goalId" | "goalAmount">
+    Pick<
+      Transaction,
+      | "amount"
+      | "categoryId"
+      | "owner"
+      | "type"
+      | "goalId"
+      | "goalAmount"
+      | "confirmed"
+      | "recurringId"
+      | "createdBy"
+      | "odometerKm"
+      | "vehicleId"
+    >
   >,
 ) {
   await assertMember(userId, householdId);
-  const existing = await prisma.transaction.findFirst({ where: { id, householdId } });
+  const existing = await findTransactionInHousehold(householdId, id);
   if (!existing) throw new Error("not_found");
 
-  return prisma.transaction.update({
-    where: { id },
-    data: {
-      amount: patch.amount ?? existing.amount,
-      categoryId: patch.categoryId ?? existing.categoryId,
-      owner: patch.owner ?? existing.owner,
-      type: patch.type ?? existing.type,
-      ...(patch.goalId !== undefined ? { goalId: patch.goalId } : {}),
-      ...(patch.goalAmount !== undefined ? { goalAmount: patch.goalAmount } : {}),
-    },
-  });
+  const memberIds = (
+    await prisma.householdMember.findMany({
+      where: { householdId },
+      select: { userId: true },
+    })
+  ).map((m) => m.userId);
+
+  let createdBy = existing.createdBy;
+  if (patch.createdBy !== undefined) {
+    if (patch.createdBy && memberIds.includes(patch.createdBy)) {
+      createdBy = patch.createdBy;
+    }
+  }
+
+  await updateTransactionForHousehold(
+    householdId,
+    id,
+    patch,
+    existing,
+    createdBy,
+  );
+  return existing;
 }
 
 export async function deleteCloudTransaction(userId: string, householdId: string, id: string) {
   await assertMember(userId, householdId);
-  const existing = await prisma.transaction.findFirst({ where: { id, householdId } });
+  const existing = await findTransactionInHousehold(householdId, id);
   if (!existing) throw new Error("not_found");
-  await prisma.transaction.delete({ where: { id } });
+  await deleteTransactionForHousehold(householdId, id);
 }
 
 export async function upsertCloudCategory(

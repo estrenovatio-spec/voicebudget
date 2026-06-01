@@ -2,24 +2,12 @@ async function postToAppsScript(webhookUrl, body) {
   const payload = JSON.stringify(body);
   const headers = { "Content-Type": "application/json" };
 
-  let res = await fetch(webhookUrl, {
+  const res = await fetch(webhookUrl, {
     method: "POST",
     headers,
     body: payload,
-    redirect: "manual",
+    redirect: "follow",
   });
-
-  if ([301, 302, 303, 307].includes(res.status)) {
-    const location = res.headers.get("location");
-    if (location) {
-      res = await fetch(location, {
-        method: "POST",
-        headers,
-        body: payload,
-        redirect: "follow",
-      });
-    }
-  }
 
   const text = await res.text().catch(() => "");
   console.log("HTTP", res.status, text.slice(0, 300));

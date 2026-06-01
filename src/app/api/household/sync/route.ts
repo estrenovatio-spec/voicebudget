@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await assertMember(session.userId, session.householdId);
-    const sync = await buildSyncPayload(session.householdId);
+    const sync = await buildSyncPayload(session.householdId, session.userId);
     return NextResponse.json({ ok: true, sync });
   } catch (e) {
     const guard = mapCloudGuardError(e);

@@ -52,6 +52,7 @@ export function useHouseholdCloud() {
           partnerLabel: opts.partnerLabel ?? null,
           name: opts.name,
         });
+        if (res.user?.id) useCloudStore.getState().setCloudUserId(res.user.id);
         applyHouseholdSync(res.sync, res.token);
         const label = opts.partnerLabel?.trim();
         const { partnerName, partnerNameCustomized } = useStore.getState();
@@ -79,6 +80,7 @@ export function useHouseholdCloud() {
     setError(null);
     try {
       const res = await apiJoinHousehold(getCloudAuthBody(), inviteCode);
+      if (res.user?.id) useCloudStore.getState().setCloudUserId(res.user.id);
       applyHouseholdSync(res.sync, res.token);
       useCloudStore.getState().touchSync();
       return true;

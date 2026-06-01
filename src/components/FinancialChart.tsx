@@ -12,13 +12,14 @@ import {
 } from "@/components/HomeSectionCardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
 import { formatBudgetPeriodLabel } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
 import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
 import { CHART_HIDDEN_KEY } from "@/lib/storage-reset";
 import {
-  useBudgetPeriod,
+  useStatsPeriod,
   usePeriodCategoryBreakdown,
   usePeriodOwnerExpenseBreakdown,
   usePeriodOwnerTotals,
@@ -227,7 +228,7 @@ export function FinancialChart() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
-  const period = useBudgetPeriod();
+  const period = useStatsPeriod();
   const breakdownAll = usePeriodCategoryBreakdown();
   const breakdownMe = usePeriodOwnerExpenseBreakdown("me");
   const breakdownPartner = usePeriodOwnerExpenseBreakdown("partner");
@@ -321,6 +322,7 @@ export function FinancialChart() {
         }
       />
       <CardContent className={`overflow-hidden ${homeSectionContentClassName}`}>
+        <StatisticsPeriodControls />
         {!hasAnyData ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t(locale, "chartEmpty")}</p>
         ) : (

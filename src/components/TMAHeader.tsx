@@ -1,17 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { CategoryManager } from "@/components/CategoryManager";
+import { SettingsSection } from "@/components/SettingsSection";
+import { VehicleSettingsPanel } from "@/components/VehicleSettingsPanel";
+import { AppSettingsDiagnostics } from "@/components/AppSettingsDiagnostics";
 import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
 import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
 import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
+import { PartnerTransferDialog } from "@/components/PartnerTransferDialog";
+import { BusinessModeStub } from "@/components/BusinessModeStub";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -28,8 +33,12 @@ import {
   myDisplayName,
   partnerDisplayName,
 } from "@/lib/owner-labels";
+import { forcePullSharedDataFromCloud } from "@/lib/cloud/force-pull";
 import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
-import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp } from "@/lib/storage-reset";
+import { useToast } from "@/components/ui/toast";
+import { OPEN_SETTINGS_EVENT } from "@/lib/billing/trial-banner";
+import { checkForAppUpdate, storeBuildTag } from "@/lib/app-update";
+import { BALANCE_AMOUNTS_HIDDEN_KEY, hardReloadApp, softReloadApp } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
 const balanceAmountClass =
@@ -116,6 +125,7 @@ export function TMAHeader() {
   const partnerName = useStore((s) => s.partnerName);
   const setUserName = useStore((s) => s.setUserName);
   const setPartnerName = useStore((s) => s.setPartnerName);
+  const { toast } = useToast();
   const balances = useHouseholdBalances();
   const [open, setOpen] = useState(false);
   const [myNameInput, setMyNameInput] = useState(userName ?? "");
@@ -128,6 +138,12 @@ export function TMAHeader() {
 
   useEffect(() => {
     setAmountsHidden(readAmountsHidden());
+  }, []);
+
+  useEffect(() => {
+    const openSettings = () => setOpen(true);
+    window.addEventListener(OPEN_SETTINGS_EVENT, openSettings);
+    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, openSettings);
   }, []);
 
   const armBalanceToggleSuppress = useCallback((ms = 900) => {
@@ -161,6 +177,26 @@ export function TMAHeader() {
     if (Date.now() < suppressBalanceToggleUntilRef.current) return;
     toggleAmountsHidden();
   }, [balanceEditDialogOpen, toggleAmountsHidden]);
+
+  const handleSoftUpdate = async () => {
+    const { serverTag } = await checkForAppUpdate();
+    if (serverTag) storeBuildTag(serverTag);
+    softReloadApp();
+  };
+
+  const handleForcePullCloud = async () => {
+    if (!isCloudSyncActive()) {
+      toast(t(locale, "cloudErrGeneric"), "error");
+      return;
+    }
+    try {
+      const ok = await forcePullSharedDataFromCloud();
+      if (ok) toast(t(locale, "forcePullCloudDone"), "success");
+      else toast(t(locale, "cloudErrGeneric"), "error");
+    } catch {
+      toast(t(locale, "cloudErrGeneric"), "error");
+    }
+  };
 
   const handleClear = () => {
     if (!confirmClear) {
@@ -262,10 +298,20 @@ export function TMAHeader() {
                 </>
               ) : null}
             </div>
+            {hasPartner ? (
+              <div className="mt-2 border-t border-primary/10 pt-2">
+                <PartnerTransferDialog
+                  locale={locale}
+                  partnerName={partnerName}
+                  userName={userName}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <BusinessModeStub />
             <LocaleSwitcher />
             <Dialog
               open={open}
@@ -279,77 +325,116 @@ export function TMAHeader() {
               }}
             >
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" type="button" aria-label={t(locale, "settings")}>
-                  <Settings className="h-5 w-5" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  className="min-w-[2.5rem] px-2"
+                  aria-label={t(locale, "settings")}
+                >
+                  <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{t(locale, "settings")}</DialogTitle>
                 </DialogHeader>
-                <Card>
-                  <CardContent className="space-y-4 pt-4">
+                <div className="space-y-4 py-1">
+                  <SettingsSection title={t(locale, "helpTitle")}>
                     <HelpFaqDialog locale={locale} />
-                    <div>
-                      <h3 className="mb-2 text-sm font-semibold">{t(locale, "categoriesTitle")}</h3>
-                      <CategoryManager />
-                    </div>
-                    <HouseholdCloudPanel />
-                    <div className="space-y-2 border-t pt-3">
-                      <h3 className="text-sm font-semibold">{t(locale, "householdTitle")}</h3>
-                      <p className="text-xs text-muted-foreground">{t(locale, "householdHint")}</p>
-                      <Input
-                        value={myNameInput}
-                        onChange={(e) => setMyNameInput(e.target.value)}
-                        placeholder={t(locale, "myNamePlaceholder")}
-                      />
-                      <Button type="button" variant="secondary" className="w-full" onClick={saveMyName}>
-                        {t(locale, "myNameSave")}
-                      </Button>
-                      {savedFlash === "my" && (
-                        <p
-                          className="flex justify-center"
-                          role="status"
-                          aria-live="polite"
-                        >
-                          <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
-                            {t(locale, "settingsSaved")}
-                          </span>
-                        </p>
-                      )}
-                      <Input
-                        value={partnerInput}
-                        onChange={(e) => setPartnerInput(e.target.value)}
-                        placeholder={t(locale, "partnerNamePlaceholder")}
-                      />
-                      <Button type="button" variant="secondary" className="w-full" onClick={savePartner}>
-                        {t(locale, "partnerSave")}
-                      </Button>
-                      {savedFlash === "partner" && (
-                        <p
-                          className="flex justify-center"
-                          role="status"
-                          aria-live="polite"
-                        >
-                          <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
-                            {t(locale, "settingsSaved")}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                    <div className="border-t pt-3">
-                      <p className="mb-2 text-sm text-muted-foreground">{t(locale, "clearConfirm")}</p>
+                    <AppSettingsDiagnostics />
+                  </SettingsSection>
+
+                  <SettingsSection title={t(locale, "categoriesTitle")}>
+                    <CategoryManager />
+                  </SettingsSection>
+
+                  <SettingsSection
+                    title={t(locale, "vehicleGarageTitle")}
+                    description={t(locale, "vehicleHintMulti")}
+                  >
+                    <VehicleSettingsPanel />
+                  </SettingsSection>
+
+                  <SettingsSection title={t(locale, "cloudTitle")}>
+                    <HouseholdCloudPanel embedded />
+                  </SettingsSection>
+
+                  <SettingsSection
+                    title={t(locale, "householdTitle")}
+                    description={t(locale, "householdHint")}
+                  >
+                    <Input
+                      value={myNameInput}
+                      onChange={(e) => setMyNameInput(e.target.value)}
+                      placeholder={t(locale, "myNamePlaceholder")}
+                    />
+                    <Button type="button" variant="secondary" className="w-full" onClick={saveMyName}>
+                      {t(locale, "myNameSave")}
+                    </Button>
+                    {savedFlash === "my" && (
+                      <p className="flex justify-center" role="status" aria-live="polite">
+                        <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
+                          {t(locale, "settingsSaved")}
+                        </span>
+                      </p>
+                    )}
+                    <Input
+                      value={partnerInput}
+                      onChange={(e) => setPartnerInput(e.target.value)}
+                      placeholder={t(locale, "partnerNamePlaceholder")}
+                    />
+                    <Button type="button" variant="secondary" className="w-full" onClick={savePartner}>
+                      {t(locale, "partnerSave")}
+                    </Button>
+                    {savedFlash === "partner" && (
+                      <p className="flex justify-center" role="status" aria-live="polite">
+                        <span className="inline-flex rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm">
+                          {t(locale, "settingsSaved")}
+                        </span>
+                      </p>
+                    )}
+                  </SettingsSection>
+
+                  <SettingsSection
+                    title={t(locale, "settingsSectionMaintenance")}
+                    description={t(locale, "updateAppHint")}
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => void handleSoftUpdate()}
+                    >
+                      {t(locale, "updateApp")}
+                    </Button>
+                    {isCloudSyncActive() ? (
                       <Button
-                        variant="destructive"
-                        className="w-full"
-                        onClick={handleClear}
                         type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => void handleForcePullCloud()}
                       >
-                        {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
+                        {t(locale, "forcePullCloud")}
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    ) : null}
+                    <p className="text-[11px] text-muted-foreground">{t(locale, "forcePullCloudHint")}</p>
+                    <Button type="button" variant="outline" className="w-full" asChild>
+                      <Link href="/preview/capital">{t(locale, "previewCapitalOpen")}</Link>
+                    </Button>
+                  </SettingsSection>
+
+                  <SettingsSection variant="danger" description={t(locale, "clearConfirm")}>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={handleClear}
+                      type="button"
+                    >
+                      {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
+                    </Button>
+                  </SettingsSection>
+                </div>
               </DialogContent>
             </Dialog>
           </div>

@@ -1,42 +1,77 @@
 import type { SubscriptionStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
+  isPaymentsConfigured,
   subscriptionAmountRub,
+  subscriptionBillingTestMode,
   subscriptionEnforced,
   subscriptionPeriodDays,
   subscriptionTrialDays,
 } from "@/lib/payments/config";
 import type { SubscriptionPublic } from "@/lib/payments/types";
 
+function daysUntil(iso: string | null): number | null {
+  if (!iso) return null;
+  const end = new Date(iso);
+  if (Number.isNaN(end.getTime())) return null;
+  const ms = end.getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+}
+
 function toPublic(
   status: SubscriptionStatus | null,
   currentPeriodEnd: Date | null,
+  onFreeAccess: boolean,
 ): SubscriptionPublic {
   const enforced = subscriptionEnforced();
   const now = new Date();
+  const expiresIso = currentPeriodEnd?.toISOString() ?? null;
   const active =
     enforced &&
     status === "active" &&
     currentPeriodEnd !== null &&
     currentPeriodEnd > now;
 
+  const daysRemaining = daysUntil(expiresIso);
+  const activeForEnforced = enforced ? Boolean(active) : true;
+
   return {
-    active: enforced ? Boolean(active) : true,
+    active: activeForEnforced,
     status: status ?? "none",
-    expiresAt: currentPeriodEnd?.toISOString() ?? null,
+    expiresAt: expiresIso,
     enforced,
     priceRub: subscriptionAmountRub(),
     periodDays: subscriptionPeriodDays(),
     trialDays: subscriptionTrialDays(),
+    onFreeAccess,
+    showTrialBanner:
+      enforced && activeForEnforced && onFreeAccess && daysRemaining !== null,
+    daysRemaining,
+    testMode: subscriptionBillingTestMode(),
+    paymentsConfigured: isPaymentsConfigured(),
   };
+}
+
+async function userHasPaidSubscription(userId: string): Promise<boolean> {
+  try {
+    const paid = await prisma.payment.count({
+      where: { userId, status: "succeeded" },
+    });
+    return paid > 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function getSubscriptionForUser(userId: string): Promise<SubscriptionPublic> {
   try {
-    const row = await prisma.subscription.findUnique({ where: { userId } });
-    return toPublic(row?.status ?? null, row?.currentPeriodEnd ?? null);
+    const [row, hasPaid] = await Promise.all([
+      prisma.subscription.findUnique({ where: { userId } }),
+      userHasPaidSubscription(userId),
+    ]);
+    return toPublic(row?.status ?? null, row?.currentPeriodEnd ?? null, !hasPaid);
   } catch {
-    return toPublic(null, null);
+    return toPublic(null, null, true);
   }
 }
 
@@ -82,23 +117,35 @@ export async function activateSubscription(userId: string): Promise<void> {
   await extendSubscriptionDays(userId, subscriptionPeriodDays());
 }
 
-/** One-time trial for new users; stacks with promo codes applied later. */
+/** Grant trial if user has no active access and no paid subscription. */
 export async function ensureTrialForUser(userId: string): Promise<boolean> {
   if (!subscriptionEnforced()) return false;
 
   const trialDays = subscriptionTrialDays();
   if (trialDays <= 0) return false;
 
+  if (await userHasPaidSubscription(userId)) return false;
+
+  const row = await prisma.subscription.findUnique({ where: { userId } });
+  const now = new Date();
+  const hasActive =
+    row?.status === "active" &&
+    row.currentPeriodEnd !== null &&
+    row.currentPeriodEnd > now;
+
+  if (hasActive) return false;
+
+  await extendSubscriptionDays(userId, trialDays);
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { trialGrantedAt: true },
   });
-  if (!user || user.trialGrantedAt) return false;
-
-  await extendSubscriptionDays(userId, trialDays);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { trialGrantedAt: new Date() },
-  });
+  if (user && !user.trialGrantedAt) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { trialGrantedAt: new Date() },
+    });
+  }
   return true;
 }

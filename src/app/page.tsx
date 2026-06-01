@@ -1,11 +1,16 @@
 "use client";
 
+import { AppVersionBanner } from "@/components/AppVersionBanner";
 import { HomeSections } from "@/components/HomeSections";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
 import { TMAHeader } from "@/components/TMAHeader";
+import { TrialBanner } from "@/components/TrialBanner";
+import { PendingRecurringCard } from "@/components/PendingRecurringCard";
 import { TransactionList } from "@/components/TransactionList";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { VehicleMaintenanceBanner } from "@/components/VehicleMaintenanceBanner";
+import { VehicleOdometerDialog } from "@/components/VehicleOdometerDialog";
 import { detectLocale } from "@/lib/i18n";
 import { clearDismissibleHintKeys } from "@/lib/storage-reset";
 import { useStore } from "@/store/useStore";
@@ -32,8 +37,13 @@ export default function HomePage() {
       lang={locale}
     >
       <HouseholdCloudBootstrap />
+      <TrialBanner />
+      <AppVersionBanner />
+      <VehicleMaintenanceBanner />
       <TMAHeader />
       <VoiceRecorder />
+      <VehicleOdometerDialog />
+      <PendingRecurringCard />
       <TransactionList />
       <HomeSections />
     </main>

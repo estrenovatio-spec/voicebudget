@@ -6,10 +6,10 @@ import { apiBootstrap, apiSubscriptionStatus, apiSync } from "@/lib/cloud/client
 import { getTelegramInitData } from "@/lib/cloud/telegram";
 import { useCloudStore } from "@/store/useCloudStore";
 
-function clearStaleCloudSession(): void {
+function clearStaleHouseholdSession(): void {
   const { token, household } = useCloudStore.getState();
   if (token || household) {
-    useCloudStore.getState().clearSession();
+    useCloudStore.getState().clearHouseholdSession();
   }
 }
 
@@ -38,13 +38,16 @@ export async function runHouseholdBootstrap(): Promise<void> {
       useCloudStore.getState().setSubscription(res.subscription);
     }
 
+    if (res.user?.id) {
+      useCloudStore.getState().setCloudUserId(res.user.id);
+    }
     if (res.token && res.sync && res.household) {
       applyHouseholdSync(res.sync, res.token);
       useCloudStore.getState().touchSync();
     } else if (res.token && res.household) {
       useCloudStore.getState().setSession(res.token, res.household);
     } else if (!res.subscription?.enforced || res.subscription.active) {
-      clearStaleCloudSession();
+      clearStaleHouseholdSession();
     }
     return;
   }
@@ -69,7 +72,7 @@ export async function runHouseholdBootstrap(): Promise<void> {
     }
     if (isAuthSyncError(e)) {
       const refreshed = await refreshCloudSessionFromTelegram();
-      if (!refreshed) clearStaleCloudSession();
+      if (!refreshed) clearStaleHouseholdSession();
     }
   }
 }

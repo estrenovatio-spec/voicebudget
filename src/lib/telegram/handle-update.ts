@@ -5,6 +5,7 @@ import {
   createCloudTransaction,
   createHousehold,
   depositCloudGoal,
+  getHouseholdSavingsGoals,
   getUserMembership,
   upsertCloudGoal,
   upsertTelegramUser,
@@ -13,7 +14,6 @@ import { scheduleHouseholdMemberGoogleSheetLog } from "@/lib/google-sheets-sched
 import { subscriptionEnforced } from "@/lib/payments/config";
 import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { dbCategoryToApp } from "@/lib/household/sync-mapper";
-import { dbGoalToApp } from "@/lib/household/planning-mapper";
 import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
 import { applyGoalMonthlyToGoal, resolveGoalMonthlyPlans } from "@/lib/planning/analytics";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
@@ -91,11 +91,6 @@ async function householdPartnerLabel(householdId: string): Promise<string | null
     select: { partnerLabel: true },
   });
   return row?.partnerLabel?.trim() || null;
-}
-
-async function householdGoals(householdId: string): Promise<SavingsGoal[]> {
-  const rows = await prisma.savingsGoal.findMany({ where: { householdId } });
-  return rows.map(dbGoalToApp);
 }
 
 function slugifyGoalId(name: string): string {
@@ -333,8 +328,15 @@ function sttErrorHint(lastError: string | undefined, locale: Locale): string {
   if (code.includes("402") || code.toLowerCase().includes("balance")) {
     return locale === "en" ? "Top up apinet/Groq balance." : "Пополните баланс apinet/Groq.";
   }
-  if (code.includes("401") || code.includes("403")) {
-    return locale === "en" ? "Invalid STT API key." : "Неверный ключ API для голоса.";
+  if (code.includes("429") || code.toLowerCase().includes("rate limit")) {
+    return locale === "en"
+      ? "Groq rate limit — wait a minute or renew the API key."
+      : "Лимит Groq — подождите минуту или обновите ключ API на console.groq.com";
+  }
+  if (code.includes("401") || code.includes("403") || code.toLowerCase().includes("invalid api key")) {
+    return locale === "en"
+      ? "Invalid Groq API key on server — update GROQ_API_KEY on Vercel."
+      : "Неверный ключ Groq на сервере — обновите GROQ_API_KEY на Vercel и Redeploy.";
   }
   if (
     code.toLowerCase().includes("no available channel") ||
@@ -443,7 +445,7 @@ async function processTranscript(
   const membership = await ensureHousehold(user.id, toWebAppUser(from));
   const categories = await householdCategories(membership.householdId);
   const partnerLabel = await householdPartnerLabel(membership.householdId);
-  const goals = await householdGoals(membership.householdId);
+  const goals = await getHouseholdSavingsGoals(membership.householdId);
 
   const parseLocale = inferParseLocale(text, locale);
 
@@ -546,18 +548,31 @@ async function handleVoiceMessage(message: TelegramMessage): Promise<void> {
       return;
     }
 
-    await processTranscript(message, transcript, locale, statusMsgId);
+    try {
+      await processTranscript(message, transcript, locale, statusMsgId);
+    } catch (processErr) {
+      const detail =
+        processErr instanceof Error ? processErr.message.slice(0, 120) : "process_error";
+      console.error("[telegram/voice] after stt", detail, processErr);
+      await replyStatus(
+        chatId,
+        statusMsgId,
+        locale === "en"
+          ? `Heard your message but could not save it.\nTry text: «500 lunch» or open Mini App.\n(${detail})`
+          : `Речь распознана, но не удалось сохранить.\nНапишите текстом: «500 на обед» или откройте Mini App.\n(${detail})`,
+      );
+    }
   } catch (err) {
-    recognitionStatus?.stop();
-    console.error("[telegram/voice]", err);
+    recognitionStatus.stop();
+    const detail = err instanceof Error ? err.message.slice(0, 120) : "voice_error";
+    console.error("[telegram/voice]", detail, err);
     await replyStatus(
       chatId,
       statusMsgId,
       locale === "en"
-        ? "⚠️ Voice failed. Send text: «500 lunch»."
-        : "⚠️ Голос не обработался. Напишите текстом: «500 на обед».",
+        ? `⚠️ Voice failed (${detail}). Send text: «500 lunch».`
+        : `⚠️ Голос не обработался (${detail}). Напишите текстом: «500 на обед».`,
     );
-    throw err;
   }
 }
 

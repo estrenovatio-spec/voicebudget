@@ -12,10 +12,14 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
+import {
+  getCategoryLabel,
+  getFallbackCategoryId,
+  sortCategoriesByLabel,
+} from "@/lib/categories";
 import { formatBudgetPeriodLabel, getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
-import { formatTransactionDate } from "@/lib/format-date";
+import { formatPlanningDeadline, formatTransactionDate } from "@/lib/format-date";
 import {
   avgMonthlyExpenses,
   budgetUsagePercent,
@@ -27,6 +31,10 @@ import {
   todayIso,
 } from "@/lib/planning/analytics";
 import type { GoalMonthlyPlans } from "@/lib/planning/analytics";
+import {
+  recurringDisplayName,
+  skippedPaymentTotal,
+} from "@/lib/planning/recurring-skipped";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
@@ -40,13 +48,6 @@ function replaceTokens(template: string, tokens: Record<string, string>): string
     s = s.split(`{${key}}`).join(value);
   }
   return s;
-}
-
-function formatGoalDeadline(iso: string, locale: Locale): string {
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  if (locale === "en") return `${m}/${d}/${y}`;
-  return `${d}.${m}.${y}`;
 }
 
 function GoalMonthlyPlansBlock({
@@ -63,7 +64,7 @@ function GoalMonthlyPlansBlock({
       {deadline ? (
         <p className="text-xs text-muted-foreground">
           {replaceTokens(t(locale, "planningGoalUntil"), {
-            date: formatGoalDeadline(deadline, locale),
+            date: formatPlanningDeadline(deadline, locale),
           })}
           {" · "}
           {replaceTokens(t(locale, "planningGoalMonthsLeft"), {
@@ -107,6 +108,7 @@ export function PlanningPanel() {
   const addGoal = useStore((s) => s.addGoal);
   const updateGoal = useStore((s) => s.updateGoal);
   const depositGoal = useStore((s) => s.depositGoal);
+  const revertLastGoalDeposit = useStore((s) => s.revertLastGoalDeposit);
   const removeGoal = useStore((s) => s.removeGoal);
   const enableEmergencyFund = useStore((s) => s.enableEmergencyFund);
   const setCategoryBudget = useStore((s) => s.setCategoryBudget);
@@ -153,7 +155,21 @@ export function PlanningPanel() {
 
   const customGoals = savingsGoals.filter((g) => g.kind !== "emergency");
   const emergencyGoal = savingsGoals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency");
-  const expenseCategories = categories.filter((c) => c.type === "expense");
+  const expenseCategories = useMemo(
+    () => sortCategoriesByLabel(categories.filter((c) => c.type === "expense"), categories, locale),
+    [categories, locale],
+  );
+  const sortedCategoryBudgets = useMemo(
+    () =>
+      [...categoryBudgets].sort((a, b) =>
+        getCategoryLabel(a.categoryId, categories, locale).localeCompare(
+          getCategoryLabel(b.categoryId, categories, locale),
+          locale === "ru" ? "ru" : "en",
+          { sensitivity: "base" },
+        ),
+      ),
+    [categoryBudgets, categories, locale],
+  );
   const avgMonthly = useMemo(() => avgMonthlyExpenses(transactions), [transactions]);
   const budgetPeriodLabel = useMemo(
     () => formatBudgetPeriodLabel(getCurrentBudgetPeriod(budgetMonthStartDay), locale),
@@ -188,8 +204,15 @@ export function PlanningPanel() {
   };
 
   const handleDeposit = (id: string) => {
-    const amount = Number(depositAmount.replace(/\s/g, ""));
-    if (!amount) return;
+    const raw = depositAmount.replace(/\s/g, "");
+    const amount = Number(raw);
+    if (!raw.trim()) return;
+    if (!amount) {
+      revertLastGoalDeposit(id);
+      setDepositAmount("");
+      setDepositGoalId(null);
+      return;
+    }
     depositGoal(id, amount);
     setDepositAmount("");
     setDepositGoalId(null);
@@ -417,7 +440,13 @@ export function PlanningPanel() {
                             OK
                           </Button>
                         </div>
-                      ) : (
+                      ) : null}
+                      {depositGoalId === goal.id ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t(locale, "planningGoalDepositUndo")}
+                        </p>
+                      ) : null}
+                      {depositGoalId !== goal.id ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -425,7 +454,7 @@ export function PlanningPanel() {
                         >
                           {t(locale, "planningGoalDeposit")}
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })
@@ -493,7 +522,7 @@ export function PlanningPanel() {
               {categoryBudgets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t(locale, "planningLimitEmpty")}</p>
               ) : (
-                categoryBudgets.map((budget) => {
+                sortedCategoryBudgets.map((budget) => {
                   const spent = monthSpentByCategory(
                     transactions,
                     budget.categoryId,
@@ -655,80 +684,134 @@ export function PlanningPanel() {
               {recurringTransactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t(locale, "planningRecurringEmpty")}</p>
               ) : (
-                recurringTransactions.map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between",
-                      !item.enabled && "border-dashed opacity-70",
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        {item.enabled
-                          ? t(locale, "planningRecurringStatusActive")
-                          : t(locale, "planningRecurringStatusPaused")}
-                      </p>
-                      <p className="font-medium">
-                        {formatMoney(item.amount, locale)} —{" "}
-                        {item.note || getCategoryLabel(item.categoryId, categories, locale)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.frequency === "weekly"
-                          ? t(locale, "planningRecurringWeekly")
-                          : item.frequency === "monthly"
-                            ? t(locale, "planningRecurringMonthly")
-                            : t(locale, "planningRecurringYearly")}
-                        {" · "}
-                        {replaceTokens(t(locale, "planningRecurringNext"), {
-                          date: formatTransactionDate(item.nextRunDate, locale),
-                        })}
-                      </p>
-                      <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="shrink-0">{t(locale, "planningRecurringDate")}</span>
-                        <Input
-                          type="date"
-                          className="h-8 w-auto max-w-[10.5rem] text-xs"
-                          value={item.nextRunDate}
-                          onChange={(e) => handleRecurringDateChange(item.id, e.target.value)}
-                        />
-                      </label>
+                recurringTransactions.map((item) => {
+                  const categoryLabel = getCategoryLabel(item.categoryId, categories, locale);
+                  const title = recurringDisplayName(item, categoryLabel);
+                  const skipped = item.skippedDates ?? [];
+                  const skipTotal = skippedPaymentTotal(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "rounded-lg border p-3",
+                        item.enabled
+                          ? "border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/25"
+                          : "border-red-200/80 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/25",
+                      )}
+                    >
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              "mb-1 inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                              item.enabled
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100"
+                                : "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-100",
+                            )}
+                          >
+                            {item.enabled
+                              ? t(locale, "planningRecurringStatusActive")
+                              : t(locale, "planningRecurringStatusPaused")}
+                          </p>
+                          <p className="font-medium leading-tight">{title}</p>
+                          <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                            {formatMoney(item.amount, locale)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {item.frequency === "weekly"
+                              ? t(locale, "planningRecurringWeekly")
+                              : item.frequency === "monthly"
+                                ? t(locale, "planningRecurringMonthly")
+                                : t(locale, "planningRecurringYearly")}
+                            {" · "}
+                            {replaceTokens(t(locale, "planningRecurringNext"), {
+                              date: formatTransactionDate(item.nextRunDate, locale),
+                            })}
+                          </p>
+                          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="shrink-0">{t(locale, "planningRecurringDate")}</span>
+                            <Input
+                              type="date"
+                              className="h-8 w-auto max-w-[10.5rem] text-xs"
+                              value={item.nextRunDate}
+                              onChange={(e) => handleRecurringDateChange(item.id, e.target.value)}
+                            />
+                          </label>
+                        </div>
+                        {skipped.length > 0 ? (
+                          <div className="min-w-[8.5rem] rounded-md border border-amber-300/70 bg-amber-50/80 px-2.5 py-2 text-xs dark:border-amber-800/60 dark:bg-amber-950/40">
+                            <p className="font-semibold text-amber-900 dark:text-amber-100">
+                              {t(locale, "planningRecurringSkippedTitle")}
+                            </p>
+                            <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                              {skipped.map((d) => (
+                                <li key={d} className="tabular-nums">
+                                  {replaceTokens(t(locale, "planningRecurringSkippedLine"), {
+                                    date: formatTransactionDate(d, locale),
+                                  })}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="mt-1.5 font-semibold tabular-nums text-foreground">
+                              {replaceTokens(t(locale, "planningRecurringSkippedTotal"), {
+                                amount: formatMoney(skipTotal, locale),
+                                count: String(skipped.length),
+                              })}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="mt-2 flex justify-end gap-1 border-t border-border/50 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            item.enabled
+                              ? "border-emerald-300/80 bg-white/80 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
+                              : "border-red-300/80 bg-white/80 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/40",
+                          )}
+                          onClick={() => updateRecurring(item.id, { enabled: !item.enabled })}
+                        >
+                          {item.enabled
+                            ? t(locale, "planningRecurringPause")
+                            : t(locale, "planningRecurringResume")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => removeRecurring(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateRecurring(item.id, { enabled: !item.enabled })}
-                      >
-                        {item.enabled
-                          ? t(locale, "planningRecurringPause")
-                          : t(locale, "planningRecurringResume")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => removeRecurring(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
               <div className="space-y-2 border-t pt-3">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    type="number"
-                    placeholder={t(locale, "planningRecurringAmount")}
-                    value={recAmount}
-                    onChange={(e) => setRecAmount(e.target.value)}
-                  />
-                  <Input
-                    placeholder={t(locale, "planningRecurringNote")}
-                    value={recNote}
-                    onChange={(e) => setRecNote(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">
+                      {t(locale, "planningRecurringAmount")}
+                    </span>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={recAmount}
+                      onChange={(e) => setRecAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">
+                      {t(locale, "planningRecurringName")}
+                    </span>
+                    <Input
+                      placeholder={t(locale, "planningRecurringName")}
+                      value={recNote}
+                      onChange={(e) => setRecNote(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <select

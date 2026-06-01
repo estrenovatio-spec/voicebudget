@@ -1,3 +1,6 @@
+import { parseBalanceOffsets } from "@/lib/balance-offsets";
+import { defaultVehicleGaragePrefs, resolveRemoteGarage } from "@/lib/vehicle";
+import { applyBalanceOffsetsFromCloud } from "@/lib/cloud/apply-balance-offsets";
 import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import { mergeSyncPayload } from "@/lib/cloud/merge-sync";
 import {
@@ -8,12 +11,14 @@ import {
   cloudPushTransaction,
 } from "@/lib/cloud/push";
 import type { SyncPayload } from "@/lib/household/types";
+import { ensureCloudViewerUserId } from "@/lib/cloud/viewer-identity";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
 function emptyPlanningDefaults(sync: SyncPayload): SyncPayload {
   return {
     ...sync,
+    memberUserIds: sync.memberUserIds ?? [],
     savingsGoals: sync.savingsGoals ?? [],
     categoryBudgets: sync.categoryBudgets ?? [],
     recurringTransactions: sync.recurringTransactions ?? [],
@@ -27,6 +32,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const cloud = useCloudStore.getState();
   const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
   const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
+  const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
   const merged = mergeSyncPayload(
     local.transactions,
     local.categories,
@@ -38,11 +44,25 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     remote,
     previouslySynced,
     previouslySyncedCategories,
+    undefined,
+    deletedRecurring,
   );
+
+  const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
+  const prunedDeletedRecurring = (cloud.deletedRecurringIds ?? []).filter((id) =>
+    remoteRecurringIds.has(id),
+  );
+  if (prunedDeletedRecurring.length !== (cloud.deletedRecurringIds ?? []).length) {
+    useCloudStore.getState().setDeletedRecurringIds(prunedDeletedRecurring);
+  }
 
   const savingsGoals = merged.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
 
   useCloudStore.getState().setSession(token, remote.household);
+  ensureCloudViewerUserId(remote.viewerUserId ?? undefined);
+  if (remote.memberUserIds.length > 0) {
+    useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
+  }
   useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
   useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
   // Только id из ответа сервера: иначе локальная цель без успешного push
@@ -57,15 +77,28 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     (remote.recurringTransactions ?? []).map((r) => r.id),
   );
 
+  const balanceOffsets = parseBalanceOffsets(remote.balanceOffsets);
+  useCloudStore.getState().setBalanceOffsets(balanceOffsets);
+
+  const garage = resolveRemoteGarage(
+    remote,
+    local.vehicles,
+    local.vehiclePrefs ?? defaultVehicleGaragePrefs(),
+  );
+
   useStore.setState({
     transactions: merged.transactions,
     categories: merged.categories,
     savingsGoals,
     categoryBudgets: merged.categoryBudgets,
     recurringTransactions: merged.recurringTransactions,
+    vehicles: garage.vehicles,
+    vehiclePrefs: garage.vehiclePrefs,
     // Имена в балансе (userName / partnerName) — только на этом телефоне, не из облака.
     // household.partnerLabel в БД общий для семьи и не подставляется в UI.
   });
+
+  applyBalanceOffsetsFromCloud(balanceOffsets, remote.memberUserIds);
 
   for (const id of merged.localOnlyTransactionIds) {
     const tx = merged.transactions.find((t) => t.id === id);

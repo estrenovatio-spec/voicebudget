@@ -17,7 +17,23 @@ import { parseAmountFromTranscript } from "@/lib/parse-amount";
 import { roundMoneyUp } from "@/lib/format-money";
 import { clearCachedRecommendations } from "@/lib/storage";
 import { normalizeGoalAmount } from "@/lib/goal-from-transaction";
-import { useCategories, useStore } from "@/store/useStore";
+import {
+  collectHouseholdMemberUserIds,
+  decodeUserIdFromHouseholdToken,
+} from "@/lib/cloud/viewer-identity";
+import {
+  resolveTransactionOwnerForViewer,
+  spenderFromViewerOwner,
+} from "@/lib/transaction-owner";
+import { useCloudStore } from "@/store/useCloudStore";
+import {
+  garageHasVehicles,
+  guessDefaultVehicleId,
+  isFuelExpense,
+  isVehicleServiceExpense,
+  partnerDefaultVehicleIds,
+} from "@/lib/vehicle";
+import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { BudgetOwner, Transaction, TxType } from "@/types";
 import { getFallbackCategoryId } from "@/lib/categories";
 
@@ -37,10 +53,20 @@ export function TransactionEditDialog({
   const partnerName = useStore((s) => s.partnerName);
   const categories = useCategories();
   const savingsGoals = useStore((s) => s.savingsGoals);
+  const allTransactions = useTransactions();
+  const token = useCloudStore((s) => s.token);
+  const cloudUserId = useCloudStore((s) => s.cloudUserId);
+  const storedMemberIds = useCloudStore((s) => s.householdMemberUserIds);
+  const vehicles = useStore((s) => s.vehicles);
+  const vehiclePrefs = useStore((s) => s.vehiclePrefs);
+  const lastFuelVehicleId = useStore((s) => s.lastFuelVehicleId);
   const updateTransaction = useStore((s) => s.updateTransaction);
   const deleteTransaction = useStore((s) => s.deleteTransaction);
+  const syncVehicleFromTransaction = useStore((s) => s.syncVehicleFromTransaction);
 
   const [amount, setAmount] = useState("");
+  const [odometerKm, setOdometerKm] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
   const [txType, setTxType] = useState<TxType>("expense");
   const [categoryId, setCategoryId] = useState("");
   const [owner, setOwner] = useState<BudgetOwner>("me");
@@ -54,22 +80,42 @@ export function TransactionEditDialog({
       return;
     }
     if (!transaction) return;
-    setAmount(String(transaction.amount));
-    setTxType(transaction.type);
-    setCategoryId(transaction.categoryId);
-    setOwner(transaction.owner ?? "me");
-    setGoalId(transaction.goalId ?? "");
-    setGoalAmount(
-      transaction.goalAmount && transaction.goalAmount > 0
-        ? String(transaction.goalAmount)
-        : "",
+    const raw =
+      useStore.getState().transactions.find((t) => t.id === transaction.id) ?? transaction;
+    const viewerUserId = decodeUserIdFromHouseholdToken(token) ?? cloudUserId ?? null;
+    const memberIds = collectHouseholdMemberUserIds(
+      storedMemberIds,
+      allTransactions,
+      viewerUserId,
     );
+    setAmount(String(raw.amount));
+    setTxType(raw.type);
+    setCategoryId(raw.categoryId);
+    setOwner(resolveTransactionOwnerForViewer(raw, viewerUserId, memberIds));
+    setGoalId(raw.goalId ?? "");
+    setGoalAmount(
+      raw.goalAmount && raw.goalAmount > 0 ? String(raw.goalAmount) : "",
+    );
+    setOdometerKm(raw.odometerKm != null ? String(raw.odometerKm) : "");
+    const partnerIds = partnerDefaultVehicleIds(vehiclePrefs, viewerUserId);
+    const defaultVid =
+      raw.vehicleId ??
+      guessDefaultVehicleId(vehicles, vehiclePrefs, viewerUserId, partnerIds, lastFuelVehicleId) ??
+      "";
+    setVehicleId(defaultVid);
     setConfirmDelete(false);
-  }, [transaction, open]);
+  }, [transaction?.id, open]);
 
   if (!transaction) return null;
 
-  const typeCategories = getCategoriesByType(categories, txType);
+  const typeCategories = getCategoriesByType(categories, txType, locale);
+  const isTransportFuelOrService =
+    txType === "expense" &&
+    categoryId === "transport" &&
+    (isFuelExpense({ type: txType, categoryId, note: transaction.note }) ||
+      isVehicleServiceExpense({ type: txType, categoryId, note: transaction.note }));
+  const showVehicleFields = garageHasVehicles(vehicles) && isTransportFuelOrService;
+  const showOdometer = showVehicleFields;
 
   const handleTypeChange = (next: TxType) => {
     setTxType(next);
@@ -87,19 +133,47 @@ export function TransactionEditDialog({
     const parsed = parseAmountFromTranscript(amount, locale);
     if (!Number.isFinite(parsed) || parsed <= 0) return;
 
-    const parsedGoal = goalId ? parseAmountFromTranscript(goalAmount || amount, locale) : 0;
+    const goalAmountRaw = goalAmount.trim();
+    const parsedGoal =
+      goalId && goalAmountRaw.length > 0
+        ? parseAmountFromTranscript(goalAmount, locale)
+        : 0;
+
+    const raw =
+      useStore.getState().transactions.find((t) => t.id === transaction.id) ?? transaction;
+    const viewerUserId = decodeUserIdFromHouseholdToken(token) ?? cloudUserId ?? null;
+    const memberIds = collectHouseholdMemberUserIds(
+      storedMemberIds,
+      allTransactions,
+      viewerUserId,
+    );
+    const spender = partnerName
+      ? spenderFromViewerOwner(viewerUserId, memberIds, owner)
+      : null;
+
+    const odometerRaw = odometerKm.trim().replace(/\s/g, "");
+    const odometer =
+      odometerRaw.length > 0 && showVehicleFields
+        ? Math.max(0, Math.round(Number(odometerRaw) || 0))
+        : null;
+    const vid = showVehicleFields && vehicleId ? vehicleId : null;
 
     updateTransaction(transaction.id, {
       amount: roundMoneyUp(parsed),
       type: txType,
       categoryId,
-      owner: partnerName ? owner : undefined,
-      goalId: txType === "income" && goalId ? goalId : null,
+      owner: spender?.owner,
+      createdBy: spender?.createdBy,
+      goalId: txType === "income" && goalId && parsedGoal > 0 ? goalId : null,
       goalAmount:
-        txType === "income" && goalId
-          ? normalizeGoalAmount(parsedGoal > 0 ? parsedGoal : parsed)
+        txType === "income" && goalId && parsedGoal > 0
+          ? normalizeGoalAmount(parsedGoal)
           : null,
+      ...(showVehicleFields ? { odometerKm: odometer, vehicleId: vid } : {}),
     });
+    if (odometer != null) {
+      syncVehicleFromTransaction(transaction.id);
+    }
     clearCachedRecommendations();
     onOpenChange(false);
   };
@@ -182,6 +256,39 @@ export function TransactionEditDialog({
               ))}
             </select>
           </div>
+          {showVehicleFields ? (
+            <div className="space-y-1.5">
+              {vehicles.length > 1 ? (
+                <>
+                  <label className="text-sm font-medium" htmlFor="tx-vehicle">
+                    {t(locale, "vehiclePickInTx")}
+                  </label>
+                  <select
+                    id="tx-vehicle"
+                    value={vehicleId}
+                    onChange={(e) => setVehicleId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : null}
+              <label className="text-sm font-medium" htmlFor="tx-odometer">
+                {t(locale, "vehicleTxOdometer")}
+              </label>
+              <Input
+                id="tx-odometer"
+                inputMode="numeric"
+                value={odometerKm}
+                onChange={(e) => setOdometerKm(e.target.value)}
+                placeholder="125000"
+              />
+            </div>
+          ) : null}
           {txType === "income" && savingsGoals.length > 0 ? (
             <div className="space-y-2 rounded-md border border-dashed p-3">
               <p className="text-sm font-medium">{t(locale, "txGoal")}</p>

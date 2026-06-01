@@ -1,7 +1,14 @@
+import { envInt, envTruthy } from "@/lib/payments/env-flags";
+
 export function isPaymentsConfigured(): boolean {
   const shopId = process.env.YOOKASSA_SHOP_ID?.trim();
   const secret = process.env.YOOKASSA_SECRET_KEY?.trim();
   return Boolean(shopId && secret);
+}
+
+/** Test billing UX (trial banner, paywall) without live YooKassa. */
+export function subscriptionBillingTestMode(): boolean {
+  return envTruthy("SUBSCRIPTION_BILLING_TEST", "SUBSCRIPTION_BILLING_TEST_PREVIEW");
 }
 
 function isSubscriptionFreePeriod(): boolean {
@@ -14,6 +21,7 @@ function isSubscriptionFreePeriod(): boolean {
 
 /** When false — cloud works without paywall (dev or keys not set yet). */
 export function subscriptionEnforced(): boolean {
+  if (subscriptionBillingTestMode()) return true;
   if (!isPaymentsConfigured()) return false;
   if (process.env.YOOKASSA_SUBSCRIPTION_DISABLED === "true") return false;
   if (isSubscriptionFreePeriod()) return false;
@@ -32,11 +40,11 @@ export function subscriptionPeriodDays(): number {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
-/** Free trial days for new users (stacks with promo codes). 0 = disabled. */
+/** Free trial days for new users (stacks with promo codes). Default 31 in billing test mode. */
 export function subscriptionTrialDays(): number {
-  const raw = process.env.SUBSCRIPTION_TRIAL_DAYS?.trim();
-  const n = raw ? Number.parseInt(raw, 10) : 0;
-  return Number.isFinite(n) && n >= 0 ? n : 0;
+  const n = envInt("SUBSCRIPTION_TRIAL_DAYS", "SUBSCRIPTION_TRIAL_DAYS_PREVIEW");
+  if (n !== undefined && n >= 0) return n;
+  return subscriptionBillingTestMode() ? 31 : 0;
 }
 
 export function yookassaReturnUrl(): string {

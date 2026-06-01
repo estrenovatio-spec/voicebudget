@@ -29,7 +29,10 @@ export interface RecurringTransaction {
   amount: number;
   type: TxType;
   categoryId: string;
+  /** Название подписки / операции (не заметка) */
   note: string;
+  /** Даты периодов, когда нажали «Не было» (ISO YYYY-MM-DD) */
+  skippedDates?: string[];
   owner: BudgetOwner;
   frequency: RecurringFrequency;
   dayOfMonth: number | null;

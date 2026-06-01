@@ -1,15 +1,17 @@
 import { cleanTranscript } from "@/lib/transcript-guard";
 import type { SttProvider } from "@/lib/stt-providers";
+import { groqSttModelFallbacks } from "@/lib/stt-providers";
 
-export async function transcribeWhisperFetch(
+async function transcribeWhisperFetchOnce(
   provider: SttProvider,
+  model: string,
   file: File,
   locale: string,
   timeoutMs: number,
 ): Promise<string> {
   const form = new FormData();
   form.append("file", file);
-  form.append("model", provider.model);
+  form.append("model", model);
   form.append("language", locale === "en" ? "en" : "ru");
   form.append("response_format", "json");
   form.append("temperature", "0");
@@ -56,4 +58,36 @@ export async function transcribeWhisperFetch(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function transcribeWhisperFetch(
+  provider: SttProvider,
+  file: File,
+  locale: string,
+  timeoutMs: number,
+): Promise<string> {
+  const models =
+    provider.id === "groq"
+      ? groqSttModelFallbacks(provider.model)
+      : [provider.model];
+
+  let lastError = "";
+  for (const model of models) {
+    try {
+      return await transcribeWhisperFetchOnce(provider, model, file, locale, timeoutMs);
+    } catch (e) {
+      lastError = e instanceof Error ? e.message.slice(0, 220) : "error";
+      const retryable =
+        lastError.includes("404") ||
+        lastError.includes("model") ||
+        lastError.includes("decommissioned") ||
+        lastError.includes("not found") ||
+        lastError.includes("413") ||
+        lastError.includes("too large");
+      if (!retryable || model === models[models.length - 1]) {
+        throw new Error(lastError);
+      }
+    }
+  }
+  throw new Error(lastError || "all_models_failed");
 }

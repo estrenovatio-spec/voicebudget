@@ -1,12 +1,12 @@
 "use client";
 
 import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
+import { getCategoryLabel, getFallbackCategoryId, sortCategoriesByLabel } from "@/lib/categories";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,10 @@ export function CategoryManager() {
   const [editEn, setEditEn] = useState("");
   const [editKeywords, setEditKeywords] = useState("");
 
-  const list = categories.filter((c) => c.type === tab);
+  const list = useMemo(
+    () => sortCategoriesByLabel(categories.filter((c) => c.type === tab), categories, locale),
+    [categories, tab, locale],
+  );
 
   const handleAdd = () => {
     const name = newName.trim();

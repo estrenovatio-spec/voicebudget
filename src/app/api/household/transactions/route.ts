@@ -14,8 +14,11 @@ const bodySchema = z.object({
   note: z.string(),
   date: z.string(),
   owner: z.enum(["me", "partner"]),
+  createdBy: z.string().min(1).optional(),
   goalId: z.string().nullable().optional(),
   goalAmount: z.number().nullable().optional(),
+  confirmed: z.boolean().optional(),
+  recurringId: z.string().nullable().optional(),
 });
 
 export async function POST(req: NextRequest) {

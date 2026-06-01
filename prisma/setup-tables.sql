@@ -58,6 +58,8 @@ CREATE TABLE "Transaction" (
     "date" TEXT NOT NULL,
     "owner" TEXT NOT NULL DEFAULT 'me',
     "createdBy" TEXT,
+    "confirmed" BOOLEAN NOT NULL DEFAULT true,
+    "recurringId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -66,15 +68,15 @@ CREATE TABLE "Transaction" (
 
 -- CreateTable
 CREATE TABLE "Category" (
-    "id" TEXT NOT NULL,
     "householdId" TEXT NOT NULL,
+    "id" TEXT NOT NULL,
     "type" "TxType" NOT NULL,
     "labelRu" TEXT NOT NULL,
     "labelEn" TEXT NOT NULL,
     "keywords" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "isSystem" BOOLEAN NOT NULL DEFAULT true,
 
-    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("householdId", "id")
 );
 
 -- CreateIndex

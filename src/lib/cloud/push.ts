@@ -13,6 +13,15 @@ import {
   apiUpsertGoal,
   apiUpsertRecurring,
 } from "@/lib/cloud/client";
+import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
+import {
+  apiDeleteGarage,
+  apiPatchBalanceOffset,
+  apiPutGarage,
+  apiSync,
+} from "@/lib/cloud/client";
+import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
+import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
 import { useCloudStore } from "@/store/useCloudStore";
 import type { BudgetOwner, CategoryDefinition, Transaction, TxType } from "@/types";
 
@@ -25,26 +34,70 @@ export function isCloudSyncActive(): boolean {
   return Boolean(token());
 }
 
-export async function cloudPushTransaction(tx: Transaction): Promise<void> {
+async function pullCloudAfterWrite(): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    const res = await apiSync(t);
+    applyHouseholdSync(res.sync, t);
+    useCloudStore.getState().touchSync();
+  } catch {
+    /* retry on next poll */
+  }
+}
+
+export async function cloudPushTransaction(
+  tx: Transaction,
+  opts?: { skipPull?: boolean },
+): Promise<void> {
   const t = token();
   if (!t) return;
   try {
     await apiCreateTransaction(t, tx);
+    if (!opts?.skipPull) await pullCloudAfterWrite();
   } catch {
     /* offline / retry later via manual sync */
+  }
+}
+
+/** Пара переводов — один pull после обеих записей, чтобы не затереть createdBy партнёра. */
+export async function cloudPushPartnerTransferPair(
+  expense: Transaction,
+  income: Transaction,
+): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    await apiCreateTransaction(t, expense);
+    await apiCreateTransaction(t, income);
+    await pullCloudAfterWrite();
+  } catch {
+    /* offline */
   }
 }
 
 export async function cloudPushTransactionUpdate(
   id: string,
   patch: Partial<
-    Pick<Transaction, "amount" | "categoryId" | "owner" | "type" | "goalId" | "goalAmount">
+    Pick<
+      Transaction,
+      | "amount"
+      | "categoryId"
+      | "owner"
+      | "createdBy"
+      | "type"
+      | "goalId"
+      | "goalAmount"
+      | "odometerKm"
+      | "vehicleId"
+    >
   >,
 ): Promise<void> {
   const t = token();
   if (!t) return;
   try {
     await apiUpdateTransaction(t, id, patch);
+    await pullCloudAfterWrite();
   } catch {
     /* ignore */
   }
@@ -95,6 +148,7 @@ export async function cloudPushGoal(goal: SavingsGoal): Promise<void> {
   if (!t) return;
   try {
     await apiUpsertGoal(t, goal);
+    await pullCloudAfterWrite();
   } catch {
     /* ignore — цель остаётся локально, push повторится как localOnly */
   }
@@ -115,6 +169,7 @@ export async function cloudPushCategoryBudget(budget: CategoryBudget): Promise<v
   if (!t) return;
   try {
     await apiUpsertCategoryBudget(t, budget);
+    await pullCloudAfterWrite();
   } catch {
     /* ignore */
   }
@@ -147,6 +202,54 @@ export async function cloudPushRecurringDelete(id: string): Promise<void> {
     await apiDeleteRecurring(t, id);
   } catch {
     /* ignore */
+  }
+}
+
+export async function cloudPushGarage(
+  vehicles: Vehicle[],
+  vehiclePrefs: VehicleGaragePrefs,
+): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    const res = await apiPutGarage(t, vehicles, vehiclePrefs);
+    applyHouseholdSync(res.sync, t);
+    useCloudStore.getState().touchSync();
+  } catch {
+    /* offline */
+  }
+}
+
+export async function cloudDeleteGarage(): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    const res = await apiDeleteGarage(t);
+    applyHouseholdSync(res.sync, t);
+    useCloudStore.getState().touchSync();
+  } catch {
+    /* offline */
+  }
+}
+
+/** Синхронизация «реально в кармане» с партнёром (по userId в облаке). */
+export async function cloudPushBalanceOffset(
+  owner: BudgetOwner,
+  offset: number,
+): Promise<void> {
+  const t = token();
+  if (!t) return;
+  const cloud = useCloudStore.getState();
+  const viewerId = decodeUserIdFromHouseholdToken(t) ?? cloud.cloudUserId;
+  if (!viewerId) return;
+  const partnerId = cloud.householdMemberUserIds.find((id) => id !== viewerId);
+  const targetUserId = owner === "me" ? viewerId : partnerId;
+  if (!targetUserId) return;
+  try {
+    await apiPatchBalanceOffset(t, targetUserId, offset);
+    await pullCloudAfterWrite();
+  } catch {
+    /* колонка balanceOffsets ещё не в БД — см. prisma/migrate-planning-and-balance.sql */
   }
 }
 

@@ -1,7 +1,8 @@
-/** Имя бота без @ — из NEXT_PUBLIC_TG_BOT_NAME или Fin_BU_bot */
+/** Имя бота без @. Preview-сборка: NEXT_PUBLIC_TG_BOT_NAME_PREVIEW (только Preview на Vercel). */
 export function getTelegramBotName(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_TG_BOT_NAME?.trim().replace(/^@/, "");
-  return fromEnv || "Fin_BU_bot";
+  const preview = process.env.NEXT_PUBLIC_TG_BOT_NAME_PREVIEW?.trim().replace(/^@/, "");
+  const prod = process.env.NEXT_PUBLIC_TG_BOT_NAME?.trim().replace(/^@/, "");
+  return preview || prod || "Fin_BU_bot";
 }
 
 export function getTelegramBotMention(): string {

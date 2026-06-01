@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { applyLightTheme, syncThemeFromTelegram } from "@/lib/app-theme";
-import { detectLocale } from "@/lib/i18n";
+import { detectAppLocale } from "@/lib/locale-infer";
 import { applyTelegramDefaultUserName, whenStoreHydrated } from "@/lib/telegram-default-names";
 import { useStore } from "@/store/useStore";
 
@@ -28,7 +28,7 @@ export function TelegramInit() {
     });
 
     const user = tg.initDataUnsafe?.user;
-    if (user?.language_code) setLocale(detectLocale(user.language_code));
+    setLocale(detectAppLocale(user?.language_code));
 
     const onBack = () => {
       window.history.back();

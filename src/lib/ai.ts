@@ -2,6 +2,7 @@ import {
   type CategoryDefinition,
   detectCategoryId,
   detectTypeFromCategories,
+  detectTypeFromVerbs,
   getCategoryIdsForPrompt,
   getDefaultCategories,
   getFallbackCategoryId,
@@ -51,6 +52,7 @@ Rules:
 - If only one operation → "transactions" array with exactly 1 element.
 - Owner is per operation: «купил цветы жене» = user spent (not partner); «жена потратила» = partner.
 - categoryId MUST be one of the allowed ids for the transaction type.
+- Prefer specific categories from the phrase (фестиваль, ретрит, аквапарк, кино, остров мечты → entertainment; NOT "other" if a better id fits).
 - Expense categoryIds: ${expenseIds}
 - Income categoryIds: ${incomeIds}
 - Russian amounts: "100 тысяч" / "100 тыс" = 100000; "1.5 млн" = 1500000; "100.000" rubles = 100000 (dot as thousands separator, NOT 100.0).
@@ -58,7 +60,9 @@ Rules:
 - "ксюше возврат 100" / "вернули 100" → type income, categoryId refund.
 - Rental income: "субаренда", "арендный доход", "получил за аренду", "сдача квартиры" → type income (freelance or custom), NOT expense rent.
 - currency MUST always be "RUB" (even if user says euro, dollar, €, $ — record amount as rubles).
-- If amount missing for an item → 0. If type unclear → "expense". Locale: ${locale}.
+- If amount missing for an item → 0. If type unclear → "expense".
+- «Потратил», «отдал», «купил», «оплатил» → type expense (even if category word also exists for income).
+- Locale: ${locale}.
 ${partnerRule}
 `;
 };
@@ -94,7 +98,16 @@ const INCOME_KEYWORDS_RU = [
   "поступила арендная плата",
 ];
 const INCOME_KEYWORDS_EN = ["received", "salary", "income", "earned", "got paid"];
-const EXPENSE_KEYWORDS_RU = ["потратил", "купил", "оплатил", "расход", "потратила"];
+const EXPENSE_KEYWORDS_RU = [
+  "потратил",
+  "купил",
+  "оплатил",
+  "отдал",
+  "отдала",
+  "заплатил",
+  "расход",
+  "потратила",
+];
 const EXPENSE_KEYWORDS_EN = ["spent", "bought", "paid", "expense"];
 
 export function detectType(
@@ -102,6 +115,8 @@ export function detectType(
   locale: Locale,
   categories?: CategoryDefinition[],
 ): TxType {
+  const fromVerbs = detectTypeFromVerbs(transcript, locale);
+  if (fromVerbs) return fromVerbs;
   if (categories?.length) {
     const fromCats = detectTypeFromCategories(transcript, categories);
     if (fromCats) return fromCats;

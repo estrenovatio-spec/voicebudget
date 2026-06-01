@@ -37,7 +37,16 @@ function mapCloudError(locale: "ru" | "en", error: string): string {
   return text;
 }
 
-export function HouseholdCloudPanel() {
+type HouseholdCloudPanelProps = {
+  /** Без внешней рамки — секция SettingsSection в настройках */
+  embedded?: boolean;
+};
+
+function shellClass(embedded: boolean, base: string, embeddedClass = "space-y-3") {
+  return embedded ? embeddedClass : base;
+}
+
+export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelProps) {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
   const {
@@ -71,7 +80,7 @@ export function HouseholdCloudPanel() {
 
   if (subscriptionRequired && subscription) {
     return (
-      <div className="space-y-3">
+      <div className={shellClass(embedded, "space-y-3")}>
         <PaywallPanel subscription={subscription} />
         {household && (
           <p className="text-xs text-muted-foreground">{t(locale, "paywallHouseholdPaused")}</p>
@@ -83,7 +92,12 @@ export function HouseholdCloudPanel() {
 
   if (!isTelegram && !isActive && !hasCloudAuth()) {
     return (
-      <div className="space-y-3 rounded-lg border border-dashed p-3">
+      <div
+        className={shellClass(
+          embedded,
+          "space-y-3 rounded-lg border border-dashed border-border/70 p-3",
+        )}
+      >
         <div className="space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudWebLoginTitle")}</p>
           <p className="text-xs text-muted-foreground">{t(locale, "cloudWebLoginHint")}</p>
@@ -146,7 +160,12 @@ export function HouseholdCloudPanel() {
 
   if (loggedInWeb && !showNewHousehold) {
     return (
-      <div className="space-y-3 rounded-lg border border-dashed p-3">
+      <div
+        className={shellClass(
+          embedded,
+          "space-y-3 rounded-lg border border-dashed border-border/70 p-3",
+        )}
+      >
         <div className="space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudWebAttachTitle")}</p>
           <p className="text-xs text-muted-foreground">{t(locale, "cloudWebAttachHint")}</p>
@@ -172,18 +191,29 @@ export function HouseholdCloudPanel() {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-dashed p-3">
+    <div
+      className={shellClass(
+        embedded,
+        "space-y-3 rounded-lg border border-dashed border-border/70 p-3",
+      )}
+    >
       {serverConfigured === false && (
         <p className="rounded-md border border-amber-400/40 bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
           {t(locale, "cloudNotConfigured")}
         </p>
       )}
-      <div className="space-y-1">
-        <p className="text-sm font-medium">{t(locale, "cloudTitle")}</p>
+      {!embedded ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{t(locale, "cloudTitle")}</p>
+          <p className="text-xs text-muted-foreground">
+            {loggedInWeb ? t(locale, "cloudHintNewHousehold") : t(locale, "cloudHint")}
+          </p>
+        </div>
+      ) : (
         <p className="text-xs text-muted-foreground">
           {loggedInWeb ? t(locale, "cloudHintNewHousehold") : t(locale, "cloudHint")}
         </p>
-      </div>
+      )}
 
       <div className="flex gap-2">
         <Button
@@ -235,7 +265,7 @@ export function HouseholdCloudPanel() {
         {t(locale, "cloudCreate")}
       </Button>
 
-      <div className="space-y-2 border-t pt-3">
+      <div className="space-y-2 border-t border-border/60 pt-3">
         <p className="text-xs font-medium">{t(locale, "cloudJoinTitle")}</p>
         <Input
           value={joinCode}

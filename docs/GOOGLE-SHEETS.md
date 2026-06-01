@@ -142,7 +142,10 @@ curl -sS -L -X POST "https://script.google.com/macros/s/ВАШ_ID/exec" \
 
 ### Проверка через production API (без удаления пользователей)
 
-Только **добавляет строку в таблицу**, базу не трогает:
+Только **добавляет строку в таблицу**, базу не трогает.
+
+**Bearer** — значение из Vercel → `HOUSEHOLD_SESSION_SECRET` (или `CLOUD_WIPE_SECRET`, если задан — подойдёт любой из админ-секретов).  
+Это **не** GitHub-токен (`ghp_...`) и не пароль от Vercel.
 
 ```bash
 # Тестовая строка (id 999999001, имя «Тест VoiceBudget»)
@@ -151,6 +154,12 @@ curl -sS -X POST "https://voicebudget.vercel.app/api/admin/test-google-sheets" \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
+
+| Ответ | Значение |
+|-------|----------|
+| `{"error":"unauthorized"}` | Неверный Bearer (другой секрет, лишние пробелы, подставили `ghp_...`) |
+| `{"ok":true,...}` | Авторизация ок, строка ушла в таблицу |
+| `Google Sheets webhook HTTP 405` | Часто **старый код** на сервере повторял POST после редиректа Google (нужен `redirect: "follow"` в одном запросе). Или неверный URL — только `/exec`, не `/dev` и не ссылка на таблицу |
 
 Догоняющая запись по уже существующему пользователю (данные из БД → строка в таблице):
 

@@ -14,13 +14,30 @@ import {
   slugifyCategoryId,
 } from "@/lib/categories";
 import { getTrackingStartDate } from "@/lib/budget-analytics";
-import { clampMonthStartDay, getCurrentBudgetPeriod, isDateInBudgetPeriod } from "@/lib/budget-period";
+import {
+  clampMonthStartDay,
+  getCurrentBudgetPeriod,
+  getPreviousBudgetPeriod,
+  isDateInBudgetPeriod,
+  type BudgetPeriod,
+} from "@/lib/budget-period";
 import { applyDetectedOwner } from "@/lib/detect-owner";
 import { hasPartnerBudget } from "@/lib/owner-labels";
+import {
+  collectHouseholdMemberUserIds,
+  decodeUserIdFromHouseholdToken,
+  ensureCloudViewerUserId,
+  findHouseholdPartnerUserId,
+} from "@/lib/cloud/viewer-identity";
+import { countsInBalance, countsInHouseholdTotal } from "@/lib/transaction-confirmed";
+import { buildPartnerTransferPair } from "@/lib/partner-transfer";
+import { GOAL_JAR_CATEGORY_ID } from "@/lib/planning/goal-transfer";
+import { mapTransactionsForViewer } from "@/lib/transaction-owner";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import { roundMoneyUp } from "@/lib/format-money";
 import {
+  cloudPushBalanceOffset,
   cloudPushCategory,
   cloudPushCategoryBudget,
   cloudPushCategoryBudgetDelete,
@@ -29,9 +46,12 @@ import {
   cloudPushGoalDelete,
   cloudPushRecurring,
   cloudPushRecurringDelete,
+  cloudPushPartnerTransferPair,
   cloudPushTransaction,
   cloudPushTransactionDelete,
   cloudPushTransactionUpdate,
+  cloudDeleteGarage,
+  cloudPushGarage,
 } from "@/lib/cloud/push";
 import {
   applyGoalDelta,
@@ -44,9 +64,8 @@ import {
   todayIso,
   advanceRecurringDate,
 } from "@/lib/planning/analytics";
-import {
-  recurringToParsedTransaction,
-} from "@/lib/planning/recurring-run";
+import { appendSkippedDate } from "@/lib/planning/recurring-skipped";
+import { recurringToParsedTransaction } from "@/lib/planning/recurring-run";
 import { useCloudStore } from "@/store/useCloudStore";
 import { resolveTransactionAmount } from "@/lib/parse-amount";
 import type {
@@ -64,6 +83,25 @@ import type {
   SavingsGoal,
 } from "@/types/planning";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
+import type {
+  PendingOdometerPrompt,
+  ServiceAlertLevel,
+  Vehicle,
+  VehicleGaragePrefs,
+} from "@/types/vehicle";
+import {
+  applyFuelOdometer,
+  applyVehicleService,
+  defaultVehicle,
+  defaultVehicleGaragePrefs,
+  guessDefaultVehicleId,
+  isFuelExpense,
+  isVehicleServiceExpense,
+  markServiceAlertShown,
+  needsVehicleOdometerFlow,
+  partnerDefaultVehicleIds,
+  updateVehicleInList,
+} from "@/lib/vehicle";
 
 interface StoreState {
   transactions: Transaction[];
@@ -87,24 +125,62 @@ interface StoreState {
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   recurringTransactions: RecurringTransaction[];
+  vehicles: Vehicle[];
+  vehiclePrefs: VehicleGaragePrefs;
+  /** Последняя машина в заправке (локально, для подстановки) */
+  lastFuelVehicleId: string | null;
+  pendingOdometerPrompt: PendingOdometerPrompt | null;
   /** День начала бюджетного месяца (1 = календарный, 25 = с 25-го по 24-е) */
   budgetMonthStartDay: number;
+  /** Период для статистики; null = текущий отчётный месяц */
+  statsPeriodOverride: { from: string; to: string } | null;
+  setStatsPeriodRange: (from: string, to: string) => void;
+  resetStatsPeriod: () => void;
+  setStatsPreviousBudgetPeriod: () => void;
   /** Блок «Цели и планирование» свёрнут */
   planningPanelCollapsed: boolean;
   setPlanningPanelCollapsed: (collapsed: boolean) => void;
-  addTransaction: (data: ParsedTransaction, transcript?: string) => void;
+  addTransaction: (
+    data: ParsedTransaction,
+    transcript?: string,
+    opts?: { skipCloudPush?: boolean },
+  ) => void;
   updateTransaction: (
     id: string,
     patch: {
       amount?: number;
       categoryId?: string;
       owner?: BudgetOwner;
+      createdBy?: string | null;
       type?: TxType;
       goalId?: string | null;
       goalAmount?: number | null;
+      odometerKm?: number | null;
+      vehicleId?: string | null;
     },
   ) => void;
   deleteTransaction: (id: string) => void;
+  addVehicle: (name?: string) => void;
+  removeVehicleById: (vehicleId: string) => void;
+  saveVehicleGarage: (vehicles: Vehicle[], vehiclePrefs?: VehicleGaragePrefs) => void;
+  updateVehicleInGarage: (vehicleId: string, patch: Partial<Vehicle>) => void;
+  setVehicleGarageMode: (mode: VehicleGaragePrefs["mode"]) => void;
+  setVehicleMemberPref: (
+    userId: string,
+    patch: Partial<import("@/types/vehicle").VehicleMemberPref>,
+  ) => void;
+  submitOdometerForTransaction: (
+    transactionId: string,
+    vehicleId: string,
+    odometerKm: number,
+  ) => void;
+  dismissServiceAlert: (vehicleId: string, level: ServiceAlertLevel) => void;
+  clearPendingOdometer: () => void;
+  syncVehicleFromTransaction: (transactionId: string) => void;
+  /** Регулярный расход — списать с баланса */
+  confirmPendingTransaction: (id: string) => boolean;
+  /** Регулярный расход — не было оплаты */
+  dismissPendingTransaction: (id: string) => boolean;
   setLocale: (locale: Locale) => void;
   setIsRecording: (value: boolean) => void;
   setUserName: (name: string | null) => void;
@@ -115,6 +191,8 @@ interface StoreState {
   cashOffsetMe: number;
   cashOffsetPartner: number;
   setActualCash: (owner: BudgetOwner, actualAmount: number) => void;
+  /** Перевод между мной и партнёром (в общий баланс не входит) */
+  transferToPartner: (amount: number, direction: "to_partner" | "from_partner") => boolean;
   setBudgetMonthStartDay: (day: number) => void;
   addCategory: (type: TxType, labelRu: string, labelEn: string, keywords?: string[]) => string | null;
   updateCategory: (
@@ -137,6 +215,8 @@ interface StoreState {
     patch: { name?: string; targetAmount?: number; deadline?: string | null },
   ) => boolean;
   depositGoal: (id: string, amount: number) => boolean;
+  /** Отменить последнее «в копилку» по цели (если ввели 0 при отложении) */
+  revertLastGoalDeposit: (goalId: string) => boolean;
   removeGoal: (id: string) => boolean;
   enableEmergencyFund: (months: 3 | 6) => void;
   setEmergencyMonths: (months: 3 | 6) => void;
@@ -164,8 +244,19 @@ function withOwner(tx: Transaction): Transaction {
   return { ...tx, owner: tx.owner ?? "me" };
 }
 
+function transactionsForCurrentViewer(transactions: Transaction[]): Transaction[] {
+  const cloud = useCloudStore.getState();
+  const cloudUserId = ensureCloudViewerUserId();
+  const householdMemberUserIds = collectHouseholdMemberUserIds(
+    cloud.householdMemberUserIds,
+    transactions,
+    cloudUserId,
+  );
+  return mapTransactionsForViewer(transactions, cloudUserId, householdMemberUserIds).map(withOwner);
+}
+
 function filterByHousehold(transactions: Transaction[], filter: HouseholdFilter): Transaction[] {
-  const list = transactions.map(withOwner);
+  const list = transactionsForCurrentViewer(transactions);
   if (filter === "all") return list;
   return list.filter((tx) => tx.owner === filter);
 }
@@ -178,6 +269,65 @@ function calcBalance(transactions: Transaction[]): number {
     }
     return acc - tx.amount;
   }, 0);
+}
+
+function pushGarageFromState(get: () => StoreState) {
+  const { vehicles, vehiclePrefs } = get();
+  void cloudPushGarage(vehicles, vehiclePrefs);
+}
+
+function applyVehicleAfterTransaction(
+  get: () => StoreState,
+  set: (partial: Partial<StoreState> | ((s: StoreState) => Partial<StoreState>)) => void,
+  created: Transaction,
+) {
+  const { vehicles, vehiclePrefs, lastFuelVehicleId } = get();
+  if (!needsVehicleOdometerFlow(created, vehicles)) return;
+
+  const viewerUserId = ensureCloudViewerUserId();
+  const partnerIds = partnerDefaultVehicleIds(vehiclePrefs, viewerUserId);
+  const vehicleId =
+    created.vehicleId ??
+    guessDefaultVehicleId(vehicles, vehiclePrefs, viewerUserId, partnerIds, lastFuelVehicleId);
+  if (!vehicleId) return;
+
+  const kind = isVehicleServiceExpense(created) ? "service" : "fuel";
+
+  if (!created.vehicleId) {
+    set((state) => ({
+      transactions: state.transactions.map((t) =>
+        t.id === created.id ? { ...t, vehicleId } : t,
+      ),
+    }));
+    void cloudPushTransactionUpdate(created.id, { vehicleId });
+  }
+
+  const vehicle = vehicles.find((v) => v.id === vehicleId);
+  if (!vehicle) {
+    set({
+      pendingOdometerPrompt: { transactionId: created.id, kind, vehicleId },
+    });
+    return;
+  }
+
+  if (created.odometerKm != null) {
+    const nextVehicle =
+      kind === "service"
+        ? applyVehicleService(vehicle, created.odometerKm)
+        : applyFuelOdometer(vehicle, created.odometerKm);
+    const nextVehicles = vehicles.map((v) => (v.id === vehicleId ? nextVehicle : v));
+    set({
+      vehicles: nextVehicles,
+      lastFuelVehicleId: kind === "fuel" ? vehicleId : lastFuelVehicleId,
+      pendingOdometerPrompt: null,
+    });
+    pushGarageFromState(get);
+    return;
+  }
+
+  set({
+    pendingOdometerPrompt: { transactionId: created.id, kind, vehicleId },
+  });
 }
 
 function normalizeIncoming(
@@ -225,12 +375,24 @@ export const useStore = create<StoreState>()(
       savingsGoals: [],
       categoryBudgets: [],
       recurringTransactions: [],
+      vehicles: [],
+      vehiclePrefs: defaultVehicleGaragePrefs(),
+      lastFuelVehicleId: null,
+      pendingOdometerPrompt: null,
       budgetMonthStartDay: 1,
+      statsPeriodOverride: null,
+      setStatsPeriodRange: (from, to) => set({ statsPeriodOverride: { from, to } }),
+      resetStatsPeriod: () => set({ statsPeriodOverride: null }),
+      setStatsPreviousBudgetPeriod: () => {
+        const day = get().budgetMonthStartDay;
+        const prev = getPreviousBudgetPeriod(day);
+        set({ statsPeriodOverride: { from: prev.from, to: prev.to } });
+      },
       planningPanelCollapsed: false,
       setPlanningPanelCollapsed: (collapsed) => set({ planningPanelCollapsed: collapsed }),
       cashOffsetMe: 0,
       cashOffsetPartner: 0,
-      addTransaction: (data, transcript) => {
+      addTransaction: (data, transcript, opts) => {
         const newId = makeId();
         set((state) => {
           const normalized = normalizeIncoming(
@@ -273,12 +435,20 @@ export const useStore = create<StoreState>()(
           } else if (goalAmount < normalized.amount) {
             goalAmount = normalized.amount;
           }
+          const creatorId = data.createdBy ?? ensureCloudViewerUserId();
           const created: Transaction = {
             id: newId,
             owner,
             ...normalized,
             goalId: goalId && goalAmount ? goalId : null,
             goalAmount: goalId && goalAmount ? goalAmount : null,
+            confirmed: data.confirmed === false ? false : true,
+            recurringId: data.recurringId ?? null,
+            ...(creatorId ? { createdBy: creatorId } : {}),
+            ...(data.odometerKm != null && Number.isFinite(data.odometerKm)
+              ? { odometerKm: Math.max(0, Math.round(data.odometerKm)) }
+              : {}),
+            ...(data.transferPairId ? { transferPairId: data.transferPairId } : {}),
           };
           let savingsGoals = state.savingsGoals;
           if (created.goalId && created.goalAmount) {
@@ -292,16 +462,156 @@ export const useStore = create<StoreState>()(
           };
         });
         const created = get().transactions.find((t) => t.id === newId) ?? null;
-        if (created) {
+        if (created && created.confirmed !== false && !opts?.skipCloudPush) {
           void cloudPushTransaction(created);
           if (created.goalId && created.goalAmount) {
             const goal = get().savingsGoals.find((g) => g.id === created.goalId);
             if (goal) void cloudPushGoal(goal);
           }
+          applyVehicleAfterTransaction(get, set, created);
         }
+      },
+      addVehicle: (name) => {
+        const { vehicles, vehiclePrefs } = get();
+        const next = defaultVehicle(name ?? `Авто ${vehicles.length + 1}`);
+        const merged = [...vehicles, next];
+        set({ vehicles: merged });
+        pushGarageFromState(get);
+        if (vehicles.length === 0 && merged.length === 1) {
+          const uid = ensureCloudViewerUserId();
+          if (uid && vehiclePrefs.mode === "split") {
+            set({
+              vehiclePrefs: {
+                ...vehiclePrefs,
+                members: {
+                  ...vehiclePrefs.members,
+                  [uid]: {
+                    defaultVehicleId: next.id,
+                    rarelyUsePartnerVehicles: false,
+                  },
+                },
+              },
+            });
+            pushGarageFromState(get);
+          }
+        }
+      },
+      removeVehicleById: (vehicleId) => {
+        const { vehicles, vehiclePrefs } = get();
+        const nextVehicles = vehicles.filter((v) => v.id !== vehicleId);
+        const nextPrefs: VehicleGaragePrefs = {
+          ...vehiclePrefs,
+          members: Object.fromEntries(
+            Object.entries(vehiclePrefs.members).map(([uid, m]) => [
+              uid,
+              {
+                ...m,
+                defaultVehicleId:
+                  m.defaultVehicleId === vehicleId ? null : m.defaultVehicleId,
+              },
+            ]),
+          ),
+        };
+        set({
+          vehicles: nextVehicles,
+          vehiclePrefs: nextPrefs,
+          pendingOdometerPrompt: null,
+          lastFuelVehicleId:
+            get().lastFuelVehicleId === vehicleId ? null : get().lastFuelVehicleId,
+        });
+        if (nextVehicles.length === 0) void cloudDeleteGarage();
+        else void cloudPushGarage(nextVehicles, nextPrefs);
+      },
+      saveVehicleGarage: (vehicles, vehiclePrefs) => {
+        set({
+          vehicles,
+          vehiclePrefs: vehiclePrefs ?? get().vehiclePrefs,
+        });
+        void cloudPushGarage(vehicles, vehiclePrefs ?? get().vehiclePrefs);
+      },
+      updateVehicleInGarage: (vehicleId, patch) => {
+        const next = updateVehicleInList(get().vehicles, vehicleId, patch);
+        set({ vehicles: next });
+        pushGarageFromState(get);
+      },
+      setVehicleGarageMode: (mode) => {
+        const vehiclePrefs = { ...get().vehiclePrefs, mode };
+        set({ vehiclePrefs });
+        pushGarageFromState(get);
+      },
+      setVehicleMemberPref: (userId, patch) => {
+        const prev = get().vehiclePrefs.members[userId] ?? {
+          defaultVehicleId: null,
+          rarelyUsePartnerVehicles: false,
+        };
+        const vehiclePrefs: VehicleGaragePrefs = {
+          ...get().vehiclePrefs,
+          members: {
+            ...get().vehiclePrefs.members,
+            [userId]: { ...prev, ...patch },
+          },
+        };
+        set({ vehiclePrefs });
+        pushGarageFromState(get);
+      },
+      submitOdometerForTransaction: (transactionId, vehicleId, odometerKm) => {
+        const km = Math.max(0, Math.round(odometerKm));
+        const prompt = get().pendingOdometerPrompt;
+        const tx = get().transactions.find((t) => t.id === transactionId);
+        if (!tx) {
+          set({ pendingOdometerPrompt: null });
+          return;
+        }
+        get().updateTransaction(transactionId, { odometerKm: km, vehicleId });
+        const vehicles = get().vehicles;
+        const vehicle = vehicles.find((v) => v.id === vehicleId);
+        if (vehicle) {
+          const isService = prompt?.kind === "service" || isVehicleServiceExpense(tx);
+          const nextVehicle = isService
+            ? applyVehicleService(vehicle, km)
+            : applyFuelOdometer(vehicle, km);
+          const nextVehicles = vehicles.map((v) => (v.id === vehicleId ? nextVehicle : v));
+          set({
+            vehicles: nextVehicles,
+            pendingOdometerPrompt: null,
+            lastFuelVehicleId: isService ? get().lastFuelVehicleId : vehicleId,
+          });
+          pushGarageFromState(get);
+        } else {
+          set({ pendingOdometerPrompt: null });
+        }
+      },
+      dismissServiceAlert: (vehicleId, level) => {
+        const next = markServiceAlertShown(get().vehicles, vehicleId, level);
+        set({ vehicles: next });
+        pushGarageFromState(get);
+      },
+      clearPendingOdometer: () => set({ pendingOdometerPrompt: null }),
+      syncVehicleFromTransaction: (transactionId) => {
+        const tx = get().transactions.find((t) => t.id === transactionId);
+        if (tx) applyVehicleAfterTransaction(get, set, tx);
       },
       updateTransaction: (id, patch) => {
         const prev = get().transactions.find((t) => t.id === id);
+        if (prev?.categoryId === GOAL_JAR_CATEGORY_ID) {
+          const nextCat = patch.categoryId ?? prev.categoryId;
+          const nextAmt =
+            patch.amount !== undefined && patch.amount > 0 ? patch.amount : prev.amount;
+          const nextGoalId = patch.goalId !== undefined ? patch.goalId : prev.goalId;
+          const nextGoalAmt =
+            patch.goalAmount !== undefined
+              ? normalizeGoalAmount(patch.goalAmount)
+              : normalizeGoalAmount(prev.goalAmount);
+          if (
+            nextCat !== GOAL_JAR_CATEGORY_ID ||
+            nextAmt <= 0 ||
+            !nextGoalId ||
+            nextGoalAmt <= 0
+          ) {
+            get().deleteTransaction(id);
+            return;
+          }
+        }
         let updated: Transaction | null = null;
         set((state) => {
           const categories = state.categories;
@@ -336,14 +646,25 @@ export const useStore = create<StoreState>()(
             if (goalAmount && goalAmount > amount) {
               goalAmount = amount;
             }
+            const odometerKm =
+              patch.odometerKm !== undefined
+                ? patch.odometerKm != null
+                  ? Math.max(0, Math.round(patch.odometerKm))
+                  : null
+                : tx.odometerKm ?? null;
+            const vehicleId =
+              patch.vehicleId !== undefined ? patch.vehicleId : tx.vehicleId ?? null;
             updated = {
               ...tx,
               amount,
               categoryId,
               type,
               owner,
+              ...(patch.createdBy !== undefined ? { createdBy: patch.createdBy } : {}),
               goalId: goalId && goalAmount ? goalId : null,
               goalAmount: goalId && goalAmount ? goalAmount : null,
+              odometerKm,
+              vehicleId,
             };
             return updated;
           });
@@ -361,9 +682,12 @@ export const useStore = create<StoreState>()(
             amount: after.amount,
             categoryId: after.categoryId,
             owner: after.owner,
+            createdBy: after.createdBy,
             type: after.type,
             goalId: after.goalId,
             goalAmount: after.goalAmount,
+            odometerKm: after.odometerKm,
+            vehicleId: after.vehicleId,
           });
           for (const gid of goalIds) {
             const goal = get().savingsGoals.find((g) => g.id === gid);
@@ -373,24 +697,34 @@ export const useStore = create<StoreState>()(
       },
       deleteTransaction: (id) => {
         const tx = get().transactions.find((t) => t.id === id);
+        const pairId = tx?.transferPairId;
+        const idsToDelete = pairId
+          ? get()
+              .transactions.filter((t) => t.transferPairId === pairId)
+              .map((t) => t.id)
+          : [id];
         let goalAfterDelete: SavingsGoal | null = null;
         set((state) => {
+          const deleteSet = new Set(idsToDelete);
+          const primary = state.transactions.find((t) => t.id === id);
           const savingsGoals = revertTransactionGoal(
             state.savingsGoals,
-            tx?.goalId,
-            tx?.goalAmount,
+            primary?.goalId,
+            primary?.goalAmount,
           );
-          if (tx?.goalId) {
-            goalAfterDelete = savingsGoals.find((g) => g.id === tx.goalId) ?? null;
+          if (primary?.goalId) {
+            goalAfterDelete = savingsGoals.find((g) => g.id === primary.goalId) ?? null;
           }
           return {
-            transactions: state.transactions.filter((t) => t.id !== id),
+            transactions: state.transactions.filter((t) => !deleteSet.has(t.id)),
             savingsGoals,
           };
         });
         if (goalAfterDelete) void cloudPushGoal(goalAfterDelete);
-        useCloudStore.getState().removeFromLastSyncedRemoteTxIds(id);
-        void cloudPushTransactionDelete(id);
+        for (const delId of idsToDelete) {
+          useCloudStore.getState().removeFromLastSyncedRemoteTxIds(delId);
+          void cloudPushTransactionDelete(delId);
+        }
       },
       setLocale: (locale) => set({ locale }),
       setIsRecording: (isRecording) => set({ isRecording }),
@@ -411,14 +745,61 @@ export const useStore = create<StoreState>()(
       setEntryOwner: (entryOwner) => set({ entryOwner }),
       setHouseholdFilter: (householdFilter) => set({ householdFilter }),
       setBudgetMonthStartDay: (day) => set({ budgetMonthStartDay: clampMonthStartDay(day) }),
+      transferToPartner: (amount, direction) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0 || !hasPartnerBudget(get().partnerName)) return false;
+        const partnerLabel = get().partnerName?.trim() || "Партнёр";
+        const pair = buildPartnerTransferPair(amt, direction, partnerLabel);
+        const viewerId = ensureCloudViewerUserId();
+        const cloud = useCloudStore.getState();
+        const partnerUserId = findHouseholdPartnerUserId(
+          viewerId,
+          cloud.householdMemberUserIds,
+          get().transactions,
+        );
+        const skip = { skipCloudPush: true as const };
+        if (viewerId && partnerUserId) {
+          if (direction === "to_partner") {
+            get().addTransaction({ ...pair.expense, owner: "me", createdBy: viewerId }, undefined, skip);
+            get().addTransaction(
+              { ...pair.income, owner: "partner", createdBy: partnerUserId },
+              undefined,
+              skip,
+            );
+          } else {
+            get().addTransaction(
+              { ...pair.expense, owner: "partner", createdBy: partnerUserId },
+              undefined,
+              skip,
+            );
+            get().addTransaction({ ...pair.income, owner: "me", createdBy: viewerId }, undefined, skip);
+          }
+        } else {
+          get().addTransaction(pair.expense, undefined, skip);
+          get().addTransaction(pair.income, undefined, skip);
+        }
+        const pairId = pair.expense.transferPairId;
+        if (pairId) {
+          const txs = get().transactions.filter((t) => t.transferPairId === pairId);
+          const expense = txs.find((t) => t.type === "expense");
+          const income = txs.find((t) => t.type === "income");
+          if (expense && income) void cloudPushPartnerTransferPair(expense, income);
+        }
+        return true;
+      },
       setActualCash: (owner, actualAmount) => {
         if (!Number.isFinite(actualAmount)) return;
         const actual = Math.round(actualAmount);
-        const txs = filterByHousehold(get().transactions, owner);
+        const txs = filterByHousehold(get().transactions, owner).filter(countsInBalance);
         const computed = calcBalance(txs);
         const offset = actual - computed;
-        if (owner === "me") set({ cashOffsetMe: offset });
-        else set({ cashOffsetPartner: offset });
+        if (owner === "me") {
+          set({ cashOffsetMe: offset });
+          void cloudPushBalanceOffset("me", offset);
+        } else {
+          set({ cashOffsetPartner: offset });
+          void cloudPushBalanceOffset("partner", offset);
+        }
       },
       addCategory: (type, labelRu, labelEn, keywords = []) => {
         const ru = labelRu.trim();
@@ -554,6 +935,19 @@ export const useStore = create<StoreState>()(
         get().addTransaction(buildGoalDepositTransaction(goal, amt, get().entryOwner));
         return get().transactions.length > before;
       },
+      revertLastGoalDeposit: (goalId) => {
+        const jar = get().transactions.filter(
+          (t) => t.categoryId === GOAL_JAR_CATEGORY_ID && t.goalId === goalId,
+        );
+        if (jar.length === 0) return false;
+        const latest = jar.reduce((a, b) => {
+          const cmp = b.date.localeCompare(a.date);
+          if (cmp !== 0) return cmp > 0 ? b : a;
+          return b.id > a.id ? b : a;
+        });
+        get().deleteTransaction(latest.id);
+        return true;
+      },
       removeGoal: (id) => {
         const goal = get().savingsGoals.find((g) => g.id === id);
         if (!goal || goal.kind === "emergency") return false;
@@ -606,6 +1000,7 @@ export const useStore = create<StoreState>()(
           ...data,
           id,
           enabled: true,
+          skippedDates: data.skippedDates ?? [],
           updatedAt: new Date().toISOString(),
         };
         set((state) => ({
@@ -629,6 +1024,7 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           recurringTransactions: state.recurringTransactions.filter((r) => r.id !== id),
         }));
+        useCloudStore.getState().markRecurringDeleted(id);
         useCloudStore.getState().removeFromLastSyncedRemoteRecurringIds(id);
         void cloudPushRecurringDelete(id);
       },
@@ -639,13 +1035,51 @@ export const useStore = create<StoreState>()(
           if (!item.enabled || item.nextRunDate > today) continue;
           let runDate = item.nextRunDate;
           while (runDate <= today) {
-            get().addTransaction(recurringToParsedTransaction(item, runDate));
+            const exists = get().transactions.some(
+              (t) => t.recurringId === item.id && t.date === runDate,
+            );
+            if (!exists) {
+              const parsed = recurringToParsedTransaction(item, runDate);
+              get().addTransaction({
+                ...parsed,
+                confirmed: parsed.type === "income",
+                recurringId: item.id,
+              });
+            }
             runDate = advanceRecurringDate(runDate, item.frequency, item.dayOfMonth);
           }
           if (runDate !== item.nextRunDate) {
             get().updateRecurring(item.id, { nextRunDate: runDate });
           }
         }
+      },
+      confirmPendingTransaction: (id) => {
+        const tx = get().transactions.find((t) => t.id === id);
+        if (!tx || tx.confirmed !== false) return false;
+        let updated: Transaction | null = null;
+        set((state) => ({
+          transactions: state.transactions.map((t) => {
+            if (t.id !== id) return t;
+            updated = { ...t, confirmed: true };
+            return updated;
+          }),
+        }));
+        if (updated) void cloudPushTransaction(updated);
+        return Boolean(updated);
+      },
+      dismissPendingTransaction: (id) => {
+        const tx = get().transactions.find((t) => t.id === id);
+        if (!tx || tx.confirmed !== false) return false;
+        if (tx.recurringId) {
+          const item = get().recurringTransactions.find((r) => r.id === tx.recurringId);
+          if (item) {
+            get().updateRecurring(item.id, {
+              skippedDates: appendSkippedDate(item.skippedDates, tx.date),
+            });
+          }
+        }
+        get().deleteTransaction(id);
+        return true;
       },
       applyPlanningInput: (action) => {
         if (action.kind === "goal_create") {
@@ -705,7 +1139,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 17,
+      version: 20,
       migrate: (persisted, version) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);
@@ -781,16 +1215,41 @@ export const useStore = create<StoreState>()(
             ? (raw.categoryBudgets as CategoryBudget[])
             : [],
           recurringTransactions: Array.isArray(raw.recurringTransactions)
-            ? (raw.recurringTransactions as RecurringTransaction[])
+            ? (raw.recurringTransactions as RecurringTransaction[]).map((r) => ({
+                ...r,
+                skippedDates: Array.isArray(r.skippedDates) ? r.skippedDates : [],
+              }))
             : [],
           budgetMonthStartDay: clampMonthStartDay(
             typeof raw.budgetMonthStartDay === "number" ? raw.budgetMonthStartDay : 1,
           ),
-          cashOffsetMe: typeof raw.cashOffsetMe === "number" ? raw.cashOffsetMe : 0,
-          cashOffsetPartner:
-            typeof raw.cashOffsetPartner === "number" ? raw.cashOffsetPartner : 0,
+          statsPeriodOverride:
+            raw.statsPeriodOverride &&
+            typeof raw.statsPeriodOverride === "object" &&
+            typeof (raw.statsPeriodOverride as { from?: string }).from === "string" &&
+            typeof (raw.statsPeriodOverride as { to?: string }).to === "string"
+              ? {
+                  from: (raw.statsPeriodOverride as { from: string }).from,
+                  to: (raw.statsPeriodOverride as { to: string }).to,
+                }
+              : null,
+          // Корректировки баланса — только из облака (voicebudget-cloud), не из localStorage
+          cashOffsetMe: 0,
+          cashOffsetPartner: 0,
           planningPanelCollapsed:
             typeof raw.planningPanelCollapsed === "boolean" ? raw.planningPanelCollapsed : false,
+          vehicles: Array.isArray(raw.vehicles)
+            ? (raw.vehicles as Vehicle[])
+            : raw.vehicle && typeof raw.vehicle === "object"
+              ? [raw.vehicle as Vehicle]
+              : [],
+          vehiclePrefs:
+            raw.vehiclePrefs && typeof raw.vehiclePrefs === "object"
+              ? (raw.vehiclePrefs as VehicleGaragePrefs)
+              : defaultVehicleGaragePrefs(),
+          lastFuelVehicleId:
+            typeof raw.lastFuelVehicleId === "string" ? raw.lastFuelVehicleId : null,
+          pendingOdometerPrompt: null,
         };
       },
       onRehydrateStorage: () => (state, error) => {
@@ -819,6 +1278,9 @@ export const useStore = create<StoreState>()(
             };
           });
         }
+        void import("@/lib/cloud/apply-balance-offsets").then(({ applyBalanceOffsetsFromCloud }) => {
+          applyBalanceOffsetsFromCloud();
+        });
       },
     },
   ),
@@ -827,36 +1289,70 @@ export const useStore = create<StoreState>()(
 export const useTransactions = () => useStore((s) => s.transactions);
 export const useCategories = () => useStore((s) => s.categories);
 
-export function useComputedBalance(owner: "me" | "partner" | "all" = "all"): number {
-  return useStore((s) => {
-    if (owner === "all") return calcBalance(s.transactions);
-    return calcBalance(filterByHousehold(s.transactions, owner));
-  });
+function useViewerMappedTransactions(forBalance = false): Transaction[] {
+  const transactions = useStore((s) => s.transactions);
+  const cloudUserId = useCloudStore((s) => s.cloudUserId);
+  const token = useCloudStore((s) => s.token);
+  const storedMemberIds = useCloudStore((s) => s.householdMemberUserIds);
+
+  return useMemo(() => {
+    const viewerUserId = decodeUserIdFromHouseholdToken(token) ?? cloudUserId ?? null;
+    const memberIds = collectHouseholdMemberUserIds(
+      storedMemberIds,
+      transactions,
+      viewerUserId,
+    );
+    let list = mapTransactionsForViewer(transactions, viewerUserId, memberIds).map(withOwner);
+    if (forBalance) list = list.filter(countsInHouseholdTotal);
+    return list;
+  }, [transactions, cloudUserId, token, storedMemberIds, forBalance]);
 }
 
-export const useBalance = (ownerFilter?: HouseholdFilter) =>
-  useStore((s) => {
-    const filter = ownerFilter ?? s.householdFilter;
-    const txs = filterByHousehold(s.transactions, filter);
-    const base = calcBalance(txs);
-    if (filter === "me") return base + s.cashOffsetMe;
-    if (filter === "partner") return base + s.cashOffsetPartner;
-    return base + s.cashOffsetMe + s.cashOffsetPartner;
-  });
+export function useComputedBalance(owner: "me" | "partner" | "all" = "all"): number {
+  const viewerTxs = useViewerMappedTransactions(false);
+  return useMemo(() => {
+    if (owner === "all") return calcBalance(viewerTxs.filter(countsInHouseholdTotal));
+    return calcBalance(viewerTxs.filter((tx) => tx.owner === owner && countsInBalance(tx)));
+  }, [viewerTxs, owner]);
+}
+
+export const useBalance = (ownerFilter?: HouseholdFilter) => {
+  const filterFromStore = useStore((s) => s.householdFilter);
+  const filter = ownerFilter ?? filterFromStore;
+  const cashOffsetMe = useStore((s) => s.cashOffsetMe);
+  const cashOffsetPartner = useStore((s) => s.cashOffsetPartner);
+  const viewerTxs = useViewerMappedTransactions(false);
+
+  return useMemo(() => {
+    const txs =
+      filter === "all" ? viewerTxs : viewerTxs.filter((tx) => tx.owner === filter);
+    const base =
+      filter === "all"
+        ? calcBalance(viewerTxs.filter(countsInHouseholdTotal))
+        : calcBalance(txs.filter(countsInBalance));
+    if (filter === "me") return base + cashOffsetMe;
+    if (filter === "partner") return base + cashOffsetPartner;
+    return base + cashOffsetMe + cashOffsetPartner;
+  }, [viewerTxs, filter, cashOffsetMe, cashOffsetPartner]);
+};
 
 export function useHouseholdBalances() {
-  return useStore(
-    useShallow((s) => {
-      const me = calcBalance(filterByHousehold(s.transactions, "me")) + s.cashOffsetMe;
-      const partner =
-        calcBalance(filterByHousehold(s.transactions, "partner")) + s.cashOffsetPartner;
-      return {
-        all: me + partner,
-        me,
-        partner,
-      };
-    }),
-  );
+  const cashOffsetMe = useStore((s) => s.cashOffsetMe);
+  const cashOffsetPartner = useStore((s) => s.cashOffsetPartner);
+  const viewerTxs = useViewerMappedTransactions(false);
+
+  return useMemo(() => {
+    const me =
+      calcBalance(viewerTxs.filter((tx) => tx.owner === "me" && countsInBalance(tx))) +
+      cashOffsetMe;
+    const partner =
+      calcBalance(
+        viewerTxs.filter((tx) => tx.owner === "partner" && countsInBalance(tx)),
+      ) + cashOffsetPartner;
+    const all =
+      calcBalance(viewerTxs.filter(countsInHouseholdTotal)) + cashOffsetMe + cashOffsetPartner;
+    return { all, me, partner };
+  }, [viewerTxs, cashOffsetMe, cashOffsetPartner]);
 }
 
 export type OwnerTypeTotals = {
@@ -865,7 +1361,7 @@ export type OwnerTypeTotals = {
 };
 
 export function useOwnerTypeTotals(days = 30): OwnerTypeTotals {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
 
   return useMemo(() => {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -874,7 +1370,7 @@ export function useOwnerTypeTotals(days = 30): OwnerTypeTotals {
       partner: { income: 0, expense: 0 },
     };
 
-    transactions.map(withOwner).forEach((tx) => {
+    viewerTxs.forEach((tx) => {
       if (new Date(tx.date).getTime() < cutoff) return;
       const bucket = totals[tx.owner];
       if (tx.type === "income") bucket.income += tx.amount;
@@ -882,7 +1378,7 @@ export function useOwnerTypeTotals(days = 30): OwnerTypeTotals {
     });
 
     return totals;
-  }, [transactions, days]);
+  }, [viewerTxs, days]);
 }
 
 export function useBudgetPeriod() {
@@ -890,9 +1386,20 @@ export function useBudgetPeriod() {
   return useMemo(() => getCurrentBudgetPeriod(monthStartDay), [monthStartDay]);
 }
 
+export function useStatsPeriod(): BudgetPeriod {
+  const monthStartDay = useStore((s) => s.budgetMonthStartDay);
+  const override = useStore((s) => s.statsPeriodOverride);
+  return useMemo(() => {
+    if (override) {
+      return { from: override.from, to: override.to, monthStartDay };
+    }
+    return getCurrentBudgetPeriod(monthStartDay);
+  }, [monthStartDay, override]);
+}
+
 export function usePeriodOwnerTotals(): OwnerTypeTotals {
-  const transactions = useTransactions();
-  const period = useBudgetPeriod();
+  const viewerTxs = useViewerMappedTransactions(true);
+  const period = useStatsPeriod();
 
   return useMemo(() => {
     const totals: OwnerTypeTotals = {
@@ -900,7 +1407,7 @@ export function usePeriodOwnerTotals(): OwnerTypeTotals {
       partner: { income: 0, expense: 0 },
     };
 
-    transactions.map(withOwner).forEach((tx) => {
+    viewerTxs.forEach((tx) => {
       if (!isDateInBudgetPeriod(tx.date, period)) return;
       const bucket = totals[tx.owner];
       if (tx.type === "income") bucket.income += tx.amount;
@@ -908,21 +1415,21 @@ export function usePeriodOwnerTotals(): OwnerTypeTotals {
     });
 
     return totals;
-  }, [transactions, period]);
+  }, [viewerTxs, period]);
 }
 
 export function usePeriodTypeCategoryBreakdown(
   type: TxType,
 ): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
-  const period = useBudgetPeriod();
+  const period = useStatsPeriod();
 
   return useMemo(() => {
     const map = new Map<string, number>();
 
-    transactions.map(withOwner).forEach((tx) => {
+    viewerTxs.forEach((tx) => {
       if (tx.type !== type) return;
       if (!isDateInBudgetPeriod(tx.date, period)) return;
       const label = getCategoryLabel(tx.categoryId, categories, locale);
@@ -932,19 +1439,22 @@ export function usePeriodTypeCategoryBreakdown(
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, period, type]);
+  }, [viewerTxs, categories, locale, period, type]);
 }
 
 export function usePeriodCategoryBreakdown(): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
   const householdFilter = useStore((s) => s.householdFilter);
-  const period = useBudgetPeriod();
+  const period = useStatsPeriod();
 
   return useMemo(() => {
     const map = new Map<string, number>();
-    const list = filterByHousehold(transactions, householdFilter);
+    const list =
+      householdFilter === "all"
+        ? viewerTxs
+        : viewerTxs.filter((tx) => tx.owner === householdFilter);
 
     list.forEach((tx) => {
       if (tx.type !== "expense") return;
@@ -956,22 +1466,21 @@ export function usePeriodCategoryBreakdown(): { category: string; value: number 
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, householdFilter, period]);
+  }, [viewerTxs, categories, locale, householdFilter, period]);
 }
 
 export function usePeriodOwnerExpenseBreakdown(
   owner: BudgetOwner,
 ): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
-  const period = useBudgetPeriod();
+  const period = useStatsPeriod();
 
   return useMemo(() => {
     const map = new Map<string, number>();
 
-    transactions
-      .map(withOwner)
+    viewerTxs
       .filter(
         (tx) =>
           tx.owner === owner &&
@@ -986,14 +1495,14 @@ export function usePeriodOwnerExpenseBreakdown(
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, period, owner]);
+  }, [viewerTxs, categories, locale, period, owner]);
 }
 
 export function useTypeCategoryBreakdown(
   days: number,
   type: TxType,
 ): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
 
@@ -1001,7 +1510,7 @@ export function useTypeCategoryBreakdown(
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const map = new Map<string, number>();
 
-    transactions.map(withOwner).forEach((tx) => {
+    viewerTxs.forEach((tx) => {
       if (tx.type !== type) return;
       if (new Date(tx.date).getTime() < cutoff) return;
       const label = getCategoryLabel(tx.categoryId, categories, locale);
@@ -1011,14 +1520,14 @@ export function useTypeCategoryBreakdown(
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, days, type]);
+  }, [viewerTxs, categories, locale, days, type]);
 }
 
 export function useOwnerExpenseBreakdown(
   days: number,
   owner: BudgetOwner,
 ): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
 
@@ -1026,8 +1535,7 @@ export function useOwnerExpenseBreakdown(
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const map = new Map<string, number>();
 
-    transactions
-      .map(withOwner)
+    viewerTxs
       .filter(
         (tx) =>
           tx.owner === owner &&
@@ -1042,11 +1550,11 @@ export function useOwnerExpenseBreakdown(
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, days, owner]);
+  }, [viewerTxs, categories, locale, days, owner]);
 }
 
 export function useCategoryBreakdown(days = 30): { category: string; value: number }[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(true);
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
   const householdFilter = useStore((s) => s.householdFilter);
@@ -1054,8 +1562,12 @@ export function useCategoryBreakdown(days = 30): { category: string; value: numb
   return useMemo(() => {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const map = new Map<string, number>();
+    const list =
+      householdFilter === "all"
+        ? viewerTxs
+        : viewerTxs.filter((tx) => tx.owner === householdFilter);
 
-    filterByHousehold(transactions, householdFilter)
+    list
       .filter((tx) => tx.type === "expense" && new Date(tx.date).getTime() >= cutoff)
       .forEach((tx) => {
         const label = getCategoryLabel(tx.categoryId, categories, locale);
@@ -1065,14 +1577,17 @@ export function useCategoryBreakdown(days = 30): { category: string; value: numb
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categories, locale, householdFilter, days]);
+  }, [viewerTxs, categories, locale, householdFilter, days]);
 }
 
 export function useFilteredTransactions(filter: "all" | TxType): Transaction[] {
-  const transactions = useTransactions();
+  const viewerTxs = useViewerMappedTransactions(false);
   const householdFilter = useStore((s) => s.householdFilter);
-  const byOwner = filterByHousehold(transactions, householdFilter);
-  const list = byOwner.slice(0, 10);
+  const byOwner =
+    householdFilter === "all"
+      ? viewerTxs
+      : viewerTxs.filter((tx) => tx.owner === householdFilter);
+  const list = byOwner.filter(countsInBalance).slice(0, 10);
   if (filter === "all") return list;
   return list.filter((tx) => tx.type === filter);
 }

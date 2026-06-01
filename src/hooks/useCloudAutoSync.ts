@@ -11,7 +11,7 @@ import { useCloudStore } from "@/store/useCloudStore";
 
 const MIN_PULL_MS = 8_000;
 /** Browser tab may stay open while phone records — poll occasionally */
-const POLL_MS = 30_000;
+const POLL_MS = 10_000;
 
 /** Pull cloud on load, when tab becomes visible, and on a timer while visible. */
 export function useCloudAutoSync() {
@@ -48,7 +48,10 @@ export function useCloudAutoSync() {
     };
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") pull();
+      if (document.visibilityState === "visible") {
+        lastPullAt.current = 0;
+        pull();
+      }
     };
 
     pull();

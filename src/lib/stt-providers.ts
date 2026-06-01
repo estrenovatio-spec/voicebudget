@@ -6,6 +6,18 @@ function envFirst(...keys: string[]): string | undefined {
   return undefined;
 }
 
+function isPreviewDeploy(): boolean {
+  return process.env.VERCEL_ENV === "preview";
+}
+
+/** Preview: GROQ_API_KEY_PREVIEW или GROQ_API_KEY */
+function getGroqApiKey(): string | undefined {
+  if (isPreviewDeploy()) {
+    return envFirst("GROQ_API_KEY_PREVIEW", "GROQ_API_KEY");
+  }
+  return envFirst("GROQ_API_KEY");
+}
+
 export type SttProvider = {
   id: string;
   apiKey: string;
@@ -33,7 +45,7 @@ export function getSttProviders(): SttProvider[] {
     out.push(p);
   };
 
-  const groq = envFirst("GROQ_API_KEY");
+  const groq = getGroqApiKey();
   if (groq) {
     add({
       id: "groq",
@@ -41,8 +53,6 @@ export function getSttProviders(): SttProvider[] {
       baseUrl: "https://api.groq.com/openai/v1",
       model: envFirst("GROQ_STT_MODEL") ?? "whisper-large-v3-turbo",
     });
-    // Только Groq — apinet Whisper у вас недоступен, не тратим 50+ сек на ошибки
-    return out;
   }
 
   const sttKey = envFirst(
@@ -85,4 +95,23 @@ export function getSttProviders(): SttProvider[] {
   }
 
   return out;
+}
+
+/** Для Telegram-бота: сначала Groq (быстрый Whisper), остальные — запас */
+export function getTelegramSttProviders(): SttProvider[] {
+  const all = getSttProviders();
+  const groq = all.find((p) => p.id === "groq");
+  if (!groq) return all;
+  return [groq, ...all.filter((p) => p.id !== "groq")];
+}
+
+/** Запасные модели Groq, если основная недоступна */
+export function groqSttModelFallbacks(primary: string): string[] {
+  const candidates = [
+    primary,
+    "whisper-large-v3-turbo",
+    "whisper-large-v3",
+    "distil-whisper-large-v3-en",
+  ];
+  return [...new Set(candidates)];
 }

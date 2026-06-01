@@ -2,6 +2,7 @@ import type { HouseholdPublic, SyncPayload } from "@/lib/household/types";
 import type { SubscriptionPublic } from "@/lib/payments/types";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 import { fetchWithRetry } from "@/lib/fetch-retry";
 
 export type CloudApiError =
@@ -23,6 +24,7 @@ export interface BootstrapResponse {
 
 export interface HouseholdActionResponse {
   ok: boolean;
+  user?: { id: string };
   household: HouseholdPublic;
   token: string;
   sync: SyncPayload;
@@ -123,6 +125,22 @@ export async function apiPatchPartnerLabel(token: string, partnerLabel: string |
   return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }
 
+export async function apiPatchBalanceOffset(
+  token: string,
+  targetUserId: string,
+  offset: number,
+) {
+  const res = await apiFetch("/api/household/balance-offsets", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ targetUserId, offset }),
+  });
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
+}
+
 export async function apiCreateTransaction(token: string, tx: Transaction) {
   const res = await apiFetch("/api/household/transactions", {
     method: "POST",
@@ -142,7 +160,18 @@ export async function apiUpdateTransaction(
   token: string,
   id: string,
   patch: Partial<
-    Pick<Transaction, "amount" | "categoryId" | "owner" | "type" | "goalId" | "goalAmount">
+    Pick<
+      Transaction,
+      | "amount"
+      | "categoryId"
+      | "owner"
+      | "createdBy"
+      | "type"
+      | "goalId"
+      | "goalAmount"
+      | "odometerKm"
+      | "vehicleId"
+    >
   >,
 ) {
   const res = await apiFetch(`/api/household/transactions/${encodeURIComponent(id)}`, {
@@ -292,6 +321,30 @@ export async function apiSubscriptionStatus(token: string) {
   return parseJson<{ ok: boolean; subscription: SubscriptionPublic; paymentsConfigured: boolean }>(
     res,
   );
+}
+
+export async function apiPutGarage(
+  token: string,
+  vehicles: Vehicle[],
+  vehiclePrefs: VehicleGaragePrefs,
+) {
+  const res = await apiFetch("/api/household/vehicle", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ vehicles, vehiclePrefs }),
+  });
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
+}
+
+export async function apiDeleteGarage(token: string) {
+  const res = await apiFetch("/api/household/vehicle", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }
 
 export async function apiRedeemPromoCode(token: string, code: string) {

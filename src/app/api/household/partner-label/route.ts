@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     await updatePartnerLabel(session.userId, session.householdId, body.partnerLabel);
-    const sync = await buildSyncPayload(session.householdId);
+    const sync = await buildSyncPayload(session.householdId, session.userId);
     return NextResponse.json({ ok: true, sync });
   } catch (e) {
     const guard = mapCloudGuardError(e);

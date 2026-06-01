@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setWebhook } from "@/lib/telegram/bot-api";
+import { isTelegramBotConfigured } from "@/lib/telegram/bot-token";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.TELEGRAM_BOT_TOKEN?.trim()) {
+  if (!isTelegramBotConfigured()) {
     return NextResponse.json({ error: "TELEGRAM_BOT_TOKEN missing" }, { status: 503 });
   }
 

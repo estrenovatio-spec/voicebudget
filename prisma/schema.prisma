@@ -86,13 +86,15 @@ enum SubscriptionStatus {
 }
 
 model Household {
-  id           String        @id @default(cuid())
-  name         String        @default("Семейный бюджет")
-  inviteCode   String        @unique
-  mode         HouseholdMode @default(SOLO)
-  partnerLabel String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  name           String        @default("Семейный бюджет")
+  inviteCode     String        @unique
+  mode           HouseholdMode @default(SOLO)
+  partnerLabel   String?
+  /** userId → дельта к сумме по операциям («реально в кармане») */
+  balanceOffsets Json          @default("{}")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   members      HouseholdMember[]
   transactions Transaction[]
@@ -100,6 +102,14 @@ model Household {
   savingsGoals SavingsGoal[]
   categoryBudgets CategoryBudget[]
   recurringTransactions RecurringTransaction[]
+  vehicles                Vehicle[]
+  vehicleGarageMode       VehicleGarageMode @default(both)
+  vehicleMemberPrefs      Json              @default("{}")
+}
+
+enum VehicleGarageMode {
+  both
+  split
 }
 
 model HouseholdMember {
@@ -129,12 +139,32 @@ model Transaction {
   goalId String?
   goalAmount Float?
   createdBy  String?
+  confirmed  Boolean  @default(true)
+  recurringId String?
+  odometerKm  Int?
+  vehicleId   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId, date])
+}
+
+model Vehicle {
+  id                    String   @id
+  householdId           String
+  name                  String
+  lastServiceOdometerKm Int      @default(0)
+  serviceIntervalKm     Int      @default(10000)
+  currentOdometerKm     Int?
+  serviceAlertsShown    Json     @default("{}")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
 }
 
 model Category {
@@ -223,6 +253,7 @@ model RecurringTransaction {
   dayOfMonth  Int?
   nextRunDate String
   enabled     Boolean            @default(true)
+  skippedDates String[]          @default([])
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 

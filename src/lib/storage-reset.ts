@@ -24,6 +24,7 @@ export const SUMMARY_EXPENSE_HIDDEN_KEY = "voicebudget-summary-expense-hidden";
 export const CHART_HIDDEN_KEY = "voicebudget-chart-hidden";
 export const BALANCE_AMOUNTS_HIDDEN_KEY = "voicebudget-balance-amounts-hidden";
 const HOME_SECTION_ORDER_KEY = "voicebudget-home-section-order";
+export const APP_BUILD_KEY = "voicebudget-app-build";
 
 const DISMISSIBLE_HINTS_PREFIX = "voicebudget-hints-hidden:";
 
@@ -74,9 +75,22 @@ export function clearAppStorage(): void {
   }
 }
 
+/** Перезагрузка без удаления операций (обход кэша Telegram / Safari) */
+export function softReloadApp(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem("vb-soft-reload", String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("vb", String(Date.now()));
+  window.location.replace(url.toString());
+}
+
 /** Полный сброс данных и перезагрузка страницы */
 export function hardReloadApp(): void {
   clearAppStorage();
   if (typeof window === "undefined") return;
-  window.location.replace(window.location.pathname + window.location.search);
+  softReloadApp();
 }

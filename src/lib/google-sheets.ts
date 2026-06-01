@@ -11,26 +11,14 @@ function formatTelegramHandle(user: TelegramWebAppUser): string {
 
 async function postToAppsScript(webhookUrl: string, body: Record<string, unknown>): Promise<void> {
   const payload = JSON.stringify(body);
-  const headers = { "Content-Type": "application/json" };
-
-  let res = await fetch(webhookUrl, {
+  // Google Apps Script: 302 на googleusercontent.com; повторный POST туда → 405.
+  // Нужен один запрос с redirect: "follow" (тело уходит на /exec, ответ приходит с echo-URL).
+  const res = await fetch(webhookUrl, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: payload,
-    redirect: "manual",
+    redirect: "follow",
   });
-
-  if (res.status === 301 || res.status === 302 || res.status === 303 || res.status === 307) {
-    const location = res.headers.get("location");
-    if (location) {
-      res = await fetch(location, {
-        method: "POST",
-        headers,
-        body: payload,
-        redirect: "follow",
-      });
-    }
-  }
 
   const text = await res.text().catch(() => "");
   if (!res.ok) {

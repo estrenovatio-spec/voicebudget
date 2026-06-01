@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { handleTelegramUpdate } from "@/lib/telegram/handle-update";
 import type { TelegramUpdate } from "@/lib/telegram/bot-types";
+import { isTelegramBotConfigured } from "@/lib/telegram/bot-token";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -17,14 +18,15 @@ async function runUpdate(update: TelegramUpdate): Promise<void> {
   try {
     await handleTelegramUpdate(update);
   } catch (err) {
-    console.error("[telegram/webhook]", err);
+    const detail = err instanceof Error ? err.message.slice(0, 120) : "error";
+    console.error("[telegram/webhook]", detail, err);
     const chatId = update.message?.chat.id;
     if (chatId) {
       try {
         const { sendMessage } = await import("@/lib/telegram/bot-api");
         await sendMessage(
           chatId,
-          "⚠️ Ошибка обработки. Попробуйте текстом: «500 на обед» или откройте Mini App.",
+          `⚠️ Ошибка обработки (${detail}). Попробуйте текстом: «500 на обед» или откройте Mini App.`,
         );
       } catch {
         /* ignore reply failure */
@@ -34,7 +36,7 @@ async function runUpdate(update: TelegramUpdate): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
-  if (!process.env.TELEGRAM_BOT_TOKEN?.trim()) {
+  if (!isTelegramBotConfigured()) {
     return NextResponse.json({ error: "bot_not_configured" }, { status: 503 });
   }
 

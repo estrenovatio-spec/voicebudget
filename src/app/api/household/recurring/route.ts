@@ -16,6 +16,7 @@ const bodySchema = z.object({
   dayOfMonth: z.number().nullable(),
   nextRunDate: z.string(),
   enabled: z.boolean(),
+  skippedDates: z.array(z.string()).optional(),
 });
 
 export async function POST(req: NextRequest) {

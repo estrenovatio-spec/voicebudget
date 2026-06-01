@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { dbUnavailable, notFound } from "@/lib/api/household-response";
-import { isDatabaseConfigured } from "@/lib/db";
+import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { householdAuthBaseSchema } from "@/lib/household/auth-body";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { requireTelegramUser } from "@/lib/household/require-telegram-user";
@@ -39,10 +39,16 @@ export async function POST(req: NextRequest) {
         tgUser,
         household,
         logTag: "household/join",
+        onSuccess: async () => {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { googleSheetsOpenLogged: true },
+          });
+        },
       });
     }
     const token = signHouseholdSession({ userId: user.id, householdId: household.id });
-    return NextResponse.json({ ok: true, household, token, sync });
+    return NextResponse.json({ ok: true, user: { id: user.id }, household, token, sync });
   } catch (e) {
     if (!(e instanceof Error)) {
       console.error("[household/join]", e);

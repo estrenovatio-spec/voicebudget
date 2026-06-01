@@ -17,7 +17,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:preview": "bash scripts/deploy-preview.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

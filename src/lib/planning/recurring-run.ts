@@ -1,4 +1,5 @@
 import { advanceRecurringDate, todayIso } from "@/lib/planning/analytics";
+import { recurringDisplayName } from "@/lib/planning/recurring-skipped";
 import type { ParsedTransaction } from "@/types";
 import type { RecurringTransaction } from "@/types/planning";
 
@@ -10,13 +11,15 @@ export function getDueRecurringItems(items: RecurringTransaction[]): RecurringTr
 export function recurringToParsedTransaction(
   item: RecurringTransaction,
   runDate: string,
+  categoryLabel = "",
 ): ParsedTransaction {
+  const name = recurringDisplayName(item, categoryLabel);
   return {
     amount: item.amount,
     type: item.type,
     categoryId: item.categoryId,
     currency: "RUB",
-    note: item.note ? `${item.note} (регулярно)` : "Регулярная операция",
+    note: name ? `${name} (регулярно)` : "Регулярный платёж",
     date: runDate,
     owner: item.owner,
   };

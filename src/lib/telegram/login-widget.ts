@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "crypto";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
+import { getTelegramBotToken } from "@/lib/telegram/bot-token";
 
 export type TelegramLoginPayload = Record<string, string | number>;
 
@@ -7,7 +8,7 @@ export type TelegramLoginPayload = Record<string, string | number>;
 export function parseTelegramLoginWidget(
   raw: TelegramLoginPayload,
 ): { user: TelegramWebAppUser; authDate: number } | null {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const botToken = getTelegramBotToken();
   if (!botToken) return null;
 
   const hash = String(raw.hash ?? "");
