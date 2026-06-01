@@ -47,12 +47,16 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   useCloudStore.getState().setSession(token, remote.household);
   useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
   useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
-  useCloudStore.getState().setLastSyncedRemoteGoalIds(merged.savingsGoals.map((g) => g.id));
+  // Только id из ответа сервера: иначе локальная цель без успешного push
+  // помечалась «синхронизированной» и пропадала при следующем pull.
+  useCloudStore.getState().setLastSyncedRemoteGoalIds(
+    (remote.savingsGoals ?? []).map((g) => g.id),
+  );
   useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
-    merged.categoryBudgets.map((b) => b.categoryId),
+    (remote.categoryBudgets ?? []).map((b) => b.categoryId),
   );
   useCloudStore.getState().setLastSyncedRemoteRecurringIds(
-    merged.recurringTransactions.map((r) => r.id),
+    (remote.recurringTransactions ?? []).map((r) => r.id),
   );
 
   useStore.setState({

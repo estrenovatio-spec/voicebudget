@@ -96,7 +96,7 @@ export async function cloudPushGoal(goal: SavingsGoal): Promise<void> {
   try {
     await apiUpsertGoal(t, goal);
   } catch {
-    /* ignore */
+    /* ignore — цель остаётся локально, push повторится как localOnly */
   }
 }
 
