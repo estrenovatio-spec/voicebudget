@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await upsertCloudGoal(session.userId, session.householdId, body);
+    await upsertCloudGoal(session.userId, session.householdId, {
+      ...body,
+      monthlyContribution: body.monthlyContribution ?? null,
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const guard = mapCloudGuardError(e);
