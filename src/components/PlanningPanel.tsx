@@ -151,13 +151,14 @@ export function PlanningPanel() {
     : null;
 
   const createMonthlyPreview = useMemo(() => {
+    const name = goalName.trim();
     const target = goalTarget ? Number(goalTarget.replace(/\s/g, "")) : 0;
     const deadline = goalDeadline.trim() || null;
     if (!deadline || target <= 0) return null;
-    const monthly = computeGoalMonthlyContribution(target, 0, deadline);
+    const monthly = computeGoalMonthlyContribution(target, 0, deadline, undefined, name);
     if (!monthly) return null;
     return { monthly, months: monthsUntilDeadline(deadline) };
-  }, [goalTarget, goalDeadline]);
+  }, [goalName, goalTarget, goalDeadline]);
 
   const editMonthlyPreview = useMemo(() => {
     if (!editingGoal) return null;
@@ -168,6 +169,8 @@ export function PlanningPanel() {
       target,
       editingGoal.savedAmount,
       deadline,
+      undefined,
+      editingGoal.name,
     );
     if (!monthly) return null;
     return { monthly, months: monthsUntilDeadline(deadline) };
