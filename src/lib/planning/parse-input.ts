@@ -20,8 +20,12 @@ const CREATE_GOAL_EN = /(?:create|new)\s+(?:goal|jar)\s+(.+)/i;
 const TARGET_RU = /(?:цел(?:ь|и)|сумм(?:а|у))\s+(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)/i;
 const TARGET_EN = /(?:target|goal amount)\s+(\d[\d\s.,]*(?:\s*(?:k|m))?)/i;
 
-const GOAL_PREP_RU = /(?:на|в|для)/i;
+const GOAL_PREP_RU = /(?:на|в|для|по)/i;
 const GOAL_PREP_EN = /(?:for|to|into)/i;
+
+const DEADLINE_RU =
+  /(?:до|к|срок|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
+const DEADLINE_EN = /(?:by|until|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
 
 const INCOME_HINT_RU = /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс)/i;
 const INCOME_HINT_EN = /(?:salary|received|income|earned|paid|paycheck)/i;
@@ -62,9 +66,32 @@ function cleanGoalName(raw: string): string {
     .replace(/^["«]|["»]$/g, "")
     .replace(/\s*(?:руб(?:лей|ля)?|₽)\s*$/i, "")
     .replace(/\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?\s*(?:руб(?:лей|ля)?|₽)?\s*$/i, "")
+    .replace(/(?:до|к|срок|deadline|by|until)\s+\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?/gi, "")
+    .replace(/(?:до|к|срок|deadline|by|until)\s+\d{4}-\d{2}-\d{2}/gi, "")
     .replace(/^(?:копилк(?:у|а|и|е)\s+)+/i, "")
-    .replace(/^(?:на|в|для|for|to|into)\s+/i, "")
+    .replace(/^(?:на|в|для|по|for|to|into)\s+/i, "")
     .trim();
+}
+
+function normalizeGoalDeadline(raw: string): string | null {
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+  if (!m) return null;
+  let year = m[3];
+  if (year.length === 2) year = `20${year}`;
+  const month = m[2].padStart(2, "0");
+  const day = m[1].padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseGoalDeadline(text: string, locale: Locale): string | null {
+  const re = locale === "ru" ? DEADLINE_RU : DEADLINE_EN;
+  const m = text.match(re);
+  if (m?.[1]) return normalizeGoalDeadline(m[1]);
+  const bare = text.match(/\b(\d{1,2}[./]\d{1,2}[./]\d{4})\b/);
+  if (bare?.[1]) return normalizeGoalDeadline(bare[1]);
+  return null;
 }
 
 /** Ищет существующую цель, название которой есть во фразе (любой порядок слов). */
@@ -81,7 +108,7 @@ function findGoalMentionedInText(text: string, goals: SavingsGoal[]): SavingsGoa
   }
   if (best) return best;
 
-  const prepMatch = lower.match(/(?:^|\s)(?:на|в|для)\s+([а-яё][а-яё\s]{1,40})/i);
+  const prepMatch = lower.match(/(?:^|\s)(?:на|в|для|по)\s+([а-яё][а-яё\s]{1,40})/i);
   if (prepMatch?.[1]) {
     const phrase = cleanGoalName(prepMatch[1]);
     const firstWord = phrase.split(/\s+/)[0] ?? "";
@@ -104,8 +131,8 @@ function extractGoalNameFromText(text: string, locale: Locale): string {
   const patterns =
     locale === "ru"
       ? [
-          /(?:^|\s)(?:на|в|для)\s+(?:копилк(?:у|а|и|е)\s+)?(?:на|в|для\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
-          /(?:^|\s)(?:в\s+)?копилк(?:у|а|и|е)\s+(?:на|в|для\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+          /(?:^|\s)(?:на|в|для|по)\s+(?:копилк(?:у|а|и|е)\s+)?(?:на|в|для|по\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
+          /(?:^|\s)(?:в\s+)?копилк(?:у|а|и|е)\s+(?:на|в|для|по\s+)?([а-яёa-z][^,\d]+?)(?:[.!?]|$|\s+\d)/i,
           /(?:^|\s)([а-яёa-z]{3,}(?:\s+[а-яёa-z]{3,})?)\s+\d[\d\s.,]*/i,
         ]
       : [
@@ -144,17 +171,40 @@ function parseGoalDepositFromText(
   return { kind: "goal_deposit_by_name", goalName, amount };
 }
 
-function parseGoalCreateTail(tail: string, locale: Locale): { name: string; targetAmount: number } | null {
-  const targetMatch = locale === "ru" ? tail.match(TARGET_RU) : tail.match(TARGET_EN);
+function parseGoalCreateTail(
+  tail: string,
+  locale: Locale,
+): { name: string; targetAmount: number; deadline: string | null } | null {
+  let work = tail.trim();
+  const deadline = parseGoalDeadline(work, locale);
+  if (deadline) {
+    work = work.replace(locale === "ru" ? DEADLINE_RU : DEADLINE_EN, "").trim();
+    work = work.replace(/\b\d{1,2}[./]\d{1,2}[./]\d{4}\b/, "").trim();
+  }
+
+  const targetMatch = locale === "ru" ? work.match(TARGET_RU) : work.match(TARGET_EN);
   let targetAmount = 0;
-  let namePart = tail;
+  let namePart = work;
   if (targetMatch) {
     targetAmount = roundMoneyUp(parseAmountFromTranscript(targetMatch[1], locale));
-    namePart = tail.replace(targetMatch[0], "").trim();
+    namePart = work.replace(targetMatch[0], "").trim();
+  } else {
+    const amountAtEnd = namePart.match(
+      /(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)\s*(?:руб(?:лей|ля)?|₽)?\s*$/i,
+    );
+    if (amountAtEnd) {
+      targetAmount = roundMoneyUp(parseAmountFromTranscript(amountAtEnd[1], locale));
+      namePart = namePart.slice(0, namePart.length - amountAtEnd[0].length).trim();
+    }
   }
-  const name = namePart.replace(/^["«]|["»]$/g, "").trim();
+
+  const name = cleanGoalName(namePart.replace(/^["«]|["»]$/g, ""));
   if (!name) return null;
-  return { name, targetAmount: targetAmount > 0 ? targetAmount : 0 };
+  return {
+    name,
+    targetAmount: targetAmount > 0 ? targetAmount : 0,
+    deadline,
+  };
 }
 
 function tryParseIncomeWithGoal(

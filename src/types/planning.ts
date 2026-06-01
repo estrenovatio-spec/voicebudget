@@ -40,7 +40,7 @@ export const EMERGENCY_GOAL_ID = "__emergency_fund__";
 
 export type PlanningInputAction =
   | { kind: "goal_deposit"; goalId: string; amount: number }
-  | { kind: "goal_create"; name: string; targetAmount: number }
+  | { kind: "goal_create"; name: string; targetAmount: number; deadline?: string | null }
   | { kind: "goal_deposit_by_name"; goalName: string; amount: number }
   | {
       kind: "income_with_goal";

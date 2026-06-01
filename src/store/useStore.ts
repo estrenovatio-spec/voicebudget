@@ -647,7 +647,7 @@ export const useStore = create<StoreState>()(
       },
       applyPlanningInput: (action) => {
         if (action.kind === "goal_create") {
-          get().addGoal(action.name, action.targetAmount);
+          get().addGoal(action.name, action.targetAmount, action.deadline ?? null);
           return true;
         }
         if (action.kind === "goal_deposit") {

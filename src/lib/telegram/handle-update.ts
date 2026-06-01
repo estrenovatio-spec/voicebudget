@@ -174,12 +174,23 @@ async function applyPlanningFromBot(
       name: action.name.trim(),
       targetAmount: action.targetAmount,
       savedAmount: 0,
-      deadline: null,
+      deadline: action.deadline ?? null,
       kind: "custom",
       emergencyMonths: null,
     };
     await upsertCloudGoal(userId, householdId, goal);
-    return `✅ Цель «${escapeHtml(goal.name)}» — ${action.targetAmount} ₽`;
+    const targetLine =
+      action.targetAmount > 0
+        ? `${action.targetAmount} ₽`
+        : locale === "en"
+          ? "no target amount"
+          : "без суммы цели";
+    const deadlineLine = goal.deadline
+      ? locale === "en"
+        ? `, by ${goal.deadline}`
+        : `, до ${goal.deadline}`
+      : "";
+    return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}`;
   }
 
   if (action.kind === "income_with_goal") {
