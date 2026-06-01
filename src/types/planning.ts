@@ -8,6 +8,8 @@ export interface SavingsGoal {
   targetAmount: number;
   savedAmount: number;
   deadline: string | null;
+  /** Плановый взнос в месяц (₽), необязательно */
+  monthlyContribution: number | null;
   kind: SavingsGoalKind;
   /** 3 или 6 — только для kind=emergency */
   emergencyMonths: number | null;
@@ -40,7 +42,13 @@ export const EMERGENCY_GOAL_ID = "__emergency_fund__";
 
 export type PlanningInputAction =
   | { kind: "goal_deposit"; goalId: string; amount: number }
-  | { kind: "goal_create"; name: string; targetAmount: number; deadline?: string | null }
+  | {
+      kind: "goal_create";
+      name: string;
+      targetAmount: number;
+      deadline?: string | null;
+      monthlyContribution?: number | null;
+    }
   | { kind: "goal_deposit_by_name"; goalName: string; amount: number }
   | {
       kind: "income_with_goal";

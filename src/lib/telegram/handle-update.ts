@@ -152,6 +152,7 @@ async function applyPlanningFromBot(
         targetAmount: 0,
         savedAmount: 0,
         deadline: null,
+        monthlyContribution: null,
         kind: "custom",
         emergencyMonths: null,
       };
@@ -175,6 +176,7 @@ async function applyPlanningFromBot(
       targetAmount: action.targetAmount,
       savedAmount: 0,
       deadline: action.deadline ?? null,
+      monthlyContribution: action.monthlyContribution ?? null,
       kind: "custom",
       emergencyMonths: null,
     };
@@ -190,7 +192,13 @@ async function applyPlanningFromBot(
         ? `, by ${goal.deadline}`
         : `, до ${goal.deadline}`
       : "";
-    return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}`;
+    const monthlyLine =
+      goal.monthlyContribution && goal.monthlyContribution > 0
+        ? locale === "en"
+          ? `, ${goal.monthlyContribution} ₽/mo`
+          : `, по ${goal.monthlyContribution} ₽/мес`
+        : "";
+    return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}${monthlyLine}`;
   }
 
   if (action.kind === "income_with_goal") {
@@ -207,6 +215,7 @@ async function applyPlanningFromBot(
         targetAmount: 0,
         savedAmount: 0,
         deadline: null,
+        monthlyContribution: null,
         kind: "custom",
         emergencyMonths: null,
       };

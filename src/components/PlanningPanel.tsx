@@ -27,8 +27,9 @@ import {
 } from "@/lib/planning/analytics";
 import { t } from "@/lib/i18n";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
+import type { Locale } from "@/types";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
-import type { RecurringFrequency } from "@/types/planning";
+import type { RecurringFrequency, SavingsGoal } from "@/types/planning";
 
 function replaceTokens(template: string, tokens: Record<string, string>): string {
   let s = template;
@@ -36,6 +37,32 @@ function replaceTokens(template: string, tokens: Record<string, string>): string
     s = s.split(`{${key}}`).join(value);
   }
   return s;
+}
+
+function formatGoalDeadline(iso: string, locale: Locale): string {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  if (locale === "en") return `${m}/${d}/${y}`;
+  return `${d}.${m}.${y}`;
+}
+
+function goalPlanMeta(goal: SavingsGoal, locale: Locale): string | null {
+  const parts: string[] = [];
+  if (goal.deadline) {
+    parts.push(
+      replaceTokens(t(locale, "planningGoalUntil"), {
+        date: formatGoalDeadline(goal.deadline, locale),
+      }),
+    );
+  }
+  if (goal.monthlyContribution && goal.monthlyContribution > 0) {
+    parts.push(
+      replaceTokens(t(locale, "planningGoalMonthlyPlan"), {
+        amount: formatMoney(goal.monthlyContribution, locale),
+      }),
+    );
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function ProgressBar({ percent, over }: { percent: number; over?: boolean }) {
@@ -91,10 +118,14 @@ export function PlanningPanel() {
   }, [setPlanningPanelCollapsed]);
   const [goalName, setGoalName] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
+  const [goalDeadline, setGoalDeadline] = useState("");
+  const [goalMonthly, setGoalMonthly] = useState("");
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [editGoalId, setEditGoalId] = useState<string | null>(null);
   const [editGoalTarget, setEditGoalTarget] = useState("");
+  const [editGoalDeadline, setEditGoalDeadline] = useState("");
+  const [editGoalMonthly, setEditGoalMonthly] = useState("");
   const [limitCategoryId, setLimitCategoryId] = useState("");
   const [limitAmount, setLimitAmount] = useState("");
   const [recAmount, setRecAmount] = useState("");
@@ -113,11 +144,19 @@ export function PlanningPanel() {
 
   const handleAddGoal = () => {
     const name = goalName.trim();
-    const target = Number(goalTarget.replace(/\s/g, ""));
-    if (!name || !target) return;
-    addGoal(name, target);
+    if (!name) return;
+    const target = goalTarget ? Number(goalTarget.replace(/\s/g, "")) : 0;
+    const monthly = goalMonthly ? Number(goalMonthly.replace(/\s/g, "")) : null;
+    addGoal(
+      name,
+      target > 0 ? target : 0,
+      goalDeadline.trim() || null,
+      monthly && monthly > 0 ? monthly : null,
+    );
     setGoalName("");
     setGoalTarget("");
+    setGoalDeadline("");
+    setGoalMonthly("");
   };
 
   const handleDeposit = (id: string) => {
@@ -128,17 +167,29 @@ export function PlanningPanel() {
     setDepositGoalId(null);
   };
 
-  const handleSaveGoalTarget = (id: string) => {
-    const target = Number(editGoalTarget.replace(/\s/g, ""));
-    if (!target) return;
-    updateGoal(id, { targetAmount: target });
+  const handleSaveGoalEdit = (id: string) => {
+    const target = editGoalTarget ? Number(editGoalTarget.replace(/\s/g, "")) : 0;
+    const monthly = editGoalMonthly ? Number(editGoalMonthly.replace(/\s/g, "")) : null;
+    updateGoal(id, {
+      targetAmount: target > 0 ? target : 0,
+      deadline: editGoalDeadline.trim() || null,
+      monthlyContribution: monthly && monthly > 0 ? monthly : null,
+    });
     setEditGoalId(null);
     setEditGoalTarget("");
+    setEditGoalDeadline("");
+    setEditGoalMonthly("");
   };
 
-  const startEditGoal = (goalId: string, currentTarget: number) => {
-    setEditGoalId(goalId);
-    setEditGoalTarget(currentTarget > 0 ? String(currentTarget) : "");
+  const startEditGoal = (goal: SavingsGoal, displayTarget: number) => {
+    setEditGoalId(goal.id);
+    setEditGoalTarget(displayTarget > 0 ? String(displayTarget) : "");
+    setEditGoalDeadline(goal.deadline ?? "");
+    setEditGoalMonthly(
+      goal.monthlyContribution && goal.monthlyContribution > 0
+        ? String(goal.monthlyContribution)
+        : "",
+    );
     setDepositGoalId(null);
   };
 
@@ -236,11 +287,15 @@ export function PlanningPanel() {
                   const target = resolveGoalTarget(goal, transactions);
                   const percent = goalProgressPercent(goal, transactions);
                   const remaining = Math.max(0, target - goal.savedAmount);
+                  const planLine = goalPlanMeta(goal, locale);
                   return (
                     <div key={goal.id} className="space-y-2 rounded-lg border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">{goal.name}</p>
+                          {planLine ? (
+                            <p className="text-xs text-muted-foreground">{planLine}</p>
+                          ) : null}
                           <p className="text-xs text-muted-foreground">
                             {target > 0
                               ? replaceTokens(t(locale, "planningGoalSaved"), {
@@ -265,7 +320,7 @@ export function PlanningPanel() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 shrink-0"
-                            onClick={() => startEditGoal(goal.id, target)}
+                            onClick={() => startEditGoal(goal, target)}
                             aria-label={t(locale, "planningGoalEdit")}
                           >
                             <Pencil className="h-4 w-4" />
@@ -283,23 +338,39 @@ export function PlanningPanel() {
                       </div>
                       <ProgressBar percent={percent} />
                       {editGoalId === goal.id ? (
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            placeholder={t(locale, "planningGoalTarget")}
-                            value={editGoalTarget}
-                            onChange={(e) => setEditGoalTarget(e.target.value)}
-                          />
-                          <Button size="sm" onClick={() => handleSaveGoalTarget(goal.id)}>
-                            {t(locale, "planningGoalEditSave")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditGoalId(null)}
-                          >
-                            {t(locale, "cancel")}
-                          </Button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Input
+                              type="number"
+                              placeholder={t(locale, "planningGoalTarget")}
+                              value={editGoalTarget}
+                              onChange={(e) => setEditGoalTarget(e.target.value)}
+                            />
+                            <Input
+                              type="date"
+                              aria-label={t(locale, "planningGoalDeadline")}
+                              value={editGoalDeadline}
+                              onChange={(e) => setEditGoalDeadline(e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              placeholder={t(locale, "planningGoalMonthly")}
+                              value={editGoalMonthly}
+                              onChange={(e) => setEditGoalMonthly(e.target.value)}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => handleSaveGoalEdit(goal.id)}>
+                              {t(locale, "planningGoalEditSave")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditGoalId(null)}
+                            >
+                              {t(locale, "cancel")}
+                            </Button>
+                          </div>
                         </div>
                       ) : null}
                       {depositGoalId === goal.id ? (
@@ -327,19 +398,39 @@ export function PlanningPanel() {
                   );
                 })
               )}
-              <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row">
-                <Input
-                  placeholder={t(locale, "planningGoalName")}
-                  value={goalName}
-                  onChange={(e) => setGoalName(e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder={t(locale, "planningGoalTarget")}
-                  value={goalTarget}
-                  onChange={(e) => setGoalTarget(e.target.value)}
-                />
-                <Button onClick={handleAddGoal}>{t(locale, "planningGoalAdd")}</Button>
+              <div className="flex flex-col gap-2 border-t pt-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Input
+                    placeholder={t(locale, "planningGoalName")}
+                    value={goalName}
+                    onChange={(e) => setGoalName(e.target.value)}
+                    className="sm:min-w-[8rem] sm:flex-1"
+                  />
+                  <Input
+                    type="number"
+                    placeholder={t(locale, "planningGoalTarget")}
+                    value={goalTarget}
+                    onChange={(e) => setGoalTarget(e.target.value)}
+                    className="sm:w-32"
+                  />
+                  <Input
+                    type="date"
+                    aria-label={t(locale, "planningGoalDeadline")}
+                    value={goalDeadline}
+                    onChange={(e) => setGoalDeadline(e.target.value)}
+                    className="sm:w-40"
+                  />
+                  <Input
+                    type="number"
+                    placeholder={t(locale, "planningGoalMonthly")}
+                    value={goalMonthly}
+                    onChange={(e) => setGoalMonthly(e.target.value)}
+                    className="sm:w-36"
+                  />
+                </div>
+                <Button className="sm:self-start" onClick={handleAddGoal}>
+                  {t(locale, "planningGoalAdd")}
+                </Button>
               </div>
             </TabsContent>
 

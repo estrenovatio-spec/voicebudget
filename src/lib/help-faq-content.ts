@@ -343,14 +343,15 @@ export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
     title: { ru: "Копилки (цели)", en: "Savings jars" },
     steps: {
       ru: [
-        "Создать: «Цели и планирование» → Копилки, или «создать копилку smart цель 150 000» · «создать копилку отпуск 150 000 до 01.07.2026».",
-        "Срок не обязателен — можно «до 15.06.2026» или без даты.",
+        "Создать: «Цели и планирование» → Копилки, или «создать копилку отпуск цель 150000» · «создать цель отпуск 150000».",
+        "По желанию — срок «до 01.07.2026» и план «по 10000 в месяц» (в приложении тоже можно указать дату и сумму в месяц).",
         "Пополнить — сумма + «на/в/для» + название: «отложил 5000 на отпуск», «закинул в подушку 2000».",
         "Если копилка уже есть — достаточно коротко: «5000 на отпуск».",
         "Часть зарплаты сразу в цель: две суммы через запятую.",
       ],
       en: [
         "Create: home → Goals & planning → Jars, or «create goal vacation target 150000».",
+        "Optional deadline «by 2026-07-01» and plan «10000 per month» (also in the app form).",
         "Deposit — amount + for/to + name: «saved 5000 for vacation».",
         "If the jar exists — short form works: «5000 for vacation».",
         "Split salary to a jar: two amounts separated by a comma.",

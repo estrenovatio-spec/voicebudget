@@ -17,6 +17,7 @@ export function dbGoalToApp(row: DbSavingsGoal): SavingsGoal {
     targetAmount: row.targetAmount,
     savedAmount: row.savedAmount,
     deadline: row.deadline,
+    monthlyContribution: row.monthlyContribution ?? null,
     kind: row.kind,
     emergencyMonths: row.emergencyMonths,
     updatedAt: row.updatedAt.toISOString(),
@@ -34,6 +35,7 @@ export function appGoalToDb(
     targetAmount: goal.targetAmount,
     savedAmount: goal.savedAmount,
     deadline: goal.deadline,
+    monthlyContribution: goal.monthlyContribution,
     kind: goal.kind,
     emergencyMonths: goal.emergencyMonths,
   };

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS "SavingsGoal" (
     "targetAmount" DOUBLE PRECISION NOT NULL,
     "savedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "deadline" TEXT,
+    "monthlyContribution" DOUBLE PRECISION,
     "kind" "SavingsGoalKind" NOT NULL DEFAULT 'custom',
     "emergencyMonths" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -69,6 +70,8 @@ DO $$ BEGIN
     FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+ALTER TABLE "SavingsGoal" ADD COLUMN IF NOT EXISTS "monthlyContribution" DOUBLE PRECISION;
 
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalId" TEXT;
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalAmount" DOUBLE PRECISION;

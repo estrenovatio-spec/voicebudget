@@ -84,6 +84,7 @@ export function defaultEmergencyGoal(emergencyMonths = 6): SavingsGoal {
     targetAmount: 0,
     savedAmount: 0,
     deadline: null,
+    monthlyContribution: null,
     kind: "emergency",
     emergencyMonths,
   };

@@ -419,6 +419,7 @@ export async function upsertCloudGoal(
       targetAmount: goal.targetAmount,
       savedAmount: goal.savedAmount,
       deadline: goal.deadline,
+      monthlyContribution: goal.monthlyContribution,
       kind: goal.kind,
       emergencyMonths: goal.emergencyMonths,
     },

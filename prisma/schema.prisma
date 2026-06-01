@@ -138,8 +138,8 @@ model Transaction {
 }
 
 model Category {
-  id          String   @id
   householdId String
+  id          String
   type        TxType
   labelRu     String
   labelEn     String
@@ -148,7 +148,7 @@ model Category {
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
-  @@unique([householdId, id])
+  @@id([householdId, id])
   @@index([householdId])
 }
 
@@ -184,8 +184,9 @@ model SavingsGoal {
   name            String
   targetAmount    Float
   savedAmount     Float           @default(0)
-  deadline        String?
-  kind            SavingsGoalKind @default(custom)
+  deadline            String?
+  monthlyContribution Float?
+  kind                SavingsGoalKind @default(custom)
   emergencyMonths Int?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt

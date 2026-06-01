@@ -130,10 +130,20 @@ interface StoreState {
   markReminderShownToday: () => void;
   /** Дата первого входа / начала учёта (для месячного разбора) */
   ensureTrackingStarted: () => void;
-  addGoal: (name: string, targetAmount: number, deadline?: string | null) => string;
+  addGoal: (
+    name: string,
+    targetAmount: number,
+    deadline?: string | null,
+    monthlyContribution?: number | null,
+  ) => string;
   updateGoal: (
     id: string,
-    patch: { name?: string; targetAmount?: number; deadline?: string | null },
+    patch: {
+      name?: string;
+      targetAmount?: number;
+      deadline?: string | null;
+      monthlyContribution?: number | null;
+    },
   ) => boolean;
   depositGoal: (id: string, amount: number) => boolean;
   removeGoal: (id: string) => boolean;
@@ -499,19 +509,24 @@ export const useStore = create<StoreState>()(
           trackingStartedAt: (fromTx ?? new Date()).toISOString(),
         });
       },
-      addGoal: (name, targetAmount, deadline = null) => {
+      addGoal: (name, targetAmount, deadline = null, monthlyContribution = null) => {
         const trimmed = name.trim();
         let id = slugifyCategoryId(trimmed) || `goal-${Date.now().toString(36)}`;
         const { savingsGoals } = get();
         if (savingsGoals.some((g) => g.id === id)) {
           id = `${id}-${Date.now().toString(36).slice(-4)}`;
         }
+        const monthly =
+          monthlyContribution != null && monthlyContribution > 0
+            ? roundMoneyUp(monthlyContribution)
+            : null;
         const goal: SavingsGoal = {
           id,
           name: trimmed,
           targetAmount: roundMoneyUp(targetAmount),
           savedAmount: 0,
           deadline,
+          monthlyContribution: monthly,
           kind: "custom",
           emergencyMonths: null,
           updatedAt: new Date().toISOString(),
@@ -535,6 +550,12 @@ export const useStore = create<StoreState>()(
                   ? roundMoneyUp(Math.max(0, patch.targetAmount))
                   : g.targetAmount,
               deadline: patch.deadline !== undefined ? patch.deadline : g.deadline,
+              monthlyContribution:
+                patch.monthlyContribution !== undefined
+                  ? patch.monthlyContribution != null && patch.monthlyContribution > 0
+                    ? roundMoneyUp(patch.monthlyContribution)
+                    : null
+                  : g.monthlyContribution,
               updatedAt: new Date().toISOString(),
             };
             return updated;
@@ -647,7 +668,12 @@ export const useStore = create<StoreState>()(
       },
       applyPlanningInput: (action) => {
         if (action.kind === "goal_create") {
-          get().addGoal(action.name, action.targetAmount, action.deadline ?? null);
+          get().addGoal(
+            action.name,
+            action.targetAmount,
+            action.deadline ?? null,
+            action.monthlyContribution ?? null,
+          );
           return true;
         }
         if (action.kind === "goal_deposit") {
@@ -767,7 +793,12 @@ export const useStore = create<StoreState>()(
               : "22:00",
           reminderLastShownDate:
             typeof raw.reminderLastShownDate === "string" ? raw.reminderLastShownDate : null,
-          savingsGoals: Array.isArray(raw.savingsGoals) ? (raw.savingsGoals as SavingsGoal[]) : [],
+          savingsGoals: Array.isArray(raw.savingsGoals)
+            ? (raw.savingsGoals as SavingsGoal[]).map((g) => ({
+                ...g,
+                monthlyContribution: g.monthlyContribution ?? null,
+              }))
+            : [],
           categoryBudgets: Array.isArray(raw.categoryBudgets)
             ? (raw.categoryBudgets as CategoryBudget[])
             : [],

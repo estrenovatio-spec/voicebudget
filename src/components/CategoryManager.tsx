@@ -9,6 +9,20 @@ import { useToast } from "@/components/ui/toast";
 import { getCategoryLabel, getFallbackCategoryId } from "@/lib/categories";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+const keywordsFieldClass = cn(
+  "flex min-h-[7rem] max-h-52 w-full resize-y overflow-y-auto rounded-md border border-input",
+  "bg-background px-3 py-2 text-sm leading-relaxed ring-offset-background",
+  "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+);
+
+function parseKeywordsInput(raw: string): string[] {
+  return raw
+    .split(/[,\n]+/)
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean);
+}
 import { useCategories, useStore } from "@/store/useStore";
 import type { TxType } from "@/types";
 
@@ -43,10 +57,7 @@ export function CategoryManager() {
   const handleAdd = () => {
     const name = newName.trim();
     if (!name) return;
-    const kw = newKeywords
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
+    const kw = parseKeywordsInput(newKeywords);
     addCategory(tab, name, name, kw);
     setNewName("");
     setNewKeywords("");
@@ -59,17 +70,14 @@ export function CategoryManager() {
     setEditingId(id);
     setEditRu(cat.labels?.ru ?? "");
     setEditEn(cat.labels?.en ?? "");
-    setEditKeywords((cat.keywords ?? []).join(", "));
+    setEditKeywords((cat.keywords ?? []).join("\n"));
   };
 
   const saveEdit = () => {
     if (!editingId) return;
     updateCategory(editingId, {
       labels: { ru: editRu.trim() || editEn.trim(), en: editEn.trim() || editRu.trim() },
-      keywords: editKeywords
-        .split(",")
-        .map((k) => k.trim().toLowerCase())
-        .filter(Boolean),
+      keywords: parseKeywordsInput(editKeywords),
     });
     setEditingId(null);
   };
@@ -226,10 +234,13 @@ export function CategoryManager() {
                 onChange={(e) => setEditEn(e.target.value)}
                 placeholder={t(locale, "categoryNameEn")}
               />
-              <Input
+              <textarea
                 value={editKeywords}
                 onChange={(e) => setEditKeywords(e.target.value)}
                 placeholder={t(locale, "categoryKeywords")}
+                className={keywordsFieldClass}
+                rows={6}
+                spellCheck={false}
               />
               <div className="flex gap-2">
                 <Button type="button" size="sm" className="flex-1" onClick={saveEdit}>
@@ -264,10 +275,13 @@ export function CategoryManager() {
               onChange={(e) => setNewName(e.target.value)}
               placeholder={t(locale, "categoryNameRu")}
             />
-            <Input
+            <textarea
               value={newKeywords}
               onChange={(e) => setNewKeywords(e.target.value)}
               placeholder={t(locale, "categoryKeywords")}
+              className={keywordsFieldClass}
+              rows={5}
+              spellCheck={false}
             />
             <Button type="button" className="w-full" variant="secondary" onClick={handleAdd}>
               <Plus className="mr-1 h-4 w-4" />

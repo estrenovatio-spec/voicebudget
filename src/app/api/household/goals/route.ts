@@ -11,6 +11,7 @@ const bodySchema = z.object({
   targetAmount: z.number(),
   savedAmount: z.number(),
   deadline: z.string().nullable(),
+  monthlyContribution: z.number().nullable().optional(),
   kind: z.enum(["custom", "emergency"]),
   emergencyMonths: z.number().nullable(),
 });
