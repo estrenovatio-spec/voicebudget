@@ -1,4 +1,5 @@
 import { roundMoneyUp } from "@/lib/format-money";
+import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import type { SavingsGoal } from "@/types/planning";
 
 export function normalizeGoalAmount(amount: number | null | undefined): number {
@@ -16,7 +17,7 @@ export function applyGoalDelta(
   return goals.map((g) => {
     if (g.id !== goalId) return g;
     const next = roundMoneyUp(Math.max(0, g.savedAmount + delta));
-    return { ...g, savedAmount: next, updatedAt: now };
+    return applyGoalMonthlyToGoal({ ...g, savedAmount: next, updatedAt: now });
   });
 }
 

@@ -19,9 +19,12 @@ import { formatTransactionDate } from "@/lib/format-date";
 import {
   avgMonthlyExpenses,
   budgetUsagePercent,
+  computeGoalMonthlyContribution,
   emergencyTargetAmount,
   goalProgressPercent,
   monthSpentByCategory,
+  monthsUntilDeadline,
+  resolveGoalMonthlyContribution,
   resolveGoalTarget,
   todayIso,
 } from "@/lib/planning/analytics";
@@ -55,10 +58,13 @@ function goalPlanMeta(goal: SavingsGoal, locale: Locale): string | null {
       }),
     );
   }
-  if (goal.monthlyContribution && goal.monthlyContribution > 0) {
+  const monthly = resolveGoalMonthlyContribution(goal);
+  if (monthly && monthly > 0) {
+    const months = goal.deadline ? monthsUntilDeadline(goal.deadline) : null;
     parts.push(
       replaceTokens(t(locale, "planningGoalMonthlyPlan"), {
-        amount: formatMoney(goal.monthlyContribution, locale),
+        amount: formatMoney(monthly, locale),
+        months: months != null ? String(months) : "",
       }),
     );
   }
@@ -119,13 +125,11 @@ export function PlanningPanel() {
   const [goalName, setGoalName] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
   const [goalDeadline, setGoalDeadline] = useState("");
-  const [goalMonthly, setGoalMonthly] = useState("");
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [editGoalId, setEditGoalId] = useState<string | null>(null);
   const [editGoalTarget, setEditGoalTarget] = useState("");
   const [editGoalDeadline, setEditGoalDeadline] = useState("");
-  const [editGoalMonthly, setEditGoalMonthly] = useState("");
   const [limitCategoryId, setLimitCategoryId] = useState("");
   const [limitAmount, setLimitAmount] = useState("");
   const [recAmount, setRecAmount] = useState("");
@@ -142,21 +146,41 @@ export function PlanningPanel() {
     [budgetMonthStartDay, locale],
   );
 
+  const editingGoal = editGoalId
+    ? customGoals.find((g) => g.id === editGoalId) ?? null
+    : null;
+
+  const createMonthlyPreview = useMemo(() => {
+    const target = goalTarget ? Number(goalTarget.replace(/\s/g, "")) : 0;
+    const deadline = goalDeadline.trim() || null;
+    if (!deadline || target <= 0) return null;
+    const monthly = computeGoalMonthlyContribution(target, 0, deadline);
+    if (!monthly) return null;
+    return { monthly, months: monthsUntilDeadline(deadline) };
+  }, [goalTarget, goalDeadline]);
+
+  const editMonthlyPreview = useMemo(() => {
+    if (!editingGoal) return null;
+    const target = editGoalTarget ? Number(editGoalTarget.replace(/\s/g, "")) : 0;
+    const deadline = editGoalDeadline.trim() || null;
+    if (!deadline || target <= 0) return null;
+    const monthly = computeGoalMonthlyContribution(
+      target,
+      editingGoal.savedAmount,
+      deadline,
+    );
+    if (!monthly) return null;
+    return { monthly, months: monthsUntilDeadline(deadline) };
+  }, [editingGoal, editGoalTarget, editGoalDeadline]);
+
   const handleAddGoal = () => {
     const name = goalName.trim();
     if (!name) return;
     const target = goalTarget ? Number(goalTarget.replace(/\s/g, "")) : 0;
-    const monthly = goalMonthly ? Number(goalMonthly.replace(/\s/g, "")) : null;
-    addGoal(
-      name,
-      target > 0 ? target : 0,
-      goalDeadline.trim() || null,
-      monthly && monthly > 0 ? monthly : null,
-    );
+    addGoal(name, target > 0 ? target : 0, goalDeadline.trim() || null);
     setGoalName("");
     setGoalTarget("");
     setGoalDeadline("");
-    setGoalMonthly("");
   };
 
   const handleDeposit = (id: string) => {
@@ -169,27 +193,19 @@ export function PlanningPanel() {
 
   const handleSaveGoalEdit = (id: string) => {
     const target = editGoalTarget ? Number(editGoalTarget.replace(/\s/g, "")) : 0;
-    const monthly = editGoalMonthly ? Number(editGoalMonthly.replace(/\s/g, "")) : null;
     updateGoal(id, {
       targetAmount: target > 0 ? target : 0,
       deadline: editGoalDeadline.trim() || null,
-      monthlyContribution: monthly && monthly > 0 ? monthly : null,
     });
     setEditGoalId(null);
     setEditGoalTarget("");
     setEditGoalDeadline("");
-    setEditGoalMonthly("");
   };
 
   const startEditGoal = (goal: SavingsGoal, displayTarget: number) => {
     setEditGoalId(goal.id);
     setEditGoalTarget(displayTarget > 0 ? String(displayTarget) : "");
     setEditGoalDeadline(goal.deadline ?? "");
-    setEditGoalMonthly(
-      goal.monthlyContribution && goal.monthlyContribution > 0
-        ? String(goal.monthlyContribution)
-        : "",
-    );
     setDepositGoalId(null);
   };
 
@@ -352,15 +368,20 @@ export function PlanningPanel() {
                               value={editGoalDeadline}
                               onChange={(e) => setEditGoalDeadline(e.target.value)}
                             />
-                            <Input
-                              type="number"
-                              placeholder={t(locale, "planningGoalMonthly")}
-                              value={editGoalMonthly}
-                              onChange={(e) => setEditGoalMonthly(e.target.value)}
-                            />
                           </div>
+                          {editGoalId === goal.id && editMonthlyPreview ? (
+                            <p className="text-xs text-muted-foreground">
+                              {replaceTokens(t(locale, "planningGoalMonthlyPreview"), {
+                                amount: formatMoney(editMonthlyPreview.monthly, locale),
+                                months: String(editMonthlyPreview.months),
+                              })}
+                            </p>
+                          ) : null}
                           <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleSaveGoalEdit(goal.id)}>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveGoalEdit(goal.id)}
+                            >
                               {t(locale, "planningGoalEditSave")}
                             </Button>
                             <Button
@@ -420,14 +441,15 @@ export function PlanningPanel() {
                     onChange={(e) => setGoalDeadline(e.target.value)}
                     className="sm:w-40"
                   />
-                  <Input
-                    type="number"
-                    placeholder={t(locale, "planningGoalMonthly")}
-                    value={goalMonthly}
-                    onChange={(e) => setGoalMonthly(e.target.value)}
-                    className="sm:w-36"
-                  />
                 </div>
+                {createMonthlyPreview ? (
+                  <p className="text-xs text-muted-foreground">
+                    {replaceTokens(t(locale, "planningGoalMonthlyPreview"), {
+                      amount: formatMoney(createMonthlyPreview.monthly, locale),
+                      months: String(createMonthlyPreview.months),
+                    })}
+                  </p>
+                ) : null}
                 <Button className="sm:self-start" onClick={handleAddGoal}>
                   {t(locale, "planningGoalAdd")}
                 </Button>

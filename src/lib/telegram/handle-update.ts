@@ -15,6 +15,7 @@ import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { dbCategoryToApp } from "@/lib/household/sync-mapper";
 import { dbGoalToApp } from "@/lib/household/planning-mapper";
 import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
+import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { tryParsePlanningInput } from "@/lib/planning/parse-input";
 import { transcribeTelegramVoice } from "@/lib/stt";
@@ -170,16 +171,16 @@ async function applyPlanningFromBot(
     if (goals.some((g) => g.id === id)) {
       id = `${id}-${Date.now().toString(36).slice(-4)}`;
     }
-    const goal: SavingsGoal = {
+    const goal = applyGoalMonthlyToGoal({
       id,
       name: action.name.trim(),
       targetAmount: action.targetAmount,
       savedAmount: 0,
       deadline: action.deadline ?? null,
-      monthlyContribution: action.monthlyContribution ?? null,
+      monthlyContribution: null,
       kind: "custom",
       emergencyMonths: null,
-    };
+    });
     await upsertCloudGoal(userId, householdId, goal);
     const targetLine =
       action.targetAmount > 0
@@ -195,8 +196,8 @@ async function applyPlanningFromBot(
     const monthlyLine =
       goal.monthlyContribution && goal.monthlyContribution > 0
         ? locale === "en"
-          ? `, ${goal.monthlyContribution} ₽/mo`
-          : `, по ${goal.monthlyContribution} ₽/мес`
+          ? `, ~${goal.monthlyContribution} ₽/mo`
+          : `, ~${goal.monthlyContribution} ₽/мес`
         : "";
     return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}${monthlyLine}`;
   }

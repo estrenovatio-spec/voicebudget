@@ -3,6 +3,7 @@ import { normalizeAppCurrency } from "@/lib/app-currency";
 import { getDefaultCategories, getFallbackCategoryId } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { assertActiveSubscription } from "@/lib/payments/subscription";
+import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
   appCategoryBudgetToDb,
@@ -447,9 +448,15 @@ export async function depositCloudGoal(
     where: { householdId_id: { householdId, id } },
   });
   if (!existing) throw new Error("not_found");
+  const goal = applyGoalMonthlyToGoal(
+    dbGoalToApp({ ...existing, savedAmount: existing.savedAmount + amount }),
+  );
   await prisma.savingsGoal.update({
     where: { householdId_id: { householdId, id } },
-    data: { savedAmount: existing.savedAmount + amount },
+    data: {
+      savedAmount: goal.savedAmount,
+      monthlyContribution: goal.monthlyContribution,
+    },
   });
 }
 

@@ -55,6 +55,55 @@ export function goalProgressPercent(goal: SavingsGoal, transactions: Transaction
   return Math.min(100, Math.round((goal.savedAmount / target) * 100));
 }
 
+/** Сколько полных календарных месяцев осталось до срока (минимум 1). */
+export function monthsUntilDeadline(deadline: string, fromDate: Date = new Date()): number {
+  const end = new Date(`${deadline}T12:00:00`);
+  const from = new Date(
+    fromDate.getFullYear(),
+    fromDate.getMonth(),
+    fromDate.getDate(),
+    12,
+    0,
+    0,
+  );
+  if (Number.isNaN(end.getTime())) return 1;
+  if (end.getTime() <= from.getTime()) return 1;
+
+  let months =
+    (end.getFullYear() - from.getFullYear()) * 12 + (end.getMonth() - from.getMonth());
+  if (end.getDate() < from.getDate()) months -= 1;
+  return Math.max(1, months);
+}
+
+/** План в месяц: (цель − накоплено) / месяцев до срока. */
+export function computeGoalMonthlyContribution(
+  targetAmount: number,
+  savedAmount: number,
+  deadline: string | null,
+  fromDate?: Date,
+): number | null {
+  if (!deadline || targetAmount <= 0) return null;
+  const remaining = Math.max(0, roundMoneyUp(targetAmount) - roundMoneyUp(savedAmount));
+  if (remaining <= 0) return null;
+  const months = monthsUntilDeadline(deadline, fromDate);
+  return roundMoneyUp(remaining / months);
+}
+
+export function resolveGoalMonthlyContribution(goal: SavingsGoal): number | null {
+  return computeGoalMonthlyContribution(goal.targetAmount, goal.savedAmount, goal.deadline);
+}
+
+export function applyGoalMonthlyToGoal(goal: SavingsGoal): SavingsGoal {
+  return {
+    ...goal,
+    monthlyContribution: computeGoalMonthlyContribution(
+      goal.targetAmount,
+      goal.savedAmount,
+      goal.deadline,
+    ),
+  };
+}
+
 export function budgetUsagePercent(spent: number, limit: number): number {
   if (limit <= 0) return 0;
   return Math.round((spent / limit) * 100);

@@ -39,6 +39,7 @@ import {
   revertTransactionGoal,
 } from "@/lib/goal-from-transaction";
 import {
+  applyGoalMonthlyToGoal,
   defaultEmergencyGoal,
   todayIso,
   advanceRecurringDate,
@@ -130,20 +131,10 @@ interface StoreState {
   markReminderShownToday: () => void;
   /** Дата первого входа / начала учёта (для месячного разбора) */
   ensureTrackingStarted: () => void;
-  addGoal: (
-    name: string,
-    targetAmount: number,
-    deadline?: string | null,
-    monthlyContribution?: number | null,
-  ) => string;
+  addGoal: (name: string, targetAmount: number, deadline?: string | null) => string;
   updateGoal: (
     id: string,
-    patch: {
-      name?: string;
-      targetAmount?: number;
-      deadline?: string | null;
-      monthlyContribution?: number | null;
-    },
+    patch: { name?: string; targetAmount?: number; deadline?: string | null },
   ) => boolean;
   depositGoal: (id: string, amount: number) => boolean;
   removeGoal: (id: string) => boolean;
@@ -509,28 +500,24 @@ export const useStore = create<StoreState>()(
           trackingStartedAt: (fromTx ?? new Date()).toISOString(),
         });
       },
-      addGoal: (name, targetAmount, deadline = null, monthlyContribution = null) => {
+      addGoal: (name, targetAmount, deadline = null) => {
         const trimmed = name.trim();
         let id = slugifyCategoryId(trimmed) || `goal-${Date.now().toString(36)}`;
         const { savingsGoals } = get();
         if (savingsGoals.some((g) => g.id === id)) {
           id = `${id}-${Date.now().toString(36).slice(-4)}`;
         }
-        const monthly =
-          monthlyContribution != null && monthlyContribution > 0
-            ? roundMoneyUp(monthlyContribution)
-            : null;
-        const goal: SavingsGoal = {
+        const goal = applyGoalMonthlyToGoal({
           id,
           name: trimmed,
           targetAmount: roundMoneyUp(targetAmount),
           savedAmount: 0,
           deadline,
-          monthlyContribution: monthly,
+          monthlyContribution: null,
           kind: "custom",
           emergencyMonths: null,
           updatedAt: new Date().toISOString(),
-        };
+        });
         set({ savingsGoals: [...savingsGoals, goal] });
         void cloudPushGoal(goal);
         return id;
@@ -542,7 +529,7 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           savingsGoals: state.savingsGoals.map((g) => {
             if (g.id !== id) return g;
-            updated = {
+            updated = applyGoalMonthlyToGoal({
               ...g,
               name: patch.name?.trim() || g.name,
               targetAmount:
@@ -550,14 +537,8 @@ export const useStore = create<StoreState>()(
                   ? roundMoneyUp(Math.max(0, patch.targetAmount))
                   : g.targetAmount,
               deadline: patch.deadline !== undefined ? patch.deadline : g.deadline,
-              monthlyContribution:
-                patch.monthlyContribution !== undefined
-                  ? patch.monthlyContribution != null && patch.monthlyContribution > 0
-                    ? roundMoneyUp(patch.monthlyContribution)
-                    : null
-                  : g.monthlyContribution,
               updatedAt: new Date().toISOString(),
-            };
+            });
             return updated;
           }),
         }));
@@ -668,12 +649,7 @@ export const useStore = create<StoreState>()(
       },
       applyPlanningInput: (action) => {
         if (action.kind === "goal_create") {
-          get().addGoal(
-            action.name,
-            action.targetAmount,
-            action.deadline ?? null,
-            action.monthlyContribution ?? null,
-          );
+          get().addGoal(action.name, action.targetAmount, action.deadline ?? null);
           return true;
         }
         if (action.kind === "goal_deposit") {
@@ -794,10 +770,12 @@ export const useStore = create<StoreState>()(
           reminderLastShownDate:
             typeof raw.reminderLastShownDate === "string" ? raw.reminderLastShownDate : null,
           savingsGoals: Array.isArray(raw.savingsGoals)
-            ? (raw.savingsGoals as SavingsGoal[]).map((g) => ({
-                ...g,
-                monthlyContribution: g.monthlyContribution ?? null,
-              }))
+            ? (raw.savingsGoals as SavingsGoal[]).map((g) =>
+                applyGoalMonthlyToGoal({
+                  ...g,
+                  monthlyContribution: g.monthlyContribution ?? null,
+                }),
+              )
             : [],
           categoryBudgets: Array.isArray(raw.categoryBudgets)
             ? (raw.categoryBudgets as CategoryBudget[])

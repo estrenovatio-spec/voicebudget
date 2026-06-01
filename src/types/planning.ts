@@ -47,7 +47,6 @@ export type PlanningInputAction =
       name: string;
       targetAmount: number;
       deadline?: string | null;
-      monthlyContribution?: number | null;
     }
   | { kind: "goal_deposit_by_name"; goalName: string; amount: number }
   | {

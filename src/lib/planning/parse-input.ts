@@ -27,13 +27,6 @@ const DEADLINE_RU =
   /(?:до|к|срок|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
 const DEADLINE_EN = /(?:by|until|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
 
-const MONTHLY_RU =
-  /(?:по|откладывать?|взнос(?:ом)?)\s+(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)\s*(?:в\s+)?(?:месяц|мес)(?:ец)?/i;
-const MONTHLY_RU2 =
-  /(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)\s*(?:в\s+месяц|ежемесячно|\/мес|₽?\s*в\s*мес)/i;
-const MONTHLY_EN =
-  /(?:(\d[\d\s.,]*(?:\s*(?:k|m))?)\s*(?:per month|\/month|monthly)|(?:monthly|per month)\s+(\d[\d\s.,]*(?:\s*(?:k|m))?))/i;
-
 const INCOME_HINT_RU = /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс)/i;
 const INCOME_HINT_EN = /(?:salary|received|income|earned|paid|paycheck)/i;
 
@@ -75,9 +68,6 @@ function cleanGoalName(raw: string): string {
     .replace(/\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?\s*(?:руб(?:лей|ля)?|₽)?\s*$/i, "")
     .replace(/(?:до|к|срок|deadline|by|until)\s+\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?/gi, "")
     .replace(/(?:до|к|срок|deadline|by|until)\s+\d{4}-\d{2}-\d{2}/gi, "")
-    .replace(MONTHLY_RU, "")
-    .replace(MONTHLY_RU2, "")
-    .replace(MONTHLY_EN, "")
     .replace(/^(?:копилк(?:у|а|и|е)\s+)+/i, "")
     .replace(/^(?:на|в|для|по|for|to|into)\s+/i, "")
     .trim();
@@ -102,27 +92,6 @@ function parseGoalDeadline(text: string, locale: Locale): string | null {
   const bare = text.match(/\b(\d{1,2}[./]\d{1,2}[./]\d{4})\b/);
   if (bare?.[1]) return normalizeGoalDeadline(bare[1]);
   return null;
-}
-
-function parseGoalMonthlyContribution(text: string, locale: Locale): number | null {
-  if (locale === "ru") {
-    const m1 = text.match(MONTHLY_RU);
-    if (m1?.[1]) return roundMoneyUp(parseAmountFromTranscript(m1[1], locale));
-    const m2 = text.match(MONTHLY_RU2);
-    if (m2?.[1]) return roundMoneyUp(parseAmountFromTranscript(m2[1], locale));
-    return null;
-  }
-  const m = text.match(MONTHLY_EN);
-  const raw = m?.[1] ?? m?.[2];
-  if (!raw) return null;
-  return roundMoneyUp(parseAmountFromTranscript(raw, locale));
-}
-
-function stripGoalMonthly(text: string, locale: Locale): string {
-  if (locale === "ru") {
-    return text.replace(MONTHLY_RU, "").replace(MONTHLY_RU2, "").trim();
-  }
-  return text.replace(MONTHLY_EN, "").trim();
 }
 
 /** Ищет существующую цель, название которой есть во фразе (любой порядок слов). */
@@ -205,22 +174,12 @@ function parseGoalDepositFromText(
 function parseGoalCreateTail(
   tail: string,
   locale: Locale,
-): {
-  name: string;
-  targetAmount: number;
-  deadline: string | null;
-  monthlyContribution: number | null;
-} | null {
+): { name: string; targetAmount: number; deadline: string | null } | null {
   let work = tail.trim();
   const deadline = parseGoalDeadline(work, locale);
   if (deadline) {
     work = work.replace(locale === "ru" ? DEADLINE_RU : DEADLINE_EN, "").trim();
     work = work.replace(/\b\d{1,2}[./]\d{1,2}[./]\d{4}\b/, "").trim();
-  }
-
-  const monthlyContribution = parseGoalMonthlyContribution(work, locale);
-  if (monthlyContribution && monthlyContribution > 0) {
-    work = stripGoalMonthly(work, locale);
   }
 
   const targetMatch = locale === "ru" ? work.match(TARGET_RU) : work.match(TARGET_EN);
@@ -245,8 +204,6 @@ function parseGoalCreateTail(
     name,
     targetAmount: targetAmount > 0 ? targetAmount : 0,
     deadline,
-    monthlyContribution:
-      monthlyContribution && monthlyContribution > 0 ? monthlyContribution : null,
   };
 }
 
