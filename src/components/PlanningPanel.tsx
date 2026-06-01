@@ -19,15 +19,14 @@ import { formatTransactionDate } from "@/lib/format-date";
 import {
   avgMonthlyExpenses,
   budgetUsagePercent,
-  computeGoalMonthlyContribution,
   emergencyTargetAmount,
   goalProgressPercent,
   monthSpentByCategory,
-  monthsUntilDeadline,
-  resolveGoalMonthlyContribution,
+  resolveGoalMonthlyPlans,
   resolveGoalTarget,
   todayIso,
 } from "@/lib/planning/analytics";
+import type { GoalMonthlyPlans } from "@/lib/planning/analytics";
 import { t } from "@/lib/i18n";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
@@ -49,26 +48,40 @@ function formatGoalDeadline(iso: string, locale: Locale): string {
   return `${d}.${m}.${y}`;
 }
 
-function goalPlanMeta(goal: SavingsGoal, locale: Locale): string | null {
-  const parts: string[] = [];
-  if (goal.deadline) {
-    parts.push(
-      replaceTokens(t(locale, "planningGoalUntil"), {
-        date: formatGoalDeadline(goal.deadline, locale),
-      }),
-    );
-  }
-  const monthly = resolveGoalMonthlyContribution(goal);
-  if (monthly && monthly > 0) {
-    const months = goal.deadline ? monthsUntilDeadline(goal.deadline) : null;
-    parts.push(
-      replaceTokens(t(locale, "planningGoalMonthlyPlan"), {
-        amount: formatMoney(monthly, locale),
-        months: months != null ? String(months) : "",
-      }),
-    );
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
+function GoalMonthlyPlansBlock({
+  plans,
+  deadline,
+  locale,
+}: {
+  plans: GoalMonthlyPlans;
+  deadline: string | null;
+  locale: Locale;
+}) {
+  return (
+    <div className="mt-0.5 space-y-0.5">
+      {deadline ? (
+        <p className="text-xs text-muted-foreground">
+          {replaceTokens(t(locale, "planningGoalUntil"), {
+            date: formatGoalDeadline(deadline, locale),
+          })}
+          {" · "}
+          {replaceTokens(t(locale, "planningGoalMonthsLeft"), {
+            months: String(plans.months),
+          })}
+        </p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        {replaceTokens(t(locale, "planningGoalMonthlyOnAccount"), {
+          amount: formatMoney(plans.onAccount, locale),
+        })}
+      </p>
+      <p className="text-xs font-medium text-primary">
+        {replaceTokens(t(locale, "planningGoalMonthlyIfInvested"), {
+          amount: formatMoney(plans.ifInvested, locale),
+        })}
+      </p>
+    </div>
+  );
 }
 
 function ProgressBar({ percent, over }: { percent: number; over?: boolean }) {
@@ -151,29 +164,16 @@ export function PlanningPanel() {
     : null;
 
   const createMonthlyPreview = useMemo(() => {
-    const name = goalName.trim();
     const target = goalTarget ? Number(goalTarget.replace(/\s/g, "")) : 0;
     const deadline = goalDeadline.trim() || null;
-    if (!deadline || target <= 0) return null;
-    const monthly = computeGoalMonthlyContribution(target, 0, deadline, undefined, name);
-    if (!monthly) return null;
-    return { monthly, months: monthsUntilDeadline(deadline) };
-  }, [goalName, goalTarget, goalDeadline]);
+    return resolveGoalMonthlyPlans(target, 0, deadline);
+  }, [goalTarget, goalDeadline]);
 
   const editMonthlyPreview = useMemo(() => {
     if (!editingGoal) return null;
     const target = editGoalTarget ? Number(editGoalTarget.replace(/\s/g, "")) : 0;
     const deadline = editGoalDeadline.trim() || null;
-    if (!deadline || target <= 0) return null;
-    const monthly = computeGoalMonthlyContribution(
-      target,
-      editingGoal.savedAmount,
-      deadline,
-      undefined,
-      editingGoal.name,
-    );
-    if (!monthly) return null;
-    return { monthly, months: monthsUntilDeadline(deadline) };
+    return resolveGoalMonthlyPlans(target, editingGoal.savedAmount, deadline);
   }, [editingGoal, editGoalTarget, editGoalDeadline]);
 
   const handleAddGoal = () => {
@@ -306,14 +306,22 @@ export function PlanningPanel() {
                   const target = resolveGoalTarget(goal, transactions);
                   const percent = goalProgressPercent(goal, transactions);
                   const remaining = Math.max(0, target - goal.savedAmount);
-                  const planLine = goalPlanMeta(goal, locale);
+                  const monthlyPlans = resolveGoalMonthlyPlans(
+                    target,
+                    goal.savedAmount,
+                    goal.deadline,
+                  );
                   return (
                     <div key={goal.id} className="space-y-2 rounded-lg border p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">{goal.name}</p>
-                          {planLine ? (
-                            <p className="text-xs text-muted-foreground">{planLine}</p>
+                          {monthlyPlans ? (
+                            <GoalMonthlyPlansBlock
+                              plans={monthlyPlans}
+                              deadline={goal.deadline}
+                              locale={locale}
+                            />
                           ) : null}
                           <p className="text-xs text-muted-foreground">
                             {target > 0
@@ -373,12 +381,11 @@ export function PlanningPanel() {
                             />
                           </div>
                           {editGoalId === goal.id && editMonthlyPreview ? (
-                            <p className="text-xs text-muted-foreground">
-                              {replaceTokens(t(locale, "planningGoalMonthlyPreview"), {
-                                amount: formatMoney(editMonthlyPreview.monthly, locale),
-                                months: String(editMonthlyPreview.months),
-                              })}
-                            </p>
+                            <GoalMonthlyPlansBlock
+                              plans={editMonthlyPreview}
+                              deadline={editGoalDeadline.trim() || null}
+                              locale={locale}
+                            />
                           ) : null}
                           <div className="flex gap-2">
                             <Button
@@ -446,12 +453,11 @@ export function PlanningPanel() {
                   />
                 </div>
                 {createMonthlyPreview ? (
-                  <p className="text-xs text-muted-foreground">
-                    {replaceTokens(t(locale, "planningGoalMonthlyPreview"), {
-                      amount: formatMoney(createMonthlyPreview.monthly, locale),
-                      months: String(createMonthlyPreview.months),
-                    })}
-                  </p>
+                  <GoalMonthlyPlansBlock
+                    plans={createMonthlyPreview}
+                    deadline={goalDeadline.trim() || null}
+                    locale={locale}
+                  />
                 ) : null}
                 <Button className="sm:self-start" onClick={handleAddGoal}>
                   {t(locale, "planningGoalAdd")}

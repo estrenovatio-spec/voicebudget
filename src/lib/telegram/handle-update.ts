@@ -15,7 +15,7 @@ import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { dbCategoryToApp } from "@/lib/household/sync-mapper";
 import { dbGoalToApp } from "@/lib/household/planning-mapper";
 import { parseTranscriptServerMany } from "@/lib/parse-voice-server";
-import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
+import { applyGoalMonthlyToGoal, resolveGoalMonthlyPlans } from "@/lib/planning/analytics";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { tryParsePlanningInput } from "@/lib/planning/parse-input";
 import { transcribeTelegramVoice } from "@/lib/stt";
@@ -193,12 +193,16 @@ async function applyPlanningFromBot(
         ? `, by ${goal.deadline}`
         : `, до ${goal.deadline}`
       : "";
-    const monthlyLine =
-      goal.monthlyContribution && goal.monthlyContribution > 0
-        ? locale === "en"
-          ? `, ~${goal.monthlyContribution} ₽/mo`
-          : `, ~${goal.monthlyContribution} ₽/мес`
-        : "";
+    const plans = resolveGoalMonthlyPlans(
+      goal.targetAmount,
+      goal.savedAmount,
+      goal.deadline,
+    );
+    const monthlyLine = plans
+      ? locale === "en"
+        ? `\nIn account: ~${plans.onAccount} ₽/mo · If invested: ~${plans.ifInvested} ₽/mo`
+        : `\nНа счёте: ~${plans.onAccount} ₽/мес · Если инвестировать: ~${plans.ifInvested} ₽/мес`
+      : "";
     return `✅ Копилка «${escapeHtml(goal.name)}» — ${targetLine}${deadlineLine}${monthlyLine}`;
   }
 

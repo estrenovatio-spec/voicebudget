@@ -75,22 +75,23 @@ export function monthsUntilDeadline(deadline: string, fromDate: Date = new Date(
   return Math.max(1, months);
 }
 
-const INVESTMENT_GOAL_RE =
-  /инвест|invest|брокер|broker|etf|иис|акци|stock|портфел|portfolio|вклад.*проц|фонд|fund/i;
+/** Для сравнения «на счёте» vs «с инвестированием» — в интерфейсе процент не показываем. */
+const GROWTH_ANNUAL_RATE = 0.17;
 
-/** Цель с инвестированием (по названию) — другой расчёт взноса в месяц. */
-export function isInvestmentGoal(name: string): boolean {
-  return INVESTMENT_GOAL_RE.test(name.trim());
+export interface GoalMonthlyPlans {
+  months: number;
+  /** Копить в месяц, если деньги просто лежат на счёте */
+  onAccount: number;
+  /** Копить в месяц, если откладывать с ростом (аннуитет) */
+  ifInvested: number;
 }
 
-/** Взнос в месяц с учётом роста накопленного и будущих взносов (ставка не показывается в UI). */
-function computeInvestmentMonthlyPayment(
+function computeGrowthMonthlyPayment(
   targetAmount: number,
   savedAmount: number,
   months: number,
 ): number | null {
-  const annualRate = 0.15;
-  const r = annualRate / 12;
+  const r = GROWTH_ANNUAL_RATE / 12;
   const target = roundMoneyUp(targetAmount);
   const saved = roundMoneyUp(savedAmount);
   const n = Math.max(1, months);
@@ -103,32 +104,39 @@ function computeInvestmentMonthlyPayment(
   return roundMoneyUp(Math.max(payment, 0));
 }
 
-/** План в месяц: обычная копилка — (цель − накоплено) / месяцев; инвестиции — с учётом доходности. */
+/** Два плана в месяц: без роста и с инвестированием. */
+export function resolveGoalMonthlyPlans(
+  targetAmount: number,
+  savedAmount: number,
+  deadline: string | null,
+  fromDate?: Date,
+): GoalMonthlyPlans | null {
+  if (!deadline || targetAmount <= 0) return null;
+  const months = monthsUntilDeadline(deadline, fromDate);
+  const remaining = Math.max(0, roundMoneyUp(targetAmount) - roundMoneyUp(savedAmount));
+  const onAccount =
+    remaining <= 0 ? null : roundMoneyUp(remaining / months);
+  const ifInvested = computeGrowthMonthlyPayment(targetAmount, savedAmount, months);
+  if (onAccount == null && ifInvested == null) return null;
+  return {
+    months,
+    onAccount: onAccount ?? ifInvested!,
+    ifInvested: ifInvested ?? onAccount!,
+  };
+}
+
+/** Основной план для хранения в БД — «на счёте». */
 export function computeGoalMonthlyContribution(
   targetAmount: number,
   savedAmount: number,
   deadline: string | null,
   fromDate?: Date,
-  goalName?: string,
 ): number | null {
-  if (!deadline || targetAmount <= 0) return null;
-  const months = monthsUntilDeadline(deadline, fromDate);
-  if (goalName && isInvestmentGoal(goalName)) {
-    return computeInvestmentMonthlyPayment(targetAmount, savedAmount, months);
-  }
-  const remaining = Math.max(0, roundMoneyUp(targetAmount) - roundMoneyUp(savedAmount));
-  if (remaining <= 0) return null;
-  return roundMoneyUp(remaining / months);
+  return resolveGoalMonthlyPlans(targetAmount, savedAmount, deadline, fromDate)?.onAccount ?? null;
 }
 
 export function resolveGoalMonthlyContribution(goal: SavingsGoal): number | null {
-  return computeGoalMonthlyContribution(
-    goal.targetAmount,
-    goal.savedAmount,
-    goal.deadline,
-    undefined,
-    goal.name,
-  );
+  return computeGoalMonthlyContribution(goal.targetAmount, goal.savedAmount, goal.deadline);
 }
 
 export function applyGoalMonthlyToGoal(goal: SavingsGoal): SavingsGoal {
@@ -138,8 +146,6 @@ export function applyGoalMonthlyToGoal(goal: SavingsGoal): SavingsGoal {
       goal.targetAmount,
       goal.savedAmount,
       goal.deadline,
-      undefined,
-      goal.name,
     ),
   };
 }
