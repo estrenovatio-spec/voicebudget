@@ -1,6 +1,28 @@
 import { resolvePartnerTransferOwnerForViewer } from "@/lib/partner-transfer";
 import type { BudgetOwner, Transaction } from "@/types";
 
+function householdPartnerUserId(
+  viewerUserId: string,
+  householdMemberUserIds: readonly string[],
+): string | null {
+  const partnerId = householdMemberUserIds.find((id) => id !== viewerUserId);
+  return partnerId ?? null;
+}
+
+function isPartnerAuthor(
+  authorId: string,
+  viewerUserId: string,
+  householdMemberUserIds: readonly string[],
+): boolean {
+  const partnerId = householdPartnerUserId(viewerUserId, householdMemberUserIds);
+  if (partnerId) return authorId === partnerId;
+  return (
+    householdMemberUserIds.length > 0 &&
+    authorId !== viewerUserId &&
+    householdMemberUserIds.includes(authorId)
+  );
+}
+
 /**
  * Кто потратил/получил с точки зрения текущего зрителя.
  * createdBy в облаке — id автора операции; owner в БД чаще «me» относительно createdBy.
@@ -21,10 +43,7 @@ export function resolveTransactionOwnerForViewer(
 
   if (viewerUserId && tx.createdBy) {
     if (tx.createdBy === viewerUserId) return "me";
-    if (
-      householdMemberUserIds.length === 0 ||
-      householdMemberUserIds.includes(tx.createdBy)
-    ) {
+    if (isPartnerAuthor(tx.createdBy, viewerUserId, householdMemberUserIds)) {
       return "partner";
     }
   }
@@ -37,10 +56,7 @@ export function resolveTransactionOwnerForViewer(
   if (authorId === viewerUserId) {
     return tx.owner === "partner" ? "partner" : "me";
   }
-  if (
-    householdMemberUserIds.length === 0 ||
-    householdMemberUserIds.includes(authorId)
-  ) {
+  if (isPartnerAuthor(authorId, viewerUserId, householdMemberUserIds)) {
     return tx.owner === "me" ? "partner" : "me";
   }
   return tx.owner === "partner" ? "partner" : "me";

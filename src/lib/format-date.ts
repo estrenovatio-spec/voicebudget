@@ -2,6 +2,36 @@ import type { Locale } from "@/types";
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/;
 
+const MONTH_SHORT_RU = [
+  "янв",
+  "фев",
+  "мар",
+  "апр",
+  "май",
+  "июн",
+  "июл",
+  "авг",
+  "сен",
+  "окт",
+  "ноя",
+  "дек",
+] as const;
+
+const MONTH_SHORT_EN = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
 const MONTH_LONG_EN = [
   "January",
   "February",
@@ -57,6 +87,25 @@ export function formatMonthYearLong(dateIso: string, locale: Locale): string {
   }
   const d = new Date(y, mo - 1, 15);
   return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+}
+
+/** Короткая дата в строке операции: «12 мар» / «Mar 12». */
+export function formatTransactionDateShort(dateStr: string, locale: Locale): string {
+  const parts = parseIsoDateParts(dateStr);
+  if (!parts) return formatTransactionDate(dateStr, locale);
+  const { mo, d } = parts;
+  if (locale === "en") return `${MONTH_SHORT_EN[mo - 1]} ${d}`;
+  return `${d} ${MONTH_SHORT_RU[mo - 1]}`;
+}
+
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function yesterdayIsoDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 /** ISO date (YYYY-MM-DD) or full ISO */

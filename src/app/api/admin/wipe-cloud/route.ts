@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isCloudWipeAuthorized } from "@/lib/admin-wipe-auth";
 import { dbUnavailable } from "@/lib/api/household-response";
 import { isDatabaseConfigured } from "@/lib/db";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { wipeAllCloudData } from "@/lib/household/wipe-cloud";
-import { isAdminAuthorized, requireAdminSecrets } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-/** POST with header: Authorization: Bearer <HOUSEHOLD_SESSION_SECRET or CLOUD_WIPE_SECRET> */
+/**
+ * POST — full cloud wipe. Requires ALL of:
+ * - CLOUD_WIPE_ENABLED=true on server
+ * - CLOUD_WIPE_SECRET (dedicated, not session secret)
+ * - Authorization: Bearer <CLOUD_WIPE_SECRET>
+ * - Header x-cloud-wipe-confirm: DELETE_ALL_HOUSEHOLDS
+ */
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
-  if (!requireAdminSecrets()) {
-    return NextResponse.json({ error: "wipe_not_configured" }, { status: 503 });
-  }
-
-  if (!isAdminAuthorized(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isCloudWipeAuthorized(req)) {
+    return NextResponse.json({ error: "cloud_wipe_forbidden" }, { status: 403 });
   }
 
   try {

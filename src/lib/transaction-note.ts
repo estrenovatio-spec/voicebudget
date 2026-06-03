@@ -29,3 +29,18 @@ export function displayTransactionNote(note: string, amount: number): string | n
   const clean = sanitizeTransactionNote(note, amount);
   return clean || null;
 }
+
+/** Комментарий при вводе + фраза/заметка от разбора. */
+export function mergeTransactionComment(
+  parsedNote: string | undefined,
+  phrase: string,
+  userComment: string,
+  amount: number,
+): string {
+  const base = sanitizeTransactionNote(parsedNote?.trim() || phrase, amount);
+  const extra = userComment.trim().slice(0, 120);
+  if (!extra) return base;
+  if (!base) return extra;
+  if (base.includes(extra)) return base.slice(0, 120);
+  return `${base} · ${extra}`.slice(0, 120);
+}

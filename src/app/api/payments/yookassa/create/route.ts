@@ -9,12 +9,15 @@ import { isPaymentsConfigured } from "@/lib/payments/config";
 import { getSubscriptionForUser } from "@/lib/payments/subscription";
 import { createYookassaCheckout } from "@/lib/payments/yookassa";
 
-async function resolveUserId(req: NextRequest): Promise<string | null> {
+async function resolveUserIdFromBody(
+  req: NextRequest,
+  body: unknown,
+): Promise<string | null> {
   const session = requireSession(req);
   if (session) return session.userId;
 
   try {
-    const auth = householdAuthSchema.parse(await req.json());
+    const auth = householdAuthSchema.parse(body);
     const tgUser = requireTelegramUser(auth);
     if (!tgUser) return null;
     const user = await upsertTelegramUser(tgUser);
@@ -24,13 +27,26 @@ async function resolveUserId(req: NextRequest): Promise<string | null> {
   }
 }
 
+function readUseReferralWallet(body: unknown): boolean {
+  return Boolean(
+    body && typeof body === "object" && (body as { useReferralWallet?: boolean }).useReferralWallet,
+  );
+}
+
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
   if (!isPaymentsConfigured()) {
     return NextResponse.json({ error: "payments_not_configured" }, { status: 503 });
   }
 
-  const userId = await resolveUserId(req);
+  let body: unknown = {};
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  const userId = await resolveUserIdFromBody(req, body);
   if (!userId) return unauthorized();
 
   const sub = await getSubscriptionForUser(userId);
@@ -38,9 +54,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "already_subscribed" }, { status: 409 });
   }
 
+  const useReferralWallet = readUseReferralWallet(body);
+
   try {
-    const { confirmationUrl, paymentId } = await createYookassaCheckout(userId);
-    return NextResponse.json({ ok: true, confirmationUrl, paymentId });
+    const result = await createYookassaCheckout(userId, { useReferralWallet });
+    if (result.paidFromWallet) {
+      return NextResponse.json({
+        ok: true,
+        paidFromWallet: true,
+        walletUsedRub: result.walletUsedRub,
+      });
+    }
+    return NextResponse.json({
+      ok: true,
+      confirmationUrl: result.confirmationUrl,
+      paymentId: result.paymentId,
+      walletUsedRub: result.walletUsedRub,
+      amountDueRub: result.amountDueRub,
+    });
   } catch (e) {
     console.error("[payments/yookassa/create]", e);
     const msg = e instanceof Error ? e.message : "checkout_failed";

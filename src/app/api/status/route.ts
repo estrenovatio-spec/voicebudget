@@ -7,6 +7,17 @@ import {
   subscriptionEnforced,
   subscriptionTrialDays,
 } from "@/lib/payments/config";
+import { referralsEnabled } from "@/lib/referrals/config";
+import { isReferralSchemaReady } from "@/lib/referrals/schema-ready";
+import { getBillingDevTelegramId } from "@/lib/billing/dev-telegram-id";
+import { getPublicSiteUrl } from "@/lib/site-url";
+import { getTelegramBotName } from "@/lib/telegram/bot-name";
+import { fetchTelegramBotUsername } from "@/lib/telegram/bot-identity";
+import {
+  getTelegramBotTokenForEnv,
+  isTelegramPreviewTokenConfigured,
+  isTelegramBotConfigured,
+} from "@/lib/telegram/bot-token";
 import { listSttProviderIds } from "@/lib/stt-providers";
 import {
   formatRecognitionStatus,
@@ -18,7 +29,13 @@ export const dynamic = "force-dynamic";
 const BUILD_TAG = "header-buttons-v1";
 
 export async function GET() {
-  const telegramToken = Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim());
+  const telegramToken = Boolean(getTelegramBotTokenForEnv());
+  const tokenBotUsername = await fetchTelegramBotUsername(getTelegramBotTokenForEnv());
+  const expectedBotName = getTelegramBotName();
+  const telegramTokenMatchesBotName =
+    tokenBotUsername && expectedBotName
+      ? tokenBotUsername.toLowerCase() === expectedBotName.replace(/^@/, "").toLowerCase()
+      : null;
   const databaseUrl = isDatabaseConfigured();
   const databaseUrlHint = !databaseUrl
     ? "DATABASE_URL на Vercel пустой или неверный (должен начинаться с postgresql://)"
@@ -108,10 +125,34 @@ export async function GET() {
     paymentsConfigured: isPaymentsConfigured(),
     vercelEnv: process.env.VERCEL_ENV ?? null,
     billingTestMode: subscriptionBillingTestMode(),
+    billingDevFallback: Boolean(getBillingDevTelegramId()),
+    billingDevTelegramIdHint: (() => {
+      const id = getBillingDevTelegramId();
+      if (!id || id.length < 6) return id ?? null;
+      return `${id.slice(0, 3)}…${id.slice(-3)}`;
+    })(),
     subscriptionEnforced: subscriptionEnforced(),
+    referralsEnabled: referralsEnabled(),
+    referralSchemaReady: databaseUrl ? await isReferralSchemaReady() : false,
     subscriptionTrialDays: subscriptionTrialDays(),
     trialBannerServerReady:
       subscriptionBillingTestMode() && subscriptionEnforced() && subscriptionTrialDays() > 0,
+    telegramPreviewTokenSet: isTelegramPreviewTokenConfigured(),
+    telegramBotName: expectedBotName,
+    telegramTokenBotUsername: tokenBotUsername,
+    telegramTokenMatchesBotName,
+    telegramBotConfigured: isTelegramBotConfigured(),
+    ...(telegramTokenMatchesBotName === false
+      ? {
+          telegramTokenHint:
+            `TELEGRAM_BOT_TOKEN_PREVIEW на Vercel — это @${tokenBotUsername}, нужен @${expectedBotName}. BotFather → API Token → обновить переменную → Redeploy.`,
+        }
+      : {}),
+    siteUrl: getPublicSiteUrl(),
+    siteUrlPreviewEnv: Boolean(
+      process.env.NEXT_PUBLIC_SITE_URL_PREVIEW?.trim() ||
+        process.env.NEXT_PUBLIC_SITE_URL_preview?.trim(),
+    ),
     dbTables,
     planningTables,
     planningColumnsOk,

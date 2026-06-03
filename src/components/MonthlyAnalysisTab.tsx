@@ -7,6 +7,7 @@ import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
 import { t } from "@/lib/i18n";
+import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import {
   MONTHLY_CHAT_MAX_USER_MESSAGES,
   buildChatSummaryForQuestion,
@@ -23,6 +24,7 @@ import {
   setMonthlyChatMessages,
   type MonthlyChatMessage,
 } from "@/lib/storage";
+import { persistAiReportToCloud } from "@/lib/reports/persist-ai-report";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 
 function daysUntilNext(msRemaining: number): number {
@@ -38,6 +40,8 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
   const trackingStartedAt = useStore((s) => s.trackingStartedAt);
   const transactions = useTransactions();
   const categories = useCategories();
+  const savingsGoals = useStore((s) => s.savingsGoals);
+  const categoryBudgets = useStore((s) => s.categoryBudgets);
 
   const [report, setReport] = useState<string[]>([]);
   const [chat, setChat] = useState<MonthlyChatMessage[]>([]);
@@ -62,6 +66,35 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
   const gate = useMemo(
     () => getMonthlyGate(summary, trackingStartedAt, transactions),
     [summary, trackingStartedAt, transactions],
+  );
+
+  const coaching = useMemo(
+    () =>
+      buildAiCoachingContext(
+        transactions,
+        savingsGoals,
+        categoryBudgets,
+        (id) => getCategoryLabel(id, categories, locale),
+        summary.periodStart,
+        summary.periodEnd,
+      ),
+    [
+      transactions,
+      savingsGoals,
+      categoryBudgets,
+      categories,
+      locale,
+      summary.periodStart,
+      summary.periodEnd,
+    ],
+  );
+
+  const coachingPayload = useMemo(
+    () =>
+      coaching.savingsGoals.length > 0 || coaching.categoryBudgets.length > 0
+        ? coaching
+        : undefined,
+    [coaching],
   );
 
   const userMessageCount = chat.filter((m) => m.role === "user").length;
@@ -102,7 +135,7 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
         const res = await fetch("/api/monthly-analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale, summary }),
+          body: JSON.stringify({ locale, summary, coaching: coachingPayload }),
         });
 
         const json = (await res.json()) as {
@@ -126,6 +159,15 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
         setIsFullReport(true);
         setUsedFallback(Boolean(json.fallback));
         setChatLimitHit(false);
+        void persistAiReportToCloud({
+          kind: "monthly",
+          periodStart: summary.periodStart,
+          periodEnd: summary.periodEnd,
+          locale,
+          tips: json.tips,
+          fallback: json.fallback,
+          summaryJson: summary,
+        });
       } catch {
         const tips = ruleBasedMonthlyAnalysis(summary, locale, getAdvisorConfig());
         setReport(tips);
@@ -135,11 +177,20 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
         setNextInDays(30);
         setIsFullReport(true);
         setUsedFallback(true);
+        void persistAiReportToCloud({
+          kind: "monthly",
+          periodStart: summary.periodStart,
+          periodEnd: summary.periodEnd,
+          locale,
+          tips,
+          fallback: true,
+          summaryJson: summary,
+        });
       } finally {
         setLoadingReport(false);
       }
     },
-    [gate, locale, summary],
+    [coachingPayload, gate, locale, summary],
   );
 
   useEffect(() => {

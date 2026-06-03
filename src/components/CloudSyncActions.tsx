@@ -16,6 +16,14 @@ type Props = {
   onDisconnect?: () => void;
 };
 
+const cloudPullButtonClass =
+  "border-sky-600/40 bg-sky-600 text-white shadow-sm hover:bg-sky-700 active:bg-sky-800 dark:border-sky-500/50 dark:bg-sky-600 dark:hover:bg-sky-500";
+
+const cloudPushButtonClass =
+  "border-emerald-600/40 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 active:bg-emerald-800 dark:border-emerald-500/50 dark:bg-emerald-600 dark:hover:bg-emerald-500";
+
+const cloudActionHintClass = "text-white/80";
+
 export function CloudSyncActions({ embedded, onDisconnect }: Props) {
   const locale = useStore((s) => s.locale);
   const txCount = useStore((s) => s.transactions.length);
@@ -80,8 +88,8 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
       <div className={embedded ? "grid grid-cols-1 gap-2" : "grid grid-cols-1 gap-2 sm:grid-cols-2"}>
         <Button
           type="button"
-          variant="secondary"
-          className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
+          variant="default"
+          className={`h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left ${cloudPullButtonClass}`}
           disabled={loading}
           onClick={() => void handlePull()}
         >
@@ -93,15 +101,17 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
             )}
             <span className="min-w-0 break-words">{t(locale, "cloudSyncPull")}</span>
           </span>
-          <span className="w-full text-xs font-normal leading-snug text-muted-foreground break-words">
+          <span
+            className={`w-full text-xs font-normal leading-snug break-words ${cloudActionHintClass}`}
+          >
             {t(locale, "cloudSyncPullHint")}
           </span>
         </Button>
 
         <Button
           type="button"
-          variant="outline"
-          className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
+          variant="default"
+          className={`h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left ${cloudPushButtonClass}`}
           disabled={loading}
           onClick={() => void handlePush()}
         >
@@ -113,7 +123,9 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
             )}
             <span className="min-w-0 break-words">{t(locale, "cloudSyncPush")}</span>
           </span>
-          <span className="w-full text-xs font-normal leading-snug text-muted-foreground break-words">
+          <span
+            className={`w-full text-xs font-normal leading-snug break-words ${cloudActionHintClass}`}
+          >
             {t(locale, "cloudSyncPushHint")}
           </span>
         </Button>

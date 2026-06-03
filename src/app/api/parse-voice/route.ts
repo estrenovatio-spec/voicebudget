@@ -19,6 +19,7 @@ const bodySchema = z.object({
   transcript: z.string().min(1),
   locale: z.enum(["ru", "en"]),
   partnerName: z.string().nullable().optional(),
+  partnerKeywords: z.array(z.string().max(40)).max(40).optional(),
   myName: z.string().nullable().optional(),
   hasPartner: z.boolean().optional(),
   categories: z.array(categorySchema).max(80).optional(),
@@ -53,8 +54,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { transcript, locale, partnerName, myName, hasPartner, categories: clientCats } =
-      parsed.data;
+    const {
+      transcript,
+      locale,
+      partnerName,
+      partnerKeywords,
+      myName,
+      hasPartner,
+      categories: clientCats,
+    } = parsed.data;
     const parseLocale = inferParseLocale(transcript, locale as Locale);
     const categories = clientCats?.length
       ? sanitizeCategories(clientCats)
@@ -64,7 +72,7 @@ export async function POST(request: NextRequest) {
       transcript,
       parseLocale,
       categories,
-      { partnerName, myName, hasPartner },
+      { partnerName, partnerKeywords, myName, hasPartner },
     );
 
     return NextResponse.json(

@@ -3,11 +3,20 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/subscription-reminders",
+      "schedule": "0 9 * * *"
+    }
+  ],
   "functions": {
     "src/app/api/telegram/webhook/route.ts": {
       "maxDuration": 120
     },
     "src/app/api/help-chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/subscription-reminders/route.ts": {
       "maxDuration": 60
     }
   }

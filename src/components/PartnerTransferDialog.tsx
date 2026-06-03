@@ -14,13 +14,19 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import {
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+  partnerTabLabel,
+} from "@/lib/owner-labels";
 import { useStore } from "@/store/useStore";
 import type { Locale } from "@/types";
 
 type Props = {
   locale: Locale;
   partnerName: string | null;
+  partnerKeywords?: readonly string[];
   userName: string | null;
   variant?: "button" | "outline";
 };
@@ -64,6 +70,7 @@ function TransferPartyChip({
 export function PartnerTransferDialog({
   locale,
   partnerName,
+  partnerKeywords = [],
   userName,
   variant = "outline",
 }: Props) {
@@ -74,9 +81,11 @@ export function PartnerTransferDialog({
   const [done, setDone] = useState(false);
   const [lastDoneAmount, setLastDoneAmount] = useState(0);
 
-  if (!hasPartnerBudget(partnerName)) return null;
+  if (!hasPartnerBudget(partnerName, partnerKeywords)) return null;
 
-  const partner = partnerDisplayName(partnerName);
+  const partner =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
   const me = myDisplayName(locale, userName);
   const isToPartner = direction === "to_partner";
   const parsedPreview = Number(amount.replace(/\s/g, "").replace(",", "."));

@@ -33,6 +33,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
   const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
   const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
+  const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
   const merged = mergeSyncPayload(
     local.transactions,
     local.categories,
@@ -46,6 +47,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     previouslySyncedCategories,
     undefined,
     deletedRecurring,
+    deletedTransactions,
   );
 
   const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
@@ -56,6 +58,14 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     useCloudStore.getState().setDeletedRecurringIds(prunedDeletedRecurring);
   }
 
+  const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
+  const prunedDeletedTx = (cloud.deletedTransactionIds ?? []).filter((id) =>
+    remoteTxIds.has(id),
+  );
+  if (prunedDeletedTx.length !== (cloud.deletedTransactionIds ?? []).length) {
+    useCloudStore.getState().setDeletedTransactionIds(prunedDeletedTx);
+  }
+
   const savingsGoals = merged.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
 
   useCloudStore.getState().setSession(token, remote.household);
@@ -63,7 +73,10 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   if (remote.memberUserIds.length > 0) {
     useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
   }
-  useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
+  const remoteTxIdSet = new Set(remote.transactions.map((t) => t.id));
+  useCloudStore.getState().setLastSyncedRemoteTxIds(
+    merged.transactions.filter((t) => remoteTxIdSet.has(t.id)).map((t) => t.id),
+  );
   useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
   // Только id из ответа сервера: иначе локальная цель без успешного push
   // помечалась «синхронизированной» и пропадала при следующем pull.

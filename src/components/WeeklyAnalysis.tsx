@@ -14,6 +14,7 @@ import {
   WEEKLY_ANALYSIS_TTL_MS,
 } from "@/lib/storage";
 import { WEEKLY_ANALYSIS_HIDDEN_KEY } from "@/lib/storage-reset";
+import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import {
   buildWeeklySummary,
   getWeeklyGate,
@@ -49,6 +50,8 @@ export function WeeklyAnalysis() {
   const trackingStartedAt = useStore((s) => s.trackingStartedAt);
   const transactions = useTransactions();
   const categories = useCategories();
+  const savingsGoals = useStore((s) => s.savingsGoals);
+  const categoryBudgets = useStore((s) => s.categoryBudgets);
 
   const [hidden, setHidden] = useState(false);
   const [items, setItems] = useState<string[]>([]);
@@ -68,6 +71,27 @@ export function WeeklyAnalysis() {
   const gate = useMemo(
     () => getWeeklyGate(summary, trackingStartedAt, transactions),
     [summary, trackingStartedAt, transactions],
+  );
+
+  const coaching = useMemo(
+    () =>
+      buildAiCoachingContext(
+        transactions,
+        savingsGoals,
+        categoryBudgets,
+        (id) => getCategoryLabel(id, categories, locale),
+        summary.periodStart,
+        summary.periodEnd,
+      ),
+    [
+      transactions,
+      savingsGoals,
+      categoryBudgets,
+      categories,
+      locale,
+      summary.periodStart,
+      summary.periodEnd,
+    ],
   );
 
   const loadAnalysis = useCallback(
@@ -98,7 +122,14 @@ export function WeeklyAnalysis() {
         const res = await fetch("/api/weekly-analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale, summary }),
+          body: JSON.stringify({
+            locale,
+            summary,
+            coaching:
+              coaching.savingsGoals.length > 0 || coaching.categoryBudgets.length > 0
+                ? coaching
+                : undefined,
+          }),
         });
 
         const json = (await res.json()) as {
@@ -131,7 +162,7 @@ export function WeeklyAnalysis() {
         setLoading(false);
       }
     },
-    [gate, locale, summary, trackingStartedAt, transactions],
+    [coaching, gate, locale, summary],
   );
 
   useEffect(() => {

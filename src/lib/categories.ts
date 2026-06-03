@@ -1,4 +1,5 @@
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
+import { isIncomeReceiptPhrase } from "@/lib/planning/parse-input";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
 import type { CategoryDefinition, Locale, ParsedTransaction, TxType } from "@/types";
 
@@ -9,6 +10,7 @@ export { DEFAULT_CATEGORIES };
 /** Старый id «Еда» → продукты; рестораны — отдельная категория */
 export const LEGACY_CATEGORY_ID_MAP: Record<string, string> = {
   food: "groceries",
+  vacation: "leisure",
 };
 
 export function migrateCategoryId(categoryId: string): string {
@@ -17,7 +19,7 @@ export function migrateCategoryId(categoryId: string): string {
 
 /** Удалённая категория «Еда» — не показывать в списке */
 export function isRetiredCategoryId(id: string): boolean {
-  return id === "food";
+  return id === "food" || id === "vacation";
 }
 
 function isObsoleteFoodCategory(cat: CategoryDefinition): boolean {
@@ -59,7 +61,7 @@ const LEGACY_LABEL_TO_ID: Record<string, string> = {
   банк: "banking",
   кредит: "banking",
   отдых: "leisure",
-  отпуск: "vacation",
+  отпуск: "leisure",
   развлечения: "entertainment",
   подарки: "gifts",
   подарок: "gifts",
@@ -308,7 +310,9 @@ export function refineParsedTransaction(
   const fromCats = detectTypeFromCategories(text, merged);
   const fromKw = detectTypeFn(text, locale, merged);
   let type: TxType = item.type;
-  if (fromVerbs) {
+  if (isIncomeReceiptPhrase(text, locale)) {
+    type = "income";
+  } else if (fromVerbs) {
     type = fromVerbs;
   } else if (fromCats === "expense") {
     type = "expense";
@@ -317,7 +321,14 @@ export function refineParsedTransaction(
   } else {
     type = fromKw;
   }
-  const categoryId = detectCategoryId(text, type, merged);
+  let categoryId = detectCategoryId(text, type, merged);
+  if (
+    isIncomeReceiptPhrase(text, locale) &&
+    type === "income" &&
+    categoryId === "goal_jar"
+  ) {
+    categoryId = getFallbackCategoryId("income");
+  }
   return { ...item, type, categoryId };
 }
 
@@ -451,6 +462,51 @@ export function getCategoryIdsForPrompt(
   return getCategoriesByType(categories, type, locale)
     .map((c) => `${c.id} (${locale === "ru" ? c.labels.ru : c.labels.en})`)
     .join(", ");
+}
+
+const PROMPT_KEYWORDS_PER_CATEGORY = 18;
+
+/** Полный каталог для LLM: id, название и keywords (свои категории — в приоритете). */
+export function formatCategoryCatalogForPrompt(
+  categories: CategoryDefinition[],
+  type: TxType,
+  locale: Locale,
+): string {
+  const merged = getCategoriesByType(sanitizeCategories(categories), type, locale);
+  if (merged.length === 0) {
+    return locale === "ru" ? "  (нет категорий)" : "  (no categories)";
+  }
+
+  const customFirst = [...merged].sort((a, b) => {
+    const aCustom = a.isSystem === false ? 0 : 1;
+    const bCustom = b.isSystem === false ? 0 : 1;
+    if (aCustom !== bCustom) return aCustom - bCustom;
+    const labelA = locale === "ru" ? a.labels.ru : a.labels.en;
+    const labelB = locale === "ru" ? b.labels.ru : b.labels.en;
+    return labelA.localeCompare(labelB, locale);
+  });
+
+  return customFirst
+    .map((c) => {
+      const label = locale === "ru" ? c.labels.ru : c.labels.en;
+      const kws = (c.keywords ?? []).filter(Boolean).slice(0, PROMPT_KEYWORDS_PER_CATEGORY);
+      const kwLine =
+        kws.length > 0
+          ? locale === "ru"
+            ? `слова: ${kws.join(", ")}`
+            : `keywords: ${kws.join(", ")}`
+          : locale === "ru"
+            ? "без отдельных слов — ориентируйся на название"
+            : "no extra keywords — use label";
+      const tag =
+        c.isSystem === false
+          ? locale === "ru"
+            ? " [своя категория — при совпадении слова выбирай её]"
+            : " [user category — prefer when a keyword matches]"
+          : "";
+      return `  • categoryId "${c.id}" — ${label}${tag}\n    ${kwLine}`;
+    })
+    .join("\n");
 }
 
 export function slugifyCategoryId(name: string): string {

@@ -21,9 +21,14 @@ import {
   apiSync,
 } from "@/lib/cloud/client";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
+import { isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
 import { useCloudStore } from "@/store/useCloudStore";
 import type { BudgetOwner, CategoryDefinition, Transaction, TxType } from "@/types";
+
+function noteCloudWriteError(message: string): void {
+  useCloudStore.getState().setLastWriteError(message);
+}
 
 function token(): string | null {
   const { token: t, household } = useCloudStore.getState();
@@ -54,9 +59,12 @@ export async function cloudPushTransaction(
   if (!t) return;
   try {
     await apiCreateTransaction(t, tx);
+    useCloudStore.getState().setLastWriteError(null);
     if (!opts?.skipPull) await pullCloudAfterWrite();
-  } catch {
-    /* offline / retry later via manual sync */
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "sync_failed";
+    noteCloudWriteError(isSubscriptionSyncError(e) ? "subscription_required" : msg);
+    /* локальная операция остаётся; apply-sync дотолкнет localOnly */
   }
 }
 
@@ -90,6 +98,7 @@ export async function cloudPushTransactionUpdate(
       | "goalAmount"
       | "odometerKm"
       | "vehicleId"
+      | "note"
     >
   >,
 ): Promise<void> {

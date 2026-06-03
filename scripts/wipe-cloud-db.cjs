@@ -6,6 +6,13 @@
 const { PrismaClient } = require("@prisma/client");
 
 async function main() {
+  if (process.env.CONFIRM_CLOUD_WIPE !== "DELETE_ALL_HOUSEHOLDS") {
+    console.error(
+      "❌ Защита: для полной очистки задайте CONFIRM_CLOUD_WIPE=DELETE_ALL_HOUSEHOLDS",
+    );
+    process.exit(1);
+  }
+
   const url = process.env.DATABASE_URL?.trim();
   if (!url || url === '""' || !/^postgres(ql)?:\/\//i.test(url)) {
     console.error("❌ Нет корректного DATABASE_URL");

@@ -1,9 +1,12 @@
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
-import { getCloudAuthBody } from "@/lib/cloud/auth-payload";
+import { getCloudAuthBody, hasCloudAuth } from "@/lib/cloud/auth-payload";
+import { getTelegramInitData, hasTelegramWebApp } from "@/lib/cloud/telegram";
+import { waitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
 import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
+import { fetchAndApplyDevSubscription } from "@/lib/billing/dev-subscription";
+import { isValidSubscriptionPublic } from "@/lib/billing/subscription-shape";
 import { apiBootstrap, apiSubscriptionStatus, apiSync } from "@/lib/cloud/client";
-import { getTelegramInitData } from "@/lib/cloud/telegram";
 import { useCloudStore } from "@/store/useCloudStore";
 
 function clearStaleHouseholdSession(): void {
@@ -22,12 +25,48 @@ export async function refreshCloudSessionFromTelegram(): Promise<boolean> {
   return Boolean(useCloudStore.getState().token && useCloudStore.getState().household);
 }
 
+function hasPersistedSubscription(): boolean {
+  return isValidSubscriptionPublic(useCloudStore.getState().subscription);
+}
+
 export async function runHouseholdBootstrap(): Promise<void> {
   if (isCloudPaused()) return;
 
-  const auth = getCloudAuthBody();
+  await fetchAndApplyDevSubscription(2);
+
+  let auth = getCloudAuthBody();
+  if (hasTelegramWebApp() && !auth.initData) {
+    await waitForTelegramInitData(8000);
+    auth = getCloudAuthBody();
+  }
+
   if (auth.initData || auth.telegramLogin) {
-    const res = await apiBootstrap(auth);
+    let res: Awaited<ReturnType<typeof apiBootstrap>>;
+    try {
+      res = await apiBootstrap(auth);
+      if (!res.ok && res.error === "invalid_init_data" && hasTelegramWebApp()) {
+        await waitForTelegramInitData(3000);
+        const retryAuth = getCloudAuthBody();
+        if (retryAuth.initData) {
+          res = await apiBootstrap(retryAuth);
+        }
+      }
+    } catch (e) {
+      console.error("[household/bootstrap] client", e);
+      const dev = await fetchAndApplyDevSubscription(2);
+      if (!dev.ok && !hasPersistedSubscription()) {
+        useCloudStore.getState().setSubscription(null);
+      }
+      return;
+    }
+    if (!res.ok) {
+      console.warn("[household/bootstrap]", res.error, "initData len", getTelegramInitData().length);
+      const dev = await fetchAndApplyDevSubscription(2);
+      if (!dev.ok && !hasPersistedSubscription()) {
+        useCloudStore.getState().setSubscription(null);
+      }
+      return;
+    }
     if (res.configured === false) {
       useCloudStore.getState().setServerConfigured(false);
       return;
@@ -37,6 +76,9 @@ export async function runHouseholdBootstrap(): Promise<void> {
     if (res.subscription) {
       useCloudStore.getState().setSubscription(res.subscription);
     }
+    useCloudStore.getState().setAccessSummary(res.accessSummary ?? null);
+    useCloudStore.getState().setReferralsEnabled(Boolean(res.referralsEnabled));
+    useCloudStore.getState().setReferralProfile(res.referralProfile ?? null);
 
     if (res.user?.id) {
       useCloudStore.getState().setCloudUserId(res.user.id);
@@ -78,9 +120,8 @@ export async function runHouseholdBootstrap(): Promise<void> {
 }
 
 export function canRunCloudBootstrap(): boolean {
-  return Boolean(
-    getTelegramInitData() ||
-      getCloudAuthBody().telegramLogin ||
-      useCloudStore.getState().token,
-  );
+  if (hasCloudAuth()) return true;
+  // In Telegram Mini App always bootstrap via initData — never stale token alone.
+  if (hasTelegramWebApp()) return false;
+  return Boolean(useCloudStore.getState().token);
 }

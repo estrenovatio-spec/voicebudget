@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { canRunCloudBootstrap, runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
+import { waitForTelegramInitData, shouldWaitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
+import { hasTelegramWebApp } from "@/lib/cloud/telegram";
 import { useCloudAutoSync } from "@/hooks/useCloudAutoSync";
 import { useCloudStore } from "@/store/useCloudStore";
 
@@ -10,22 +12,50 @@ export function HouseholdCloudBootstrap() {
   useCloudAutoSync();
 
   useEffect(() => {
-    const boot = () => {
+    let cancelled = false;
+
+    const boot = async () => {
+      if (cancelled) return;
+
+      if (shouldWaitForTelegramInitData()) {
+        await waitForTelegramInitData(6000);
+        if (cancelled) return;
+      }
+
       if (!canRunCloudBootstrap()) return;
-      void runHouseholdBootstrap();
+      await runHouseholdBootstrap();
     };
 
-    boot();
+    void boot();
 
     const persistApi = useCloudStore.persist;
+    const afterHydrate = () => {
+      void boot();
+    };
+
     if (persistApi?.hasHydrated?.()) {
-      boot();
+      void boot();
     } else {
-      const unsub = persistApi?.onFinishHydration?.(() => {
-        boot();
-      });
-      return () => unsub?.();
+      const unsub = persistApi?.onFinishHydration?.(afterHydrate);
+      if (unsub) {
+        return () => {
+          cancelled = true;
+          unsub();
+        };
+      }
     }
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && hasTelegramWebApp()) {
+        void boot();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   return null;

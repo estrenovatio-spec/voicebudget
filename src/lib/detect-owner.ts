@@ -2,94 +2,12 @@ import type { BudgetOwner, Locale } from "@/types";
 
 export type OwnerDetectOptions = {
   partnerName?: string | null;
-  /** «Моё имя» из настроек — для фраз «Алексей потратил» */
+  /** Слова из настроек: жена, муж, ксюша, любимая, алексей… */
+  partnerKeywords?: readonly string[];
   myName?: string | null;
   locale?: Locale;
-  /** Есть строка партнёра в балансе — включить синонимы (любимая, жена…) */
   hasPartner?: boolean;
 };
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** Варианты имени для поиска в речи (Ксюша → ксюша, ксюш; Любимка → любимк…). */
-function nameNeedles(name: string): string[] {
-  const raw = name.trim().toLowerCase();
-  if (!raw) return [];
-  const first = raw.split(/\s+/)[0] ?? raw;
-  const needles = new Set<string>([raw, first]);
-  if (first.length >= 3) {
-    needles.add(first.slice(0, -1));
-    needles.add(first.slice(0, Math.max(3, first.length - 2)));
-    if (first.length >= 4) needles.add(first.slice(0, 4));
-    if (first.length >= 5) needles.add(first.slice(0, 5));
-  }
-  return [...needles].filter((n) => n.length >= 3);
-}
-
-function mentionsByNeedles(text: string, needles: string[]): boolean {
-  if (!needles.length) return false;
-  const lower = text.toLowerCase();
-  const padded = ` ${lower} `;
-  for (const needle of needles) {
-    if (lower.includes(needle)) {
-      const re = new RegExp(
-        `(?:^|[\\s,.;:!?()—–-])${escapeRegExp(needle)}[a-zа-яё]{0,5}(?:[\\s,.;:!?()—–-]|$)`,
-        "i",
-      );
-      if (re.test(padded)) return true;
-    }
-  }
-  return false;
-}
-
-/** Ласкательные и роли — партнёр как субъект (именительный / явный агент). */
-const PARTNER_ROLE_SUBJECT_RU = [
-  "любимая",
-  "любимый",
-  "любимые",
-  "дорогая",
-  "дорогой",
-  "дорогие",
-  "жена",
-  "муж",
-  "супруга",
-  "супруг",
-  "партнёр",
-  "партнер",
-  "зайка",
-  "котик",
-  "солнышко",
-  "милая",
-  "милый",
-  "милашка",
-  "лапочка",
-  "лапуля",
-  "зайчик",
-];
-
-/** Падеж «кому» — получатель подарка, не тот кто тратил */
-const PARTNER_DATIVE_RU = [
-  "жене",
-  "мужу",
-  "любимой",
-  "любимому",
-  "дорогой",
-  "дорогому",
-  "партнёру",
-  "партнеру",
-  "зайке",
-  "котику",
-  "солнышку",
-  "милой",
-  "милому",
-  "милашке",
-  "лапочке",
-  "зайчику",
-  "супруге",
-  "супругу",
-];
 
 const GIFT_VERBS_RU = [
   "купил",
@@ -111,128 +29,15 @@ const GIFT_VERBS_RU = [
   "заплатила",
 ];
 
-/** «жена потратила», «потратила жена», «милая купила» */
-const PARTNER_AGENT_RE_RU =
-  /(?:^|[\s,.;:!?()—–-])(?:жена|муж|любим(?:ая|ый|ой|ому)|мила(?:я|ый|ому)|дорог(?:ая|ой|ому)|партн(?:ёр|ер)(?:ка)?|зайка|солнышко|милашка|лапочка|зайчик|супруг(?:а)?)\s+(?:потратил|потратила|купил|купила|заплатил|заплатила|оплатил|оплатила|получил|получила|отдал|отдала|заказал|заказала)(?:[\s,.;:!?()—–-]|$)|(?:^|[\s,.;:!?()—–-])(?:потратил|потратила|купил|купила|заплатил|заплатила|оплатил|оплатила|получил|получила|отдал|отдала|заказал|заказала)\s+(?:[\p{L}\s]{0,16}\s+)?(?:жена|муж|любим(?:ая|ый)|мила(?:я|ый)|дорог(?:ая|ой)|партн(?:ёр|ер)|зайка|солнышко|милашка|супруг(?:а)?)(?:[\s,.;:!?()—–-]|$)/iu;
-
-/** @deprecated — полный список для подсказок LLM; для detect используйте role-subject + agent/beneficiary */
-const PARTNER_WORDS_RU = [
-  ...PARTNER_ROLE_SUBJECT_RU,
-  "любимой",
-  "любимому",
-  "любимую",
-  "дорогой",
-  "дорогому",
-  "дорогую",
-  "жене",
-  "женой",
-  "жену",
-  "мужу",
-  "мужем",
-  "мужа",
-  "супруге",
-  "супругой",
-  "супругу",
-  "партнёру",
-  "партнеру",
-  "партнёра",
-  "партнера",
-  "зайке",
-  "зайку",
-  "котику",
-  "солнышку",
-  "милой",
-  "милому",
-  "милую",
-  "милашке",
-  "милашку",
-  "лапочке",
-  "лапуля",
-  "зайчику",
+const GIFT_VERBS_EN = [
+  "bought",
+  "buy",
+  "gave",
+  "gifted",
+  "ordered",
+  "paid for",
+  "paid",
 ];
-
-/** «милая моя», «моя милая» — обращение к партнёру, не «моя операция». */
-const PARTNER_AFFECTIONATE_WITH_MOYA_RE = new RegExp(
-  [
-    String.raw`\b(?:милая|милый|милой|милому|милашка|милашке|лапочка|лапуля|зайчик|зайка|любимая|любимый|любимой|дорогая|дорогой|дорогому|солнышко)\s+моя\b`,
-    String.raw`\bмоя\s+(?:милая|милый|милой|милашка|лапочка|лапуля|зайчик|зайка|любимая|любимый|любимой|дорогая|дорогой|солнышко)\b`,
-  ].join("|"),
-  "iu",
-);
-
-const PARTNER_BENEFICIARY_RE_EN =
-  /\b(?:bought|buy|bought|got|gave|gifted|ordered|paid\s+for|for)\s+(?:[\w\s]{0,35}\s+)?(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear|hubby|wifey)\b/i;
-
-const PARTNER_AGENT_RE_EN =
-  /\b(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear)\s+(?:spent|bought|paid|ordered|received)\b|\b(?:spent|bought|paid|ordered|received)\s+(?:[\w\s]{0,16}\s+)?(?:wife|husband|spouse|partner|darling|sweetheart|honey|beloved|dear)\b/i;
-
-const PARTNER_WORDS_EN = [
-  "wife",
-  "husband",
-  "spouse",
-  "partner",
-  "darling",
-  "sweetheart",
-  "honey",
-  "beloved",
-  "dear",
-  "hubby",
-  "wifey",
-];
-
-function isPartnerBeneficiaryPhraseRu(text: string): boolean {
-  const lower = text.toLowerCase();
-  if (/\bдля\s+(?:жены|мужа|любимой|любимого|партн(?:ё|е)ра|супруги|супруга)\b/i.test(lower)) {
-    return true;
-  }
-  const verbHit = GIFT_VERBS_RU.some((verb) => lower.includes(verb));
-  if (!verbHit) return false;
-  return PARTNER_DATIVE_RU.some((word) => {
-    const idx = lower.indexOf(word);
-    if (idx < 0) return false;
-    const before = lower.slice(0, idx);
-    return GIFT_VERBS_RU.some((verb) => before.includes(verb));
-  });
-}
-
-function stripPartnerBeneficiaryRu(text: string): string {
-  let result = text;
-  for (const verb of GIFT_VERBS_RU) {
-    for (const word of PARTNER_DATIVE_RU) {
-      result = result.replace(
-        new RegExp(`${escapeRegExp(verb)}\\s+(?:[\\p{L}\\d\\s]{0,40}\\s+)?${escapeRegExp(word)}`, "giu"),
-        " ",
-      );
-    }
-  }
-  return result.replace(
-    /\bдля\s+(?:жены|мужа|любимой|любимого|партн(?:ё|е)ра|супруги|супруга)\b/giu,
-    " ",
-  );
-}
-
-function isPartnerBeneficiaryPhrase(text: string, locale: Locale): boolean {
-  if (locale === "ru") return isPartnerBeneficiaryPhraseRu(text);
-  return PARTNER_BENEFICIARY_RE_EN.test(text);
-}
-
-function stripPartnerBeneficiary(text: string, locale: Locale): string {
-  if (locale === "ru") {
-    return isPartnerBeneficiaryPhraseRu(text) ? stripPartnerBeneficiaryRu(text) : text;
-  }
-  return PARTNER_BENEFICIARY_RE_EN.test(text)
-    ? text.replace(PARTNER_BENEFICIARY_RE_EN, " ")
-    : text;
-}
-
-function mentionsPartnerAsAgent(text: string, locale: Locale): boolean {
-  if (locale === "ru") return PARTNER_AGENT_RE_RU.test(text);
-  return PARTNER_AGENT_RE_EN.test(text);
-}
-
-function textForPartnerRoleDetection(text: string, locale: Locale): string {
-  return stripPartnerBeneficiary(text, locale);
-}
 
 const ME_WORDS_RU = [
   "мне",
@@ -242,29 +47,145 @@ const ME_WORDS_RU = [
   "моя",
   "моё",
   "мои",
-  "моему",
-  "моей",
-  "моим",
-  "моих",
-  "моего",
-  "моей",
   "я",
   "для меня",
   "у меня",
-  "сам",
-  "сама",
-  "само",
-  "сами",
 ];
 
 const ME_WORDS_EN = ["my", "mine", "me", "i", "myself", "for me"];
 
-function partnerSynonymNeedles(locale: Locale): string[] {
-  const words =
-    locale === "ru"
-      ? PARTNER_ROLE_SUBJECT_RU
-      : PARTNER_WORDS_EN;
-  return words.filter((w) => w.length >= 3);
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Варианты имени для поиска в речи (Ксюша → ксюша, ксюш). */
+export function nameNeedles(name: string): string[] {
+  const raw = name.trim().toLowerCase();
+  if (!raw) return [];
+  const first = raw.split(/\s+/)[0] ?? raw;
+  const needles = new Set<string>([raw, first]);
+  if (first.length >= 3) {
+    needles.add(first.slice(0, -1));
+    needles.add(first.slice(0, Math.max(3, first.length - 2)));
+    if (first.length >= 4) needles.add(first.slice(0, 4));
+    if (first.length >= 5) needles.add(first.slice(0, 5));
+  }
+  return [...needles].filter((n) => n.length >= 2);
+}
+
+export function parsePartnerKeywordsInput(raw: string): string[] {
+  return raw
+    .split(/[,\n]+/)
+    .map((k) => k.trim().toLowerCase())
+    .filter((k) => k.length >= 2);
+}
+
+/** Имя партнёра + пользовательские слова для распознавания в фразе. */
+export function collectPartnerNeedles(
+  partnerName: string | null | undefined,
+  partnerKeywords: readonly string[] | undefined,
+): string[] {
+  const set = new Set<string>();
+  for (const n of nameNeedles(partnerName?.trim() ?? "")) {
+    set.add(n);
+  }
+  for (const kw of partnerKeywords ?? []) {
+    const k = kw.trim().toLowerCase();
+    if (k.length >= 2) set.add(k);
+    for (const n of nameNeedles(k)) {
+      set.add(n);
+    }
+  }
+  return [...set];
+}
+
+export function hasPartnerDetectionConfig(
+  partnerName: string | null | undefined,
+  partnerKeywords?: readonly string[],
+): boolean {
+  return collectPartnerNeedles(partnerName, partnerKeywords).length > 0;
+}
+
+function mentionsByNeedles(text: string, needles: string[]): boolean {
+  if (!needles.length) return false;
+  const lower = text.toLowerCase();
+  const padded = ` ${lower} `;
+  for (const needle of needles) {
+    if (!needle) continue;
+    if (needle.length <= 5) {
+      const re = new RegExp(
+        `(?:^|[\\s,.;:!?()—–-])${escapeRegExp(needle)}[a-zа-яё]{0,5}(?:[\\s,.;:!?()—–-]|$)`,
+        "i",
+      );
+      if (re.test(padded)) return true;
+    } else if (lower.includes(needle)) {
+      const re = new RegExp(
+        `(?:^|[\\s,.;:!?()—–-])${escapeRegExp(needle)}[a-zа-яё]{0,5}(?:[\\s,.;:!?()—–-]|$)`,
+        "i",
+      );
+      if (re.test(padded)) return true;
+    }
+  }
+  return false;
+}
+
+function isPartnerBeneficiaryPhrase(
+  text: string,
+  partnerNeedles: string[],
+  locale: Locale,
+): boolean {
+  if (partnerNeedles.length === 0) return false;
+  const lower = text.toLowerCase();
+
+  for (const kw of partnerNeedles) {
+    if (kw.length < 2) continue;
+    const re = new RegExp(`\\bдля\\s+${escapeRegExp(kw)}\\b`, locale === "ru" ? "iu" : "i");
+    if (re.test(lower)) return true;
+  }
+
+  const verbs = locale === "ru" ? GIFT_VERBS_RU : GIFT_VERBS_EN;
+  for (const verb of verbs) {
+    if (!lower.includes(verb)) continue;
+    for (const kw of partnerNeedles) {
+      if (kw.length < 2) continue;
+      const idx = lower.indexOf(kw);
+      if (idx < 0) continue;
+      const before = lower.slice(0, idx);
+      if (before.includes(verb)) return true;
+    }
+  }
+
+  return false;
+}
+
+function stripPartnerBeneficiary(
+  text: string,
+  partnerNeedles: string[],
+  locale: Locale,
+): string {
+  if (!isPartnerBeneficiaryPhrase(text, partnerNeedles, locale)) return text;
+  let result = text;
+  const verbs = locale === "ru" ? GIFT_VERBS_RU : GIFT_VERBS_EN;
+  for (const verb of verbs) {
+    for (const kw of partnerNeedles) {
+      if (kw.length < 2) continue;
+      result = result.replace(
+        new RegExp(
+          `${escapeRegExp(verb)}\\s+(?:[\\p{L}\\d\\s]{0,40}\\s+)?${escapeRegExp(kw)}`,
+          "giu",
+        ),
+        " ",
+      );
+    }
+  }
+  for (const kw of partnerNeedles) {
+    if (kw.length < 2) continue;
+    result = result.replace(
+      new RegExp(`\\bдля\\s+${escapeRegExp(kw)}\\b`, "giu"),
+      " ",
+    );
+  }
+  return result;
 }
 
 function meSynonymNeedles(locale: Locale): string[] {
@@ -272,83 +193,54 @@ function meSynonymNeedles(locale: Locale): string[] {
   return words.filter((w) => w.length >= 2);
 }
 
-function mentionsPartnerAffectionateCompoundRu(text: string): boolean {
-  return PARTNER_AFFECTIONATE_WITH_MOYA_RE.test(text);
-}
-
-function mentionsPartnerSynonyms(text: string, locale: Locale): boolean {
-  if (locale === "ru" && mentionsPartnerAffectionateCompoundRu(text)) return true;
-  if (mentionsPartnerAsAgent(text, locale)) return true;
-  return mentionsByNeedles(text, partnerSynonymNeedles(locale));
-}
-
-const ME_POSSESSIVE_RU = new Set([
-  "мой",
-  "моя",
-  "моё",
-  "мои",
-  "моей",
-  "моему",
-  "моим",
-  "моих",
-  "моего",
-]);
-
-function mentionsMeSynonyms(text: string, locale: Locale): boolean {
-  let needles = meSynonymNeedles(locale);
-  if (locale === "ru" && mentionsPartnerAffectionateCompoundRu(text)) {
-    needles = needles.filter((w) => !ME_POSSESSIVE_RU.has(w));
-  }
-  return mentionsByNeedles(text, needles);
-}
-
-/** Подсказка для LLM — те же слова, что и в detect-owner */
+/** Подсказка для LLM — только имена и слова из настроек. */
 export function ownerHintsForPrompt(
   locale: Locale,
   partnerName?: string | null,
   myName?: string | null,
+  partnerKeywords?: readonly string[],
 ): string {
   const partner = partnerName?.trim();
   const me = myName?.trim();
-  const synRu =
-    "любимая, милая, дорогая, жена, муж, партнёр, зайка, солнышко; «милая моя» / «моя милая» — партнёр";
-  const synEn = "wife, husband, partner, darling, honey, sweetheart";
-  const syn = locale === "ru" ? synRu : synEn;
+  const kws = (partnerKeywords ?? []).filter((k) => k.trim().length >= 2);
   const lines: string[] = [];
+
   if (partner) {
     lines.push(
       locale === "ru"
-        ? `- Имя партнёра в настройках: «${partner}» (и склонения) → owner "partner".`
-        : `- Partner display name: «${partner}» → owner "partner".`,
+        ? `- Имя партнёра в настройках: «${partner}» → операция партнёра.`
+        : `- Partner name in settings: «${partner}» → partner's transaction.`,
+    );
+  }
+  if (kws.length > 0) {
+    lines.push(
+      locale === "ru"
+        ? `- Слова партнёра из настроек (если есть в фразе — это он/она, не вы): ${kws.join(", ")}.`
+        : `- Partner keywords from settings (if in phrase — partner, not you): ${kws.join(", ")}.`,
     );
   }
   lines.push(
     locale === "ru"
-      ? `- Также партнёр: ${syn} (например «милая моя потратила», «любимая потратила»).`
-      : `- Also partner: ${syn}.`,
-  );
-  lines.push(
-    locale === "ru"
-      ? `- «купил цветы жене», «подарил мужу» — owner "me" (покупка ДЛЯ партнёра, не его трата).`
-      : `- "bought flowers for wife" → owner "me" (gift for partner, not partner's expense).`,
+      ? `- «купил жене цветы» / «для ксюши» — трата пользователя (подарок партнёру), не партнёра.`
+      : `- "bought for [partner keyword]" → user's expense (gift), not partner's.`,
   );
   if (me) {
     lines.push(
       locale === "ru"
-        ? `- Имя «я» в настройках: «${me}» → owner "me".`
-        : `- My display name «${me}» → owner "me".`,
+        ? `- Имя пользователя в настройках: «${me}» → операция пользователя.`
+        : `- User name in settings: «${me}» → user's transaction.`,
     );
   }
   lines.push(
     locale === "ru"
-      ? `- «мне», «мой», «я», «для меня» → owner "me".`
-      : `- "my", "me", "I" → owner "me".`,
+      ? `- «мне», «я», «мой» без слов партнёра → пользователь.`
+      : `- "me", "my", "I" without partner keywords → user.`,
   );
   return lines.join("\n");
 }
 
 /**
- * Кто совершил операцию: сначала партнёр (имя + синонимы), потом «я».
+ * Кто совершил операцию: слова партнёра из настроек, затем имя пользователя.
  */
 export function detectOwnerFromTranscript(
   transcript: string,
@@ -364,15 +256,24 @@ export function detectOwnerFromTranscript(
   if (!text) return null;
 
   const locale = options.locale ?? "ru";
-  const hasPartner = options.hasPartner ?? Boolean(options.partnerName?.trim());
-  const scoped = textForPartnerRoleDetection(text, locale);
+  const partnerNeedles = collectPartnerNeedles(
+    options.partnerName,
+    options.partnerKeywords,
+  );
+  const hasPartner =
+    options.hasPartner ??
+    hasPartnerDetectionConfig(options.partnerName, options.partnerKeywords);
 
-  const partnerCustom = options.partnerName?.trim();
-  if (partnerCustom && mentionsByNeedles(scoped, nameNeedles(partnerCustom))) {
-    return "partner";
+  if (!hasPartner || partnerNeedles.length === 0) {
+    const myCustom = options.myName?.trim();
+    if (myCustom && mentionsByNeedles(text, nameNeedles(myCustom))) return "me";
+    if (mentionsByNeedles(text, meSynonymNeedles(locale))) return "me";
+    return null;
   }
 
-  if (hasPartner && mentionsPartnerSynonyms(scoped, locale)) {
+  const scoped = stripPartnerBeneficiary(text, partnerNeedles, locale);
+
+  if (mentionsByNeedles(scoped, partnerNeedles)) {
     return "partner";
   }
 
@@ -381,7 +282,7 @@ export function detectOwnerFromTranscript(
     return "me";
   }
 
-  if (mentionsMeSynonyms(text, locale)) {
+  if (mentionsByNeedles(text, meSynonymNeedles(locale))) {
     return "me";
   }
 
@@ -406,13 +307,14 @@ export function applyDetectedOwner<T extends { owner?: BudgetOwner }>(
   fallbackOwner: BudgetOwner,
   legacyLocale?: Locale,
 ): T & { owner: BudgetOwner } {
-  if (data.owner === "me" || data.owner === "partner") {
-    return { ...data, owner: data.owner };
-  }
   const detectOpts: OwnerDetectOptions =
     typeof opts === "string" || opts === null || opts === undefined
       ? { partnerName: opts, locale: legacyLocale ?? "ru" }
       : opts;
   const detected = detectOwnerFromTranscript(transcript, detectOpts);
-  return { ...data, owner: detected ?? fallbackOwner };
+  if (detected) return { ...data, owner: detected };
+  if (data.owner === "me" || data.owner === "partner") {
+    return { ...data, owner: data.owner };
+  }
+  return { ...data, owner: fallbackOwner };
 }

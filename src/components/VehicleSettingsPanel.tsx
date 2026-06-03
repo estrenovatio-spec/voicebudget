@@ -7,6 +7,7 @@ import { fuelRubPer100Km } from "@/lib/vehicle-fuel-stats";
 import { t } from "@/lib/i18n";
 import { ensureCloudViewerUserId } from "@/lib/cloud/viewer-identity";
 import { getMemberPref, kmUntilService, nextServiceOdometerKm } from "@/lib/vehicle";
+import { SettingsAccordion } from "@/components/SettingsAccordion";
 import { SettingsSection } from "@/components/SettingsSection";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
@@ -138,11 +139,13 @@ export function VehicleSettingsPanel() {
             ? t(locale, "vehicleFuelPer100", { value: String(fuel.rubPer100Km) })
             : t(locale, "vehicleFuelPer100Unknown");
 
+        const carTitle = d.name.trim() || t(locale, "vehicleCarNumber", { n: String(index + 1) });
+
         return (
-          <SettingsSection
+          <SettingsAccordion
             key={d.id}
             variant="nested"
-            title={t(locale, "vehicleCarNumber", { n: String(index + 1) })}
+            title={carTitle}
             description={fuelLabel}
           >
             <Input
@@ -210,7 +213,7 @@ export function VehicleSettingsPanel() {
                 {t(locale, "vehicleRemoveOne")}
               </Button>
             ) : null}
-          </SettingsSection>
+          </SettingsAccordion>
         );
       })}
 
@@ -220,7 +223,7 @@ export function VehicleSettingsPanel() {
         </Button>
       ) : null}
 
-      <SettingsSection variant="nested" title={t(locale, "vehicleGarageModeLabel")}>
+      <SettingsAccordion variant="nested" title={t(locale, "vehicleGarageModeLabel")}>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="radio"
@@ -304,7 +307,7 @@ export function VehicleSettingsPanel() {
         {memberIds.length > 1 ? (
           <p className="text-xs text-muted-foreground">{t(locale, "vehicleToAlertsAll")}</p>
         ) : null}
-      </SettingsSection>
+      </SettingsAccordion>
 
       <Button type="button" className="w-full" onClick={saveAll}>
         {t(locale, "vehicleSaveGarage")}

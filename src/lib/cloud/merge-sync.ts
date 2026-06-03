@@ -29,23 +29,28 @@ export function mergeTransactions(
   local: Transaction[],
   remote: Transaction[],
   previouslySyncedRemoteIds?: ReadonlySet<string>,
+  deletedTransactionIds?: ReadonlySet<string>,
 ): Transaction[] {
   const map = new Map<string, Transaction>();
   const remoteIds = new Set<string>();
+  const localIds = new Set(local.map((t) => t.id));
 
   for (const raw of remote) {
     const tx = normalizeTx(raw);
+    if (deletedTransactionIds?.has(tx.id)) continue;
+    // Локально удалили, в pull ещё есть — не поднимать с облака.
+    if (!localIds.has(tx.id) && previouslySyncedRemoteIds?.has(tx.id)) continue;
     map.set(tx.id, tx);
     remoteIds.add(tx.id);
   }
 
   for (const raw of local) {
     const tx = normalizeTx(raw);
+    if (deletedTransactionIds?.has(tx.id)) continue;
     const existing = map.get(tx.id);
     if (!existing) {
-      if (previouslySyncedRemoteIds?.has(tx.id) && !remoteIds.has(tx.id)) {
-        continue;
-      }
+      // Локальную операцию не удаляем, если её нет в ответе сервера:
+      // stale pull / гонка push+sync иначе затирают только что введённые записи.
       map.set(tx.id, tx);
       continue;
     }
@@ -221,6 +226,7 @@ export function mergeSyncPayload(
   previouslySyncedRemoteCategoryIds?: ReadonlySet<string>,
   previouslySyncedPlanning?: PreviouslySyncedPlanning,
   deletedRecurringIds?: ReadonlySet<string>,
+  deletedTransactionIds?: ReadonlySet<string>,
 ): MergedSyncResult {
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const remoteCategoryIds = new Set(remote.categories.map((c) => c.id));
@@ -232,6 +238,7 @@ export function mergeSyncPayload(
     localTransactions,
     remote.transactions,
     previouslySyncedRemoteIds,
+    deletedTransactionIds,
   );
   const categories = mergeCategories(
     localCategories,

@@ -4,7 +4,7 @@
  * Usage: node scripts/with-env-local.cjs node scripts/backup-db.mjs
  */
 import { PrismaClient } from "@prisma/client";
-import { writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, copyFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,11 +25,17 @@ async function main() {
     members: await prisma.householdMember.findMany(),
     transactions: await prisma.transaction.findMany(),
     categories: await prisma.category.findMany(),
+    vehicles: await prisma.vehicle.findMany().catch(() => []),
     savingsGoals: await prisma.savingsGoal.findMany().catch(() => []),
     categoryBudgets: await prisma.categoryBudget.findMany().catch(() => []),
     recurringTransactions: await prisma.recurringTransaction.findMany().catch(() => []),
     subscriptions: await prisma.subscription.findMany().catch(() => []),
     payments: await prisma.payment.findMany().catch(() => []),
+    promoCodes: await prisma.promoCode.findMany().catch(() => []),
+    promoRedemptions: await prisma.promoRedemption.findMany().catch(() => []),
+    referrals: await prisma.referral.findMany().catch(() => []),
+    referralActivityDays: await prisma.referralActivityDay.findMany().catch(() => []),
+    aiAnalysisReports: await prisma.aiAnalysisReport.findMany().catch(() => []),
   };
 
   // BigInt → string for JSON
@@ -40,9 +46,9 @@ async function main() {
   );
   writeFileSync(join(backupDir, "data.json"), json);
 
-  for (const sql of ["setup-tables.sql", "planning-tables.sql", "subscription-tables.sql"]) {
-    const src = join(root, "prisma", sql);
-    if (existsSync(src)) copyFileSync(src, join(backupDir, sql));
+  const sqlDir = join(root, "prisma");
+  for (const name of readdirSync(sqlDir)) {
+    if (name.endsWith(".sql")) copyFileSync(join(sqlDir, name), join(backupDir, name));
   }
 
   const counts = Object.fromEntries(

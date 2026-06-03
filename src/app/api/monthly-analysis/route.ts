@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdvisorConfig } from "@/lib/advisor-config";
+import type { AiCoachingContext } from "@/lib/ai-coaching-context";
 import {
   MONTHLY_ANALYSIS_PROMPT,
   MONTHLY_MIN_TRANSACTIONS,
@@ -34,9 +35,32 @@ const summarySchema = z.object({
   periodEnd: z.string(),
 });
 
+const coachingSchema = z.object({
+  savingsGoals: z.array(
+    z.object({
+      name: z.string(),
+      saved: z.number(),
+      target: z.number(),
+      monthlyContribution: z.number(),
+      progressPercent: z.number(),
+      onTrack: z.boolean(),
+    }),
+  ),
+  categoryBudgets: z.array(
+    z.object({
+      category: z.string(),
+      limit: z.number(),
+      spent: z.number(),
+      remaining: z.number(),
+      overLimit: z.boolean(),
+    }),
+  ),
+});
+
 const bodySchema = z.object({
   locale: z.enum(["ru", "en"]),
   summary: summarySchema,
+  coaching: coachingSchema.optional(),
 });
 
 const tipsSchema = z.object({
@@ -51,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { locale, summary } = parsed.data;
+    const { locale, summary, coaching } = parsed.data;
     const advisor = getAdvisorConfig();
     const monthly = summary as MonthlySummary;
 
@@ -91,7 +115,12 @@ export async function POST(request: NextRequest) {
           },
           {
             role: "user",
-            content: MONTHLY_ANALYSIS_PROMPT(monthly, locale as Locale, advisor),
+            content: MONTHLY_ANALYSIS_PROMPT(
+              monthly,
+              locale as Locale,
+              advisor,
+              coaching as AiCoachingContext | undefined,
+            ),
           },
         ],
         temperature: 0.45,

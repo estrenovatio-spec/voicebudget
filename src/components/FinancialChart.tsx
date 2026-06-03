@@ -12,11 +12,17 @@ import {
 } from "@/components/HomeSectionCardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
 import { formatBudgetPeriodLabel } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import {
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+  partnerTabLabel,
+} from "@/lib/owner-labels";
 import { CHART_HIDDEN_KEY } from "@/lib/storage-reset";
 import {
   useStatsPeriod,
@@ -156,39 +162,78 @@ function TotalsPanel({
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
+  const householdFilter = useStore((s) => s.householdFilter);
   const totals = usePeriodOwnerTotals();
-  const categories = usePeriodTypeCategoryBreakdown(variant === "expense" ? "expense" : "income");
+  const txType = variant === "expense" ? "expense" : "income";
+  const categories = usePeriodTypeCategoryBreakdown(txType, householdFilter);
   const [showCategories, setShowCategories] = useState(true);
 
-  const showPartner = hasPartnerBudget(partnerName);
-  const partnerLabel = partnerDisplayName(partnerName);
+  const showPartner = hasPartnerBudget(partnerName, partnerKeywords);
+  const partnerLabel =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
   const meLabel = myDisplayName(locale, userName);
   const meAmount = variant === "expense" ? totals.me.expense : totals.me.income;
   const partnerAmount = variant === "expense" ? totals.partner.expense : totals.partner.income;
   const total = meAmount + partnerAmount;
-  const primaryAmount = showPartner ? meAmount : total;
-  const primaryLabel = showPartner ? meLabel : t(locale, "filterAll");
   const color =
     variant === "income"
       ? "text-emerald-600 dark:text-emerald-400"
       : "text-rose-600 dark:text-rose-400";
 
+  const displayTotal =
+    householdFilter === "all"
+      ? total
+      : householdFilter === "me"
+        ? meAmount
+        : partnerAmount;
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="text-muted-foreground">{primaryLabel}</span>
-        <span className={`font-semibold tabular-nums ${color}`}>
-          {formatMoney(primaryAmount, locale)} {t(locale, "currency")}
-        </span>
-      </div>
       {showPartner ? (
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="text-muted-foreground">{partnerLabel}</span>
-          <span className={`font-semibold tabular-nums ${color}`}>
-            {formatMoney(partnerAmount, locale)} {t(locale, "currency")}
-          </span>
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">
+            {t(locale, "householdFilterLabel")}
+          </p>
+          <HouseholdFilterTabs />
         </div>
       ) : null}
+      {householdFilter === "all" && showPartner ? (
+        <>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">{meLabel}</span>
+            <span className={`font-semibold tabular-nums ${color}`}>
+              {formatMoney(meAmount, locale)} {t(locale, "currency")}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">{partnerLabel}</span>
+            <span className={`font-semibold tabular-nums ${color}`}>
+              {formatMoney(partnerAmount, locale)} {t(locale, "currency")}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t pt-2 text-sm">
+            <span className="font-medium text-muted-foreground">{t(locale, "householdAll")}</span>
+            <span className={`font-semibold tabular-nums ${color}`}>
+              {formatMoney(total, locale)} {t(locale, "currency")}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">
+            {householdFilter === "me"
+              ? meLabel
+              : householdFilter === "partner"
+                ? partnerLabel
+                : t(locale, "filterAll")}
+          </span>
+          <span className={`font-semibold tabular-nums ${color}`}>
+            {formatMoney(displayTotal, locale)} {t(locale, "currency")}
+          </span>
+        </div>
+      )}
       <Button
         type="button"
         variant="outline"
@@ -204,7 +249,7 @@ function TotalsPanel({
         ) : (
           <ul className="space-y-1.5 border-t pt-2">
             {categories.map((row, index) => {
-              const pct = total > 0 ? Math.round((row.value / total) * 100) : 0;
+              const pct = displayTotal > 0 ? Math.round((row.value / displayTotal) * 100) : 0;
               return (
                 <li key={row.category} className="flex items-baseline justify-between gap-2 text-xs">
                   <span className="min-w-0 truncate text-muted-foreground">
@@ -228,6 +273,7 @@ export function FinancialChart() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const period = useStatsPeriod();
   const breakdownAll = usePeriodCategoryBreakdown();
   const breakdownMe = usePeriodOwnerExpenseBreakdown("me");
@@ -237,7 +283,7 @@ export function FinancialChart() {
   const [hidden, setHidden] = useState(false);
   const [tab, setTab] = useState("categories");
 
-  const dualMode = hasPartnerBudget(partnerName);
+  const dualMode = hasPartnerBudget(partnerName, partnerKeywords);
   const periodLabel = formatBudgetPeriodLabel(period, locale);
 
   const hasCategoryData = useMemo(() => {

@@ -1,3 +1,4 @@
+import { hasPartnerDetectionConfig } from "@/lib/detect-owner";
 import { t } from "@/lib/i18n";
 import type { Locale } from "@/types";
 
@@ -12,8 +13,25 @@ export function partnerDisplayName(partnerName: string | null | undefined): stri
   return partnerName?.trim() ?? "";
 }
 
-export function hasPartnerBudget(partnerName: string | null | undefined): boolean {
-  return Boolean(partnerDisplayName(partnerName));
+export function hasPartnerBudget(
+  partnerName: string | null | undefined,
+  partnerKeywords?: readonly string[],
+): boolean {
+  return hasPartnerDetectionConfig(partnerName, partnerKeywords);
+}
+
+/** Подпись вкладки «партнёр», если имя не задано — «Партнёр». */
+export function partnerTabLabel(
+  locale: Locale,
+  partnerName: string | null | undefined,
+  partnerKeywords?: readonly string[],
+): string {
+  const name = partnerDisplayName(partnerName);
+  if (name) return name;
+  if (hasPartnerBudget(partnerName, partnerKeywords)) {
+    return t(locale, "ownerPartner");
+  }
+  return "";
 }
 
 /** Имя в блоке баланса: 2 слова → 2 строки («любимая» / «красотка»). */

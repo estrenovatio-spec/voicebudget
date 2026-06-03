@@ -1,5 +1,6 @@
 import type { HouseholdPublic, SyncPayload } from "@/lib/household/types";
-import type { SubscriptionPublic } from "@/lib/payments/types";
+import type { AccessSummaryPublic, SubscriptionPublic } from "@/lib/payments/types";
+import type { ReferralProfilePublic } from "@/lib/referrals/service";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
@@ -15,11 +16,15 @@ export type CloudApiError =
 export interface BootstrapResponse {
   ok: boolean;
   configured?: boolean;
+  error?: string;
   user?: { id: string; firstName: string | null };
   household: HouseholdPublic | null;
   token: string | null;
   sync: SyncPayload | null;
   subscription?: SubscriptionPublic;
+  accessSummary?: AccessSummaryPublic | null;
+  referralsEnabled?: boolean;
+  referralProfile?: ReferralProfilePublic | null;
 }
 
 export interface HouseholdActionResponse {
@@ -52,9 +57,20 @@ export async function apiBootstrap(auth: CloudAuthBody): Promise<BootstrapRespon
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(auth),
+    signal: AbortSignal.timeout(20_000),
   });
   if (res.status === 503) {
     return { ok: false, configured: false, household: null, token: null, sync: null };
+  }
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return {
+      ok: false,
+      error: data.error ?? `http_${res.status}`,
+      household: null,
+      token: null,
+      sync: null,
+    };
   }
   return parseJson(res);
 }
@@ -89,6 +105,51 @@ export async function apiLeaveHousehold(token: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
   return parseJson<{ ok: boolean }>(res);
+}
+
+export type AiReportRecord = {
+  id: string;
+  kind: "weekly" | "monthly";
+  periodStart: string;
+  periodEnd: string;
+  locale: string;
+  tips: string[];
+  fallback: boolean;
+  createdAt: string;
+};
+
+export async function apiListAiReports(
+  token: string,
+  kind?: "weekly" | "monthly",
+): Promise<{ ok: boolean; reports: AiReportRecord[]; tableReady?: boolean }> {
+  const q = kind ? `?kind=${kind}` : "";
+  const res = await apiFetch(`/api/household/ai-reports${q}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return parseJson(res);
+}
+
+export async function apiSaveAiReport(
+  token: string,
+  body: {
+    kind: "weekly" | "monthly";
+    periodStart: string;
+    periodEnd: string;
+    locale: "ru" | "en";
+    tips: string[];
+    fallback?: boolean;
+    summaryJson?: unknown;
+  },
+): Promise<{ ok: boolean; report?: AiReportRecord }> {
+  const res = await apiFetch("/api/household/ai-reports", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return parseJson(res);
 }
 
 export async function apiSync(token: string) {
@@ -171,6 +232,7 @@ export async function apiUpdateTransaction(
       | "goalAmount"
       | "odometerKm"
       | "vehicleId"
+      | "note"
     >
   >,
 ) {
@@ -306,12 +368,23 @@ export async function apiDeleteRecurring(token: string, id: string) {
   }
 }
 
-export async function apiCreateYookassaCheckout(token: string) {
+export async function apiCreateYookassaCheckout(token: string, useReferralWallet = false) {
   const res = await apiFetch("/api/payments/yookassa/create", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ useReferralWallet }),
   });
-  return parseJson<{ ok: boolean; confirmationUrl: string; paymentId: string }>(res);
+  return parseJson<{
+    ok: boolean;
+    confirmationUrl?: string;
+    paymentId?: string;
+    paidFromWallet?: boolean;
+    walletUsedRub?: number;
+    amountDueRub?: number;
+  }>(res);
 }
 
 export async function apiSubscriptionStatus(token: string) {

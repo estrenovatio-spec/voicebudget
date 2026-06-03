@@ -17,6 +17,39 @@ export interface SubscriptionPublic {
   paymentsConfigured: boolean;
 }
 
+/** Free-access breakdown for header strip (trial + referral days). */
+export interface AccessSummaryPublic {
+  daysRemaining: number;
+  expiresAt: string | null;
+  trialDays: number;
+  referralDaysForFriends: number;
+  referralDaysFromInvite: number;
+  referralDaysTotal: number;
+  friendsInvited: number;
+  wasInvited: boolean;
+  referrerBonusPerFriend: number;
+  referredBonusDays: number;
+  referralPending?:
+    | {
+        role: "referred";
+        waitsForSubscriptionPayment: true;
+        bonusDays: number;
+      }
+    | {
+        role: "referrer";
+        waitsForFriendSubscriptionPayment: true;
+        bonusDays: number;
+      }
+    | {
+        role: "referred" | "referrer";
+        daysRecorded: number;
+        daysRequired: number;
+        bonusDays: number;
+      }
+    | null;
+  testMode: boolean;
+}
+
 export interface YookassaPaymentObject {
   id: string;
   status: string;

@@ -2,7 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BalanceOffsetsByUser } from "@/lib/balance-offsets";
 import type { HouseholdPublic } from "@/lib/household/types";
-import type { SubscriptionPublic } from "@/lib/payments/types";
+import type { AccessSummaryPublic, SubscriptionPublic } from "@/lib/payments/types";
+import type { ReferralProfilePublic } from "@/lib/referrals/service";
+import { isValidSubscriptionPublic } from "@/lib/billing/subscription-shape";
 
 interface CloudState {
   token: string | null;
@@ -13,6 +15,9 @@ interface CloudState {
   /** Корректировки «в кармане» с сервера (общие для семьи) */
   balanceOffsets: BalanceOffsetsByUser;
   subscription: SubscriptionPublic | null;
+  accessSummary: AccessSummaryPublic | null;
+  referralsEnabled: boolean;
+  referralProfile: ReferralProfilePublic | null;
   serverConfigured: boolean | null;
   lastSyncedAt: string | null;
   /** ID операций, которые были в облаке при прошлом pull */
@@ -24,8 +29,15 @@ interface CloudState {
   lastSyncedRemoteRecurringIds: string[];
   /** Локально удалённые регулярные — не поднимать с облака при merge */
   deletedRecurringIds: string[];
+  /** Локально удалённые операции — не поднимать с облака при merge */
+  deletedTransactionIds: string[];
+  /** Последняя ошибка записи в облако (операция остаётся локально) */
+  lastWriteError: string | null;
   setServerConfigured: (value: boolean) => void;
   setSubscription: (subscription: SubscriptionPublic | null) => void;
+  setAccessSummary: (accessSummary: AccessSummaryPublic | null) => void;
+  setReferralsEnabled: (enabled: boolean) => void;
+  setReferralProfile: (profile: ReferralProfilePublic | null) => void;
   setSession: (token: string, household: HouseholdPublic) => void;
   setCloudUserId: (userId: string | null) => void;
   setHouseholdMemberUserIds: (ids: string[]) => void;
@@ -43,6 +55,9 @@ interface CloudState {
   removeFromLastSyncedRemoteRecurringIds: (id: string) => void;
   markRecurringDeleted: (id: string) => void;
   setDeletedRecurringIds: (ids: string[]) => void;
+  markTransactionDeleted: (id: string) => void;
+  setDeletedTransactionIds: (ids: string[]) => void;
+  setLastWriteError: (error: string | null) => void;
   clearSession: () => void;
   /** Drop household token/sync only — keep subscription from latest bootstrap. */
   clearHouseholdSession: () => void;
@@ -57,6 +72,9 @@ export const useCloudStore = create<CloudState>()(
       householdMemberUserIds: [],
       balanceOffsets: {},
       subscription: null,
+      accessSummary: null,
+      referralsEnabled: false,
+      referralProfile: null,
       serverConfigured: null,
       lastSyncedAt: null,
       lastSyncedRemoteTxIds: [],
@@ -65,8 +83,14 @@ export const useCloudStore = create<CloudState>()(
       lastSyncedRemoteBudgetCategoryIds: [],
       lastSyncedRemoteRecurringIds: [],
       deletedRecurringIds: [],
+      deletedTransactionIds: [],
+      lastWriteError: null,
       setServerConfigured: (serverConfigured) => set({ serverConfigured }),
+      setLastWriteError: (lastWriteError) => set({ lastWriteError }),
       setSubscription: (subscription) => set({ subscription }),
+      setAccessSummary: (accessSummary) => set({ accessSummary }),
+      setReferralsEnabled: (referralsEnabled) => set({ referralsEnabled }),
+      setReferralProfile: (referralProfile) => set({ referralProfile }),
       setSession: (token, household) => set({ token, household }),
       setCloudUserId: (cloudUserId) => set({ cloudUserId }),
       setHouseholdMemberUserIds: (householdMemberUserIds) => set({ householdMemberUserIds }),
@@ -107,6 +131,13 @@ export const useCloudStore = create<CloudState>()(
             : [...s.deletedRecurringIds, id],
         })),
       setDeletedRecurringIds: (deletedRecurringIds) => set({ deletedRecurringIds }),
+      markTransactionDeleted: (id) =>
+        set((s) => ({
+          deletedTransactionIds: s.deletedTransactionIds.includes(id)
+            ? s.deletedTransactionIds
+            : [...s.deletedTransactionIds, id],
+        })),
+      setDeletedTransactionIds: (deletedTransactionIds) => set({ deletedTransactionIds }),
       clearSession: () =>
         set({
           token: null,
@@ -115,6 +146,9 @@ export const useCloudStore = create<CloudState>()(
           householdMemberUserIds: [],
           balanceOffsets: {},
           subscription: null,
+          accessSummary: null,
+          referralsEnabled: false,
+          referralProfile: null,
           lastSyncedAt: null,
           lastSyncedRemoteTxIds: [],
           lastSyncedRemoteCategoryIds: [],
@@ -122,6 +156,8 @@ export const useCloudStore = create<CloudState>()(
           lastSyncedRemoteBudgetCategoryIds: [],
           lastSyncedRemoteRecurringIds: [],
           deletedRecurringIds: [],
+          deletedTransactionIds: [],
+          lastWriteError: null,
         }),
       clearHouseholdSession: () =>
         set({
@@ -137,7 +173,7 @@ export const useCloudStore = create<CloudState>()(
     }),
     {
       name: "voicebudget-cloud",
-      version: 4,
+      version: 6,
       migrate: (persisted, version) => {
         const state = persisted as CloudState;
         let next = state;
@@ -166,6 +202,20 @@ export const useCloudStore = create<CloudState>()(
           next = {
             ...next,
             deletedRecurringIds: next.deletedRecurringIds ?? [],
+          };
+        }
+        if (version < 5) {
+          next = {
+            ...next,
+            subscription: isValidSubscriptionPublic(next.subscription)
+              ? next.subscription
+              : null,
+          };
+        }
+        if (version < 6) {
+          next = {
+            ...next,
+            deletedTransactionIds: next.deletedTransactionIds ?? [],
           };
         }
         return next;

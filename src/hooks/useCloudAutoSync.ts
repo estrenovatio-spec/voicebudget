@@ -38,7 +38,7 @@ export function useCloudAutoSync() {
         .catch((e) => {
           if (isAuthSyncError(e)) {
             void refreshCloudSessionFromTelegram().then((ok) => {
-              if (!ok) useCloudStore.getState().clearSession();
+              if (!ok) useCloudStore.getState().clearHouseholdSession();
             });
             return;
           }

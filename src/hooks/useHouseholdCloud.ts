@@ -9,13 +9,13 @@ import {
   apiCreateHousehold,
   apiImportLocal,
   apiJoinHousehold,
-  apiLeaveHousehold,
   apiSync,
 } from "@/lib/cloud/client";
 import { clearWebTelegramLogin } from "@/lib/cloud/web-login-storage";
 import { hasTelegramWebApp } from "@/lib/cloud/telegram";
 import { saveWebTelegramLogin } from "@/lib/cloud/web-login-storage";
 import type { TelegramLoginPayload } from "@/lib/telegram/login-widget";
+import { looksLikeReferralInviteInput } from "@/lib/referrals/looks-like-referral-input";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
@@ -76,6 +76,10 @@ export function useHouseholdCloud() {
       setError("telegram_required");
       return false;
     }
+    if (looksLikeReferralInviteInput(inviteCode)) {
+      setError("referral_link_not_household");
+      return false;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -131,18 +135,11 @@ export function useHouseholdCloud() {
     }
   }, []);
 
+  /** Only pauses sync on this device — never removes membership on server. */
   const disconnectCloud = useCallback(async () => {
-    const sessionToken = useCloudStore.getState().token;
     setLoading(true);
     setError(null);
     try {
-      if (sessionToken) {
-        try {
-          await apiLeaveHousehold(sessionToken);
-        } catch {
-          /* still clear locally */
-        }
-      }
       setCloudPaused(true);
       clearWebTelegramLogin();
       useCloudStore.getState().clearSession();

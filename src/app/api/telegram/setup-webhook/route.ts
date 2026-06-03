@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import { setWebhook } from "@/lib/telegram/bot-api";
 import { isTelegramBotConfigured } from "@/lib/telegram/bot-token";
 
@@ -22,9 +23,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "TELEGRAM_BOT_TOKEN missing" }, { status: 503 });
   }
 
+  const configured = getPublicSiteUrl();
   const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+    configured !== "https://voicebudget.vercel.app"
+      ? configured
+      : `${request.nextUrl.protocol}//${request.nextUrl.host}`;
   const webhookUrl = `${base}/api/telegram/webhook`;
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
 

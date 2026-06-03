@@ -6,6 +6,8 @@ import {
 import type { AdvisorConfig } from "@/lib/advisor-config";
 import { advisorPlanningWithRu } from "@/lib/advisor-config";
 import { formatIsoPeriod } from "@/lib/format-date";
+import type { AiCoachingContext } from "@/lib/ai-coaching-context";
+import { coachingPromptBlock } from "@/lib/ai-coaching-context";
 import type { Locale, Transaction } from "@/types";
 
 export const WEEKLY_ANALYSIS_DAYS = 7;
@@ -142,6 +144,7 @@ export const WEEKLY_ANALYSIS_PROMPT = (
   summary: WeeklySummary,
   locale: Locale,
   advisor: AdvisorConfig,
+  coaching?: AiCoachingContext | null,
 ) => {
   const lang = locale === "ru" ? "Russian" : "English";
   const limited = summary.weekTransactionCount < 8;
@@ -162,6 +165,7 @@ Critical rules:
 - Do NOT tell user to cut everything; max one gentle limit idea.
 - Russia context: RUB, optional mention of subscriptions/inflation — no tax/legal advice.
 - Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `deeper plan with ${advisor.name} — ${advisor.contact}`}.
+${coaching ? coachingPromptBlock(coaching, locale) : ""}
 `;
 };
 

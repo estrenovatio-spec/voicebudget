@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { PromoCodeRedeem } from "@/components/PromoCodeRedeem";
+import { ReferralWalletPaywall } from "@/components/ReferralWalletPaywall";
 import { Button } from "@/components/ui/button";
 import { getCloudAuthBody } from "@/lib/cloud/auth-payload";
 import { apiCreateYookassaCheckout } from "@/lib/cloud/client";
+import { fetchAndApplyDevSubscription } from "@/lib/billing/dev-subscription";
 import { runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { t } from "@/lib/i18n";
 import type { SubscriptionPublic } from "@/lib/payments/types";
@@ -29,6 +31,7 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
   const locale = useStore((s) => s.locale);
   const token = useCloudStore((s) => s.token);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!subscription.enforced || subscription.active) return null;
@@ -45,7 +48,12 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
 
       let confirmationUrl: string;
       if (checkoutToken) {
-        const res = await apiCreateYookassaCheckout(checkoutToken);
+        const res = await apiCreateYookassaCheckout(checkoutToken, false);
+        if (res.paidFromWallet) {
+          await runHouseholdBootstrap();
+          return;
+        }
+        if (!res.confirmationUrl) throw new Error("no_confirmation_url");
         confirmationUrl = res.confirmationUrl;
       } else {
         const res = await fetch("/api/payments/yookassa/create", {
@@ -67,8 +75,17 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
     }
   };
 
-  const refresh = () => {
-    void runHouseholdBootstrap();
+  const refresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await runHouseholdBootstrap();
+      await fetchAndApplyDevSubscription(3);
+    } catch {
+      setError("refresh_failed");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -97,11 +114,18 @@ export function PaywallPanel({ subscription, compact }: PaywallPanelProps) {
         <Button type="button" size="sm" disabled={loading} onClick={() => void pay()}>
           {loading ? t(locale, "paywallLoading") : t(locale, "paywallSubscribe")}
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={refresh}>
-          {t(locale, "paywallRefresh")}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={refreshing}
+          onClick={() => void refresh()}
+        >
+          {refreshing ? t(locale, "paywallLoading") : t(locale, "paywallRefresh")}
         </Button>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
+      <ReferralWalletPaywall priceRub={subscription.priceRub} onPaid={() => void refresh()} />
       <PromoCodeRedeem compact onRedeemed={refresh} />
     </div>
   );

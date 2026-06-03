@@ -115,9 +115,17 @@ export async function extendSubscriptionDays(userId: string, days: number): Prom
 
 export async function activateSubscription(userId: string): Promise<void> {
   await extendSubscriptionDays(userId, subscriptionPeriodDays());
+  try {
+    const { qualifyReferralOnReferredSubscriptionPayment } = await import(
+      "@/lib/referrals/qualify"
+    );
+    await qualifyReferralOnReferredSubscriptionPayment(userId);
+  } catch (e) {
+    console.error("[subscription/referral-qualify]", e);
+  }
 }
 
-/** Grant trial if user has no active access and no paid subscription. */
+/** Grant trial once per user (first bootstrap). Re-open after expiry does not re-grant. */
 export async function ensureTrialForUser(userId: string): Promise<boolean> {
   if (!subscriptionEnforced()) return false;
 
@@ -126,26 +134,36 @@ export async function ensureTrialForUser(userId: string): Promise<boolean> {
 
   if (await userHasPaidSubscription(userId)) return false;
 
-  const row = await prisma.subscription.findUnique({ where: { userId } });
+  const [row, user] = await Promise.all([
+    prisma.subscription.findUnique({ where: { userId } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { trialGrantedAt: true },
+    }),
+  ]);
+
+  if (user?.trialGrantedAt) return false;
+
   const now = new Date();
   const hasActive =
     row?.status === "active" &&
     row.currentPeriodEnd !== null &&
     row.currentPeriodEnd > now;
 
-  if (hasActive) return false;
+  if (hasActive) {
+    if (!user?.trialGrantedAt) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { trialGrantedAt: new Date() },
+      });
+    }
+    return false;
+  }
 
   await extendSubscriptionDays(userId, trialDays);
-
-  const user = await prisma.user.findUnique({
+  await prisma.user.update({
     where: { id: userId },
-    select: { trialGrantedAt: true },
+    data: { trialGrantedAt: new Date() },
   });
-  if (user && !user.trialGrantedAt) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { trialGrantedAt: new Date() },
-    });
-  }
   return true;
 }

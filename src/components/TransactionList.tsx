@@ -1,10 +1,9 @@
 "use client";
 
 import { ChevronDown, ChevronUp, List, Pencil } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { TransactionEditDialog } from "@/components/TransactionEditDialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   HomeSectionCardHeader,
@@ -16,21 +15,32 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryLabel } from "@/lib/categories";
-import { formatTransactionDate } from "@/lib/format-date";
+import { OwnerChip } from "@/components/OwnerChip";
+import {
+  formatTransactionDateShort,
+  todayIsoDate,
+  yesterdayIsoDate,
+} from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
 import {
   TRANSACTIONS_HIDDEN_KEY,
   TRANSACTIONS_TYPE_FILTER_KEY,
 } from "@/lib/storage-reset";
-import { hasPartnerBudget } from "@/lib/owner-labels";
+import {
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+  partnerTabLabel,
+} from "@/lib/owner-labels";
+import { cn } from "@/lib/utils";
 import { displayTransactionNote } from "@/lib/transaction-note";
 import {
   useCategories,
   useFilteredTransactions,
   useStore,
 } from "@/store/useStore";
-import type { Transaction, TxType } from "@/types";
+import type { HouseholdFilter, Transaction, TxType } from "@/types";
 
 function readHidden(): boolean {
   if (typeof window === "undefined") return false;
@@ -70,16 +80,61 @@ function writeTypeFilter(filter: "all" | TxType): void {
   }
 }
 
+type TxDayGroup = { dateKey: string; label: string; items: Transaction[] };
+
+function groupTransactionsByDay(
+  transactions: Transaction[],
+  locale: "ru" | "en",
+): TxDayGroup[] {
+  const today = todayIsoDate();
+  const yesterday = yesterdayIsoDate();
+  const order: string[] = [];
+  const buckets = new Map<string, Transaction[]>();
+
+  for (const tx of transactions) {
+    const key = tx.date?.slice(0, 10) || today;
+    if (!buckets.has(key)) {
+      buckets.set(key, []);
+      order.push(key);
+    }
+    buckets.get(key)!.push(tx);
+  }
+
+  return order.map((dateKey) => {
+    let label = formatTransactionDateShort(dateKey, locale);
+    if (dateKey === today) label = t(locale, "txDayToday");
+    else if (dateKey === yesterday) label = t(locale, "txDayYesterday");
+    return { dateKey, label, items: buckets.get(dateKey) ?? [] };
+  });
+}
+
 type TransactionRowProps = {
   tx: Transaction;
   locale: "ru" | "en";
   categories: ReturnType<typeof useCategories>;
   partnerName: string | null;
+  partnerKeywords: string[];
   userName: string | null;
+  myChipColor: string;
+  partnerChipColor: string;
+  householdFilter: HouseholdFilter;
+  compactAllTab: boolean;
   onEdit: (tx: Transaction) => void;
 };
 
-function TransactionRow({ tx, locale, categories, partnerName, userName, onEdit }: TransactionRowProps) {
+function TransactionRow({
+  tx,
+  locale,
+  categories,
+  partnerName,
+  partnerKeywords,
+  userName,
+  myChipColor,
+  partnerChipColor,
+  householdFilter,
+  compactAllTab,
+  onEdit,
+}: TransactionRowProps) {
   const note = displayTransactionNote(tx.note, tx.amount);
   const savingsGoals = useStore((s) => s.savingsGoals);
   const goalName = tx.goalId ? savingsGoals.find((g) => g.id === tx.goalId)?.name : null;
@@ -91,41 +146,95 @@ function TransactionRow({ tx, locale, categories, partnerName, userName, onEdit 
         })
       : null;
   const owner = tx.owner === "partner" ? "partner" : "me";
-  const showNames = hasPartnerBudget(partnerName);
-  const ownerPart =
-    owner === "partner" && partnerName?.trim()
-      ? partnerName.trim()
-      : owner === "me" && showNames && userName?.trim()
-        ? userName.trim()
-        : null;
-  const meta = [formatTransactionDate(tx.date, locale), ownerPart, note, goalPart]
-    .filter(Boolean)
-    .join(" · ");
+  const showNames = hasPartnerBudget(partnerName, partnerKeywords);
+  const meLabel = myDisplayName(locale, userName);
+  const partnerLabel =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
+  const spenderLabel =
+    householdFilter === "all" && showNames
+      ? owner === "partner"
+        ? partnerLabel
+        : meLabel
+      : null;
+
+  const leftExtra = [note, goalPart].filter(Boolean);
+  const amountClass =
+    tx.type === "income"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-rose-600 dark:text-rose-400";
+
+  if (compactAllTab) {
+    return (
+      <li
+        className={cn(
+          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/80 py-1.5 pl-2 pr-1 text-sm",
+        )}
+      >
+        <button type="button" className="min-w-0 text-left" onClick={() => onEdit(tx)}>
+          <p className="truncate font-medium leading-tight">
+            {getCategoryLabel(tx.categoryId, categories, locale)}
+          </p>
+          {leftExtra.length > 0 ? (
+            <p className="mt-0.5 line-clamp-1 break-words text-xs leading-snug text-muted-foreground">
+              {leftExtra.join(" · ")}
+            </p>
+          ) : null}
+        </button>
+        <div className="flex shrink-0 items-center gap-1 self-center">
+          {spenderLabel ? (
+            <OwnerChip
+              label={spenderLabel}
+              color={owner === "partner" ? partnerChipColor : myChipColor}
+            />
+          ) : null}
+          <span
+            className={cn(
+              "whitespace-nowrap text-sm font-semibold tabular-nums leading-none",
+              amountClass,
+            )}
+          >
+            {tx.type === "income" ? "+" : "−"}
+            {formatMoney(tx.amount, locale)}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            aria-label={t(locale, "txEdit")}
+            onClick={() => onEdit(tx)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        </div>
+      </li>
+    );
+  }
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md border-2 border-border p-2 text-sm">
-      <button
-        type="button"
-        className="min-w-0 text-left"
-        onClick={() => onEdit(tx)}
-      >
+    <li
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/80 py-1.5 pl-2 pr-1 text-sm",
+      )}
+    >
+      <button type="button" className="min-w-0 text-left" onClick={() => onEdit(tx)}>
         <p className="truncate font-medium leading-tight">
           {getCategoryLabel(tx.categoryId, categories, locale)}
         </p>
-        {meta ? (
-          <p className="truncate text-xs leading-snug text-muted-foreground tabular-nums">
-            {meta}
+        {leftExtra.length > 0 ? (
+          <p className="mt-0.5 line-clamp-2 break-words text-xs leading-snug text-foreground/90">
+            {leftExtra.join(" · ")}
           </p>
         ) : null}
       </button>
-      <div className="flex shrink-0 items-center gap-1.5 self-center">
-        <Badge
-          variant={tx.type === "income" ? "success" : "danger"}
-          className="shrink-0 px-1.5 py-0 text-[10px]"
+      <div className="flex shrink-0 items-center gap-1 self-center">
+        <span
+          className={cn(
+            "whitespace-nowrap text-sm font-semibold tabular-nums leading-none",
+            amountClass,
+          )}
         >
-          {tx.type === "income" ? t(locale, "income") : t(locale, "expense")}
-        </Badge>
-        <span className="whitespace-nowrap text-right font-semibold tabular-nums leading-none">
           {tx.type === "income" ? "+" : "−"}
           {formatMoney(tx.amount, locale)}
         </span>
@@ -133,11 +242,11 @@ function TransactionRow({ tx, locale, categories, partnerName, userName, onEdit 
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-7 w-7 shrink-0"
           aria-label={t(locale, "txEdit")}
           onClick={() => onEdit(tx)}
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3 w-3" />
         </Button>
       </div>
     </li>
@@ -147,12 +256,22 @@ function TransactionRow({ tx, locale, categories, partnerName, userName, onEdit 
 export function TransactionList() {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const userName = useStore((s) => s.userName);
+  const myChipColor = useStore((s) => s.myChipColor);
+  const partnerChipColor = useStore((s) => s.partnerChipColor);
   const categories = useCategories();
+  const householdFilter = useStore((s) => s.householdFilter);
   const [filter, setFilter] = useState<"all" | TxType>("all");
   const transactions = useFilteredTransactions(filter);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [hidden, setHidden] = useState(false);
+
+  const compactAllTab = householdFilter === "all";
+  const dayGroups = useMemo(
+    () => groupTransactionsByDay(transactions, locale),
+    [transactions, locale],
+  );
 
   useEffect(() => {
     setHidden(readHidden());
@@ -174,6 +293,36 @@ export function TransactionList() {
     setHidden(true);
     writeHidden(true);
   }, []);
+
+  const rowProps = {
+    locale,
+    categories,
+    partnerName,
+    partnerKeywords,
+    userName,
+    myChipColor,
+    partnerChipColor,
+    householdFilter,
+    compactAllTab,
+    onEdit: setEditing,
+  };
+
+  const groupedList = (
+    <div className="max-h-72 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
+      {dayGroups.map((group) => (
+        <section key={group.dateKey} className="space-y-1">
+          <p className="sticky top-0 z-[1] bg-card/95 py-0.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+            {group.label}
+          </p>
+          <ul className="space-y-1">
+            {group.items.map((tx) => (
+              <TransactionRow key={tx.id} tx={tx} {...rowProps} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
 
   if (hidden) {
     return (
@@ -241,7 +390,9 @@ export function TransactionList() {
         </CardHeader>
         <CardContent className={`space-y-3 ${homeSectionContentClassName}`}>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">{t(locale, "householdFilterLabel")}</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t(locale, "householdFilterLabel")}
+            </p>
             <HouseholdFilterTabs />
           </div>
           {transactions.length === 0 ? (
@@ -249,19 +400,7 @@ export function TransactionList() {
               {t(locale, "noTransactions")}
             </p>
           ) : (
-            <ul className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
-              {transactions.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  tx={tx}
-                  locale={locale}
-                  categories={categories}
-                  partnerName={partnerName}
-                  userName={userName}
-                  onEdit={setEditing}
-                />
-              ))}
-            </ul>
+            groupedList
           )}
         </CardContent>
       </Card>

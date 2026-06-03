@@ -18,6 +18,7 @@ import {
   getWeeklyWaitingMessages,
   ruleBasedWeeklyAnalysis,
 } from "@/lib/weekly-analysis";
+import { persistAiReportToCloud } from "@/lib/reports/persist-ai-report";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 
 function daysUntilNext(msRemaining: number): number {
@@ -102,6 +103,15 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
         setNextInDays(7);
         setIsFullAnalysis(true);
         setUsedFallback(Boolean(json.fallback));
+        void persistAiReportToCloud({
+          kind: "weekly",
+          periodStart: summary.periodStart,
+          periodEnd: summary.periodEnd,
+          locale,
+          tips: json.tips,
+          fallback: json.fallback,
+          summaryJson: summary,
+        });
       } catch {
         const tips = ruleBasedWeeklyAnalysis(summary, locale, getAdvisorConfig());
         setItems(tips);
@@ -109,6 +119,15 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
         setNextInDays(7);
         setIsFullAnalysis(true);
         setUsedFallback(true);
+        void persistAiReportToCloud({
+          kind: "weekly",
+          periodStart: summary.periodStart,
+          periodEnd: summary.periodEnd,
+          locale,
+          tips,
+          fallback: true,
+          summaryJson: summary,
+        });
       } finally {
         setLoading(false);
       }

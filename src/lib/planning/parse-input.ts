@@ -9,7 +9,7 @@ import { EMERGENCY_GOAL_ID } from "@/types/planning";
 
 /** Без \\b: в JS \\b не работает с кириллицей. «кинул» не должен матчиться внутри «закинул». */
 const DEPOSIT_RU =
-  /(?:отлож(?:ил|ила|или|ить|у|им|ите|ишь|ит|ат|ате|аем)|откладыва(?:ю|ем|ете|л|ю)|полож(?:ил|ила|у|ить|им|ите)|закин(?:ул|ула|у|ем|ете|им|ить|ю|ем|ете)?|закидыва(?:ю|ем|ете|л|ла|ть)|перекинул(?:а)?|выкинул(?:а)?|(?<![а-яё])кинул(?:а|и)?|(?<![а-яё])кину\b|скинул(?:а)?|перев[её]л(?:а)?|внес(?:ла|ли|у|ёму|ем)?|накопил(?:а|и)?|депозит|бросил(?:а)?|выделил(?:а)?|отправил(?:а)?|коп(?:и|ил|ила|или|ить|лю|им|ите|ит|ят|яем)|запиш(?:и|ите|у|ем|ут)(?:\s+в)?|(?:в\s+)?копилк(?:у|и|а|е))(?=\s|$|[,.!?;:])/i;
+  /(?:отлож(?:ил|ила|или|ить|у|им|ите|ишь|ит|ат|ате|аем)|откладыва(?:ю|ем|ете|л|ю)|полож(?:ил|ила|у|ить|им|ите)|закин(?:ул|ула|у|ем|ете|им|ить|ю|ем|ете)?|закидыва(?:ю|ем|ете|л|ла|ть)|перекинул(?:а)?|выкинул(?:а)?|(?<![а-яё])кинул(?:а|и)?|(?<![а-яё])кину\b|скинул(?:а)?|перев(?:ёл|ел)(?:\s+(?:в|на)\s+(?:копилк|накоп|цел|сбер|подушк))|внес(?:ла|ли|у|ёму|ем)?(?:\s+в\s+(?:копилк|цел|накоп|сбер|подушк))?|накопил(?:а|и)?|депозит|бросил(?:а)?|выделил(?:а)?|отправил(?:а)?(?:\s+в\s+(?:копилк|цел))?|коп(?:и|ил|ила|или|ить|лю|им|ите|ит|ят|яем)|запиш(?:и|ите|у|ем|ут)(?:\s+в)?|(?:в\s+)?копилк(?:у|и|а|е))(?=\s|$|[,.!?;:])/i;
 const DEPOSIT_EN =
   /(?:saved|save|saving|deposited|deposit|put aside|set aside|transferred|transfer|moved|move)(?=\s|$|[,.!?;:])/i;
 
@@ -29,6 +29,17 @@ const DEADLINE_EN = /(?:by|until|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,
 
 const INCOME_HINT_RU = /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс)/i;
 const INCOME_HINT_EN = /(?:salary|received|income|earned|paid|paycheck)/i;
+
+/** Поступление денег — не путать с «перевёл в копилку». */
+const INCOME_RECEIPT_RU =
+  /(?:зарплат|получил|получила|получили|пришл|пришло|пришли|зачисли|зачислен|поступил|поступило|поступили|доход|выручк|премия|аванс|перевели(?:\s+\d|\s+мне|\s+на\s+сч)|перевёл\s+мне|перевел\s+мне|перевод\s+(?:от|с\s+работы|зарплат)|на\s+сч[её]т\s+пришл)/i;
+const INCOME_RECEIPT_EN =
+  /(?:salary|received|got paid|paycheck|deposited to (?:my )?account|credited|incoming)/i;
+
+const GOAL_JAR_INTENT_RU =
+  /(?:отлож|копилк|закинул?\s+в|закидыва(?:ю|л)|в\s+копилк|на\s+копилк|в\s+цел|на\s+цель|внес(?:ла|ли)?\s+в)/i;
+const GOAL_JAR_INTENT_EN =
+  /(?:save to|saving to|put (?:aside )?into|deposit(?:ed)? to|into (?:the )?(?:goal|jar))/i;
 
 const SPLIT_HINT_RU = /(?:из них|из которых|в копилк|на копилк|в цел)/i;
 const SPLIT_HINT_EN = /(?:of which|put aside|into (?:the )?(?:goal|jar))/i;
@@ -253,6 +264,16 @@ function tryParseIncomeWithGoal(
   };
 }
 
+/** Зарплата / «пришло» / «перевели мне» — доход, не расход в копилку. */
+export function isIncomeReceiptPhrase(text: string, locale: Locale): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  const jarIntent = locale === "ru" ? GOAL_JAR_INTENT_RU : GOAL_JAR_INTENT_EN;
+  if (jarIntent.test(trimmed)) return false;
+  const receipt = locale === "ru" ? INCOME_RECEIPT_RU : INCOME_RECEIPT_EN;
+  return receipt.test(trimmed);
+}
+
 export function tryParsePlanningInput(
   text: string,
   locale: Locale,
@@ -271,6 +292,10 @@ export function tryParsePlanningInput(
   const incomeGoal = tryParseIncomeWithGoal(trimmed, locale, goals);
   if (incomeGoal) return incomeGoal;
 
+  if (isIncomeReceiptPhrase(trimmed, locale)) {
+    return null;
+  }
+
   const depositRe = locale === "ru" ? DEPOSIT_RU : DEPOSIT_EN;
   const parsedDeposit = parseGoalDepositFromText(trimmed, locale, goals);
   if (parsedDeposit) {
@@ -285,6 +310,7 @@ export function tryParsePlanningInput(
 
 /** Фраза похожа на перевод в копилку (для подстраховки после ИИ). */
 export function looksLikeGoalDeposit(text: string, locale: Locale): boolean {
+  if (isIncomeReceiptPhrase(text, locale)) return false;
   const depositRe = locale === "ru" ? DEPOSIT_RU : DEPOSIT_EN;
   return depositRe.test(text.trim());
 }

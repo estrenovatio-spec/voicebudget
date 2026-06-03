@@ -5,6 +5,11 @@ import {
   yookassaCredentials,
   yookassaReturnUrl,
 } from "@/lib/payments/config";
+import {
+  debitReferralWalletBalance,
+  getReferralWalletAvailableRub,
+} from "@/lib/referrals/wallet";
+import { referralWalletEnabled } from "@/lib/referrals/wallet-config";
 import { activateSubscription } from "@/lib/payments/subscription";
 import type { YookassaNotification, YookassaPaymentObject } from "@/lib/payments/types";
 
@@ -37,22 +42,48 @@ async function yookassaFetch<T>(
   return data;
 }
 
-export async function createYookassaCheckout(userId: string): Promise<{
-  paymentId: string;
-  confirmationUrl: string;
-}> {
+export type YookassaCheckoutResult = {
+  paymentId?: string;
+  confirmationUrl?: string;
+  paidFromWallet?: boolean;
+  walletUsedRub?: number;
+  amountDueRub?: number;
+};
+
+export async function createYookassaCheckout(
+  userId: string,
+  opts?: { useReferralWallet?: boolean },
+): Promise<YookassaCheckoutResult> {
   const amount = subscriptionAmountRub();
   const returnUrl = yookassaReturnUrl();
+
+  let walletApply = 0;
+  if (opts?.useReferralWallet && referralWalletEnabled()) {
+    const available = await getReferralWalletAvailableRub(userId);
+    walletApply = Math.round(Math.min(available, amount) * 100) / 100;
+  }
+
+  if (walletApply >= amount - 0.009) {
+    const used = await debitReferralWalletBalance(userId, amount);
+    if (used >= amount - 0.009) {
+      await activateSubscription(userId);
+      return { paidFromWallet: true, walletUsedRub: used, amountDueRub: 0 };
+    }
+  }
+
+  const chargeRub = Math.max(1, Math.round((amount - walletApply) * 100) / 100);
+  const metadata: Record<string, string> = { userId };
+  if (walletApply > 0) metadata.referralWalletRub = walletApply.toFixed(2);
 
   const payment = await yookassaFetch<YookassaPaymentObject>("/payments", {
     method: "POST",
     idempotenceKey: randomUUID(),
     body: JSON.stringify({
-      amount: { value: amount.toFixed(2), currency: "RUB" },
+      amount: { value: chargeRub.toFixed(2), currency: "RUB" },
       capture: true,
       confirmation: { type: "redirect", return_url: returnUrl },
       description: `VoiceBudget — облако и бот, ${process.env.YOOKASSA_SUBSCRIPTION_DAYS ?? 30} дн.`,
-      metadata: { userId },
+      metadata,
     }),
   });
 
@@ -60,7 +91,7 @@ export async function createYookassaCheckout(userId: string): Promise<{
     data: {
       userId,
       yookassaPaymentId: payment.id,
-      amount,
+      amount: chargeRub,
       currency: "RUB",
       status: payment.status,
     },
@@ -69,7 +100,12 @@ export async function createYookassaCheckout(userId: string): Promise<{
   const confirmationUrl = payment.confirmation?.confirmation_url;
   if (!confirmationUrl) throw new Error("yookassa_no_confirmation_url");
 
-  return { paymentId: payment.id, confirmationUrl };
+  return {
+    paymentId: payment.id,
+    confirmationUrl,
+    walletUsedRub: walletApply > 0 ? walletApply : undefined,
+    amountDueRub: chargeRub,
+  };
 }
 
 export async function fetchYookassaPayment(paymentId: string): Promise<YookassaPaymentObject> {
@@ -111,6 +147,11 @@ export async function handleYookassaNotification(body: YookassaNotification): Pr
     });
 
     if (!existing || existing.status !== "succeeded") {
+      const walletMeta = verified.metadata?.referralWalletRub;
+      const walletRub = walletMeta ? Number.parseFloat(String(walletMeta)) : 0;
+      if (walletRub > 0) {
+        await debitReferralWalletBalance(userId, walletRub);
+      }
       await activateSubscription(userId);
     }
     return;

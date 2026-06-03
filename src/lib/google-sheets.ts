@@ -1,4 +1,5 @@
 import type { HouseholdPublic } from "@/lib/household/types";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 
 export type HouseholdMemberLogAction = "create" | "join" | "open";
@@ -56,7 +57,7 @@ export async function logHouseholdMemberToGoogleSheet(opts: {
     return;
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? "https://voicebudget.vercel.app";
+  const siteUrl = getPublicSiteUrl();
   const actionLabel =
     opts.action === "create"
       ? "Создал семью"

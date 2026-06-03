@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import {
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+  partnerTabLabel,
+} from "@/lib/owner-labels";
 import {
   SUMMARY_EXPENSE_HIDDEN_KEY,
   SUMMARY_INCOME_HIDDEN_KEY,
@@ -195,10 +200,13 @@ export function OwnerTotalsSummary() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const totals = useOwnerTypeTotals(DAYS);
 
-  const showPartner = hasPartnerBudget(partnerName);
-  const partnerLabel = partnerDisplayName(partnerName);
+  const showPartner = hasPartnerBudget(partnerName, partnerKeywords);
+  const partnerLabel =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
   const meLabel = myDisplayName(locale, userName);
 
   return (

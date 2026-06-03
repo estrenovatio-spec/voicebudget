@@ -26,6 +26,12 @@ export function mapHouseholdApiError(error: unknown): { code: string; status: nu
     if (error.message === "subscription_required") {
       return { code: "subscription_required", status: 402 };
     }
+    if (error.message === "household_leave_forbidden") {
+      return { code: "household_leave_forbidden", status: 403 };
+    }
+    if (error.message === "cloud_wipe_disabled") {
+      return { code: "cloud_wipe_disabled", status: 403 };
+    }
   }
   return { code: "household_create_failed", status: 500 };
 }

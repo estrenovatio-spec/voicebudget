@@ -159,6 +159,7 @@ export async function updateTransactionForHousehold(
       | "createdBy"
       | "odometerKm"
       | "vehicleId"
+      | "note"
     >
   >,
   existing: {
@@ -167,6 +168,7 @@ export async function updateTransactionForHousehold(
     owner: string;
     type: string;
     createdBy: string | null;
+    note: string;
   },
   createdBy: string | null,
 ): Promise<void> {
@@ -184,6 +186,7 @@ export async function updateTransactionForHousehold(
       ...(patch.recurringId !== undefined ? { recurringId: patch.recurringId } : {}),
       ...(patch.odometerKm !== undefined ? { odometerKm: patch.odometerKm } : {}),
       ...(patch.vehicleId !== undefined ? { vehicleId: patch.vehicleId } : {}),
+      note: patch.note !== undefined ? patch.note : existing.note,
     },
     caps,
   );
@@ -214,6 +217,9 @@ export async function updateTransactionForHousehold(
   }
   if (caps.txVehicleId && patch.vehicleId !== undefined) {
     sets.push(Prisma.sql`"vehicleId" = ${patch.vehicleId}`);
+  }
+  if (patch.note !== undefined) {
+    sets.push(Prisma.sql`note = ${patch.note}`);
   }
 
   await prisma.$executeRaw`

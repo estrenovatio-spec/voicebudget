@@ -2,7 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
-import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner-labels";
+import {
+  hasPartnerBudget,
+  myDisplayName,
+  partnerDisplayName,
+  partnerTabLabel,
+} from "@/lib/owner-labels";
 import { useStore } from "@/store/useStore";
 import type { BudgetOwner, HouseholdFilter } from "@/types";
 
@@ -10,14 +15,19 @@ export function EntryOwnerToggle() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const entryOwner = useStore((s) => s.entryOwner);
   const setEntryOwner = useStore((s) => s.setEntryOwner);
 
-  if (!hasPartnerBudget(partnerName)) return null;
+  if (!hasPartnerBudget(partnerName, partnerKeywords)) return null;
+
+  const partnerLabel =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
 
   const options: { id: BudgetOwner; label: string }[] = [
     { id: "me", label: myDisplayName(locale, userName) },
-    { id: "partner", label: partnerDisplayName(partnerName) },
+    { id: "partner", label: partnerLabel },
   ];
 
   return (
@@ -41,15 +51,20 @@ export function HouseholdFilterTabs() {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const householdFilter = useStore((s) => s.householdFilter);
   const setHouseholdFilter = useStore((s) => s.setHouseholdFilter);
 
-  if (!hasPartnerBudget(partnerName)) return null;
+  if (!hasPartnerBudget(partnerName, partnerKeywords)) return null;
+
+  const partnerLabel =
+    partnerDisplayName(partnerName) ||
+    partnerTabLabel(locale, partnerName, partnerKeywords);
 
   const tabs: { id: HouseholdFilter; label: string }[] = [
     { id: "all", label: t(locale, "householdAll") },
     { id: "me", label: myDisplayName(locale, userName) },
-    { id: "partner", label: partnerDisplayName(partnerName) },
+    { id: "partner", label: partnerLabel },
   ];
 
   return (

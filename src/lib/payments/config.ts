@@ -1,4 +1,5 @@
 import { envInt, envTruthy } from "@/lib/payments/env-flags";
+import { getPublicSiteUrl } from "@/lib/site-url";
 
 export function isPaymentsConfigured(): boolean {
   const shopId = process.env.YOOKASSA_SHOP_ID?.trim();
@@ -48,10 +49,7 @@ export function subscriptionTrialDays(): number {
 }
 
 export function yookassaReturnUrl(): string {
-  const site =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    "https://voicebudget.vercel.app";
-  return `${site}/?payment=done`;
+  return `${getPublicSiteUrl()}/?payment=done`;
 }
 
 export function yookassaCredentials(): { shopId: string; secretKey: string } | null {

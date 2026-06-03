@@ -239,8 +239,10 @@ export async function getHouseholdSessionForUser(
   };
 }
 
-/** User leaves cloud household — stops auto-sync for this Telegram account until join/create again */
+/** User leaves cloud household — disabled by default (see cloud-guard). */
 export async function leaveHousehold(userId: string): Promise<void> {
+  const { assertHouseholdLeaveAllowed } = await import("@/lib/household/cloud-guard");
+  assertHouseholdLeaveAllowed();
   await prisma.householdMember.deleteMany({ where: { userId } });
 }
 
@@ -276,6 +278,13 @@ async function refreshHouseholdCategories(householdId: string) {
   });
   await prisma.category.deleteMany({
     where: { householdId, labelRu: "Еда", isSystem: true },
+  });
+  await prisma.transaction.updateMany({
+    where: { householdId, categoryId: "vacation" },
+    data: { categoryId: "leisure" },
+  });
+  await prisma.category.deleteMany({
+    where: { householdId, id: "vacation" },
   });
 }
 
@@ -328,8 +337,7 @@ export async function joinHousehold(
     if (existingSession.household.inviteCode === inviteCode) {
       return { ...existingSession, isNew: false };
     }
-    // Уже в своей «соло»-семье (часто после бота) — переключаем на семью по коду
-    await leaveHousehold(userId);
+    throw new Error("already_in_household");
   }
 
   const household = await prisma.household.findUnique({
@@ -479,6 +487,10 @@ export async function importLocalSnapshot(
       create: createPayload as never,
       update: updatePayload as never,
     });
+    if (tx.confirmed !== false) {
+      const { recordActivityAndTryQualify } = await import("@/lib/referrals/qualify");
+      await recordActivityAndTryQualify(userId, tx.date);
+    }
   }
 
   return buildSyncPayload(householdId, userId);
@@ -499,6 +511,10 @@ export async function createCloudTransaction(
   const createdBy =
     tx.createdBy && memberIds.includes(tx.createdBy) ? tx.createdBy : userId;
   await createTransactionForHousehold(householdId, { ...tx, createdBy }, createdBy);
+  if (tx.confirmed !== false) {
+    const { recordActivityAndTryQualify } = await import("@/lib/referrals/qualify");
+    await recordActivityAndTryQualify(userId, tx.date);
+  }
   return { ...tx, createdBy };
 }
 
@@ -520,6 +536,7 @@ export async function updateCloudTransaction(
       | "createdBy"
       | "odometerKm"
       | "vehicleId"
+      | "note"
     >
   >,
 ) {

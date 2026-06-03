@@ -29,3 +29,7 @@ export function envInt(...keys: string[]): number | undefined {
   const n = Number.parseInt(v, 10);
   return Number.isFinite(n) ? n : undefined;
 }
+
+export function envString(...keys: string[]): string | undefined {
+  return envRawAny(...keys);
+}

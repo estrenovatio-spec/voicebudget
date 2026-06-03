@@ -23,13 +23,19 @@ function mapCloudError(locale: "ru" | "en", error: string): string {
         ? "cloudErrTelegram"
         : error === "invalid_init_data"
           ? "cloudErrTelegramAuth"
-          : error === "not_found" || error === "household_not_found" || error === "invalid_code"
+          : error === "referral_link_not_household"
+            ? "cloudErrReferralNotHousehold"
+            : error === "not_found" || error === "household_not_found" || error === "invalid_code"
             ? "cloudErrInviteCode"
             : error === "unauthorized" || error === "forbidden"
               ? "cloudErrUnauthorized"
               : error === "subscription_required"
                 ? "paywallTitle"
-                : "cloudErrGeneric";
+                : error === "already_in_household"
+                  ? "cloudErrAlreadyInHousehold"
+                  : error === "household_leave_forbidden"
+                    ? "cloudErrLeaveForbidden"
+                    : "cloudErrGeneric";
   const text = t(locale, key);
   if (key === "cloudErrGeneric" && error && error !== "create_failed") {
     return `${text} Код: ${error}`;
@@ -146,6 +152,10 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
             </p>
           </div>
         ) : null}
+
+        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-950 dark:text-emerald-100">
+          {t(locale, "cloudProtectedNotice")}
+        </p>
 
         <CloudSyncActions embedded />
 
@@ -267,6 +277,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
 
       <div className="space-y-2 border-t border-border/60 pt-3">
         <p className="text-xs font-medium">{t(locale, "cloudJoinTitle")}</p>
+        <p className="text-[11px] text-muted-foreground">{t(locale, "cloudJoinHint")}</p>
         <Input
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value.toUpperCase())}

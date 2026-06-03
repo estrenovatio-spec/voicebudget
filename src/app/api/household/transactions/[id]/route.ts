@@ -17,6 +17,7 @@ const patchSchema = z.object({
   recurringId: z.string().nullable().optional(),
   odometerKm: z.number().finite().min(0).nullable().optional(),
   vehicleId: z.string().min(1).nullable().optional(),
+  note: z.string().max(120).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

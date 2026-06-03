@@ -7,6 +7,8 @@ import {
 import type { AdvisorConfig } from "@/lib/advisor-config";
 import { advisorPlanningWithRu } from "@/lib/advisor-config";
 import { formatIsoDate, formatIsoPeriod } from "@/lib/format-date";
+import type { AiCoachingContext } from "@/lib/ai-coaching-context";
+import { coachingPromptBlock } from "@/lib/ai-coaching-context";
 import type { Locale, Transaction } from "@/types";
 
 /** Макс. длина периода отчёта; если ведёте дольше — берём последние 30 дней */
@@ -246,6 +248,7 @@ export const MONTHLY_ANALYSIS_PROMPT = (
   summary: MonthlySummary,
   locale: Locale,
   advisor: AdvisorConfig,
+  coaching?: AiCoachingContext | null,
 ) => {
   const lang = locale === "ru" ? "Russian" : "English";
   const limited = summary.monthTransactionCount < 15;
@@ -264,6 +267,7 @@ Critical rules:
 - ${limited ? "Data is LIMITED — say so. No invented patterns." : "Use real numbers from data."}
 - Russia context: RUB. No tax/legal advice.
 - Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `deeper plan with ${advisor.name} — ${advisor.contact}`}.
+${coaching ? coachingPromptBlock(coaching, locale) : ""}
 `;
 };
 
@@ -310,6 +314,7 @@ export const MONTHLY_CHAT_SYSTEM = (
   reportTips: string[],
   locale: Locale,
   extendedPeriod = false,
+  coaching?: AiCoachingContext | null,
 ) => {
   const lang = locale === "ru" ? "Russian" : "English";
   const trendHint =
@@ -334,5 +339,6 @@ Summary JSON:
 ${JSON.stringify(summary, null, 2)}
 
 Short monthly report already shown to user (may cover fewer days):
-${reportTips.map((t, i) => `${i + 1}. ${t}`).join("\n")}`;
+${reportTips.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+${coaching ? coachingPromptBlock(coaching, locale) : ""}`;
 };

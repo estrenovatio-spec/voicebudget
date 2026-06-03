@@ -35,6 +35,7 @@ import type { TelegramMessage, TelegramUpdate, TelegramUser } from "@/lib/telegr
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { formatBotHelpHtml, formatBotStartHtml } from "@/lib/help-faq-content";
 import { getTelegramBotName } from "@/lib/telegram/bot-name";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import type { Locale, ParsedTransaction, Transaction } from "@/types";
 import type { SavingsGoal } from "@/types/planning";
 
@@ -48,10 +49,7 @@ function localeFromUser(user: TelegramUser | undefined): Locale {
 }
 
 function siteUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    "https://voicebudget.vercel.app"
-  );
+  return getPublicSiteUrl();
 }
 
 function toWebAppUser(from: TelegramUser): TelegramWebAppUser {

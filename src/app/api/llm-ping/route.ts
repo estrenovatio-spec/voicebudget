@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createLlmChatCompletion, getLlmBaseUrl, getLlmClient, getLlmModel, isLlmConfigured } from "@/lib/llm";
 import { extractJsonFromLlmContent } from "@/lib/llm-json";
 
+export const dynamic = "force-dynamic";
+
 /** Проверка AI на сервере: откройте /api/llm-ping в браузере после деплоя */
 export async function GET() {
   if (!isLlmConfigured()) {

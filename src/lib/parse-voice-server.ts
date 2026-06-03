@@ -21,7 +21,7 @@ import {
   normalizeOwnerDetectOptions,
   type OwnerDetectOptions,
 } from "@/lib/detect-owner";
-import { hasPartnerBudget } from "@/lib/owner-labels";
+import { hasPartnerDetectionConfig } from "@/lib/detect-owner";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
@@ -114,7 +114,10 @@ export async function parseTranscriptServerMany(
   const text = transcript.trim();
   const ownerOpts = normalizeOwnerDetectOptions(ownerCtx, locale);
   if (ownerOpts.hasPartner === undefined) {
-    ownerOpts.hasPartner = hasPartnerBudget(ownerOpts.partnerName);
+    ownerOpts.hasPartner = hasPartnerDetectionConfig(
+      ownerOpts.partnerName,
+      ownerOpts.partnerKeywords,
+    );
   }
 
   const withOwner = (items: ParsedTransaction[]) =>
@@ -141,7 +144,9 @@ export async function parseTranscriptServerMany(
         {
           role: "system",
           content:
-            "You extract one or more financial transactions from a phrase. Respond with JSON only.",
+            locale === "ru"
+              ? "Ты разбираешь русские фразы про деньги в JSON. Строго следуй categoryId из каталога в запросе (включая keywords пользователя). Только JSON, без пояснений."
+              : "You parse money phrases into JSON. Use only categoryId values from the request catalog (including user keywords). JSON only, no prose.",
         },
         {
           role: "user",
@@ -151,6 +156,7 @@ export async function parseTranscriptServerMany(
             categories,
             ownerOpts.partnerName,
             ownerOpts.myName,
+            ownerOpts.partnerKeywords,
           ),
         },
       ],

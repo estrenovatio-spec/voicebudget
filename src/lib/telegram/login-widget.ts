@@ -1,16 +1,14 @@
 import { createHash, createHmac, timingSafeEqual } from "crypto";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
-import { getTelegramBotToken } from "@/lib/telegram/bot-token";
+import { getTelegramBotTokens } from "@/lib/telegram/bot-token";
 
 export type TelegramLoginPayload = Record<string, string | number>;
 
 /** Validates Telegram Login Widget callback (https://core.telegram.org/widgets/login) */
-export function parseTelegramLoginWidget(
+function parseTelegramLoginWidgetWithToken(
   raw: TelegramLoginPayload,
+  botToken: string,
 ): { user: TelegramWebAppUser; authDate: number } | null {
-  const botToken = getTelegramBotToken();
-  if (!botToken) return null;
-
   const hash = String(raw.hash ?? "");
   if (!hash) return null;
 
@@ -49,4 +47,14 @@ export function parseTelegramLoginWidget(
     },
     authDate,
   };
+}
+
+export function parseTelegramLoginWidget(
+  raw: TelegramLoginPayload,
+): { user: TelegramWebAppUser; authDate: number } | null {
+  for (const token of getTelegramBotTokens()) {
+    const parsed = parseTelegramLoginWidgetWithToken(raw, token);
+    if (parsed) return parsed;
+  }
+  return null;
 }

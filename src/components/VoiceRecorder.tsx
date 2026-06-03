@@ -5,11 +5,18 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { hasPartnerBudget } from "@/lib/owner-labels";
-import { tryParsePlanningInput, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
+import {
+  tryParsePlanningInput,
+  looksLikeGoalDeposit,
+  isIncomeReceiptPhrase,
+} from "@/lib/planning/parse-input";
 import { formatMoney } from "@/lib/format-money";
 import { t, ruPlural, enPlural } from "@/lib/i18n";
 import { inferParseLocale } from "@/lib/locale-infer";
+import { isCloudSyncActive } from "@/lib/cloud/push";
+import { mergeTransactionComment } from "@/lib/transaction-note";
 import { parseVoiceTranscripts } from "@/lib/voice";
+import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
 export function VoiceRecorder() {
@@ -18,11 +25,13 @@ export function VoiceRecorder() {
   const savingsGoals = useStore((s) => s.savingsGoals);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const addTransaction = useStore((s) => s.addTransaction);
   const applyPlanningInput = useStore((s) => s.applyPlanningInput);
   const { toast } = useToast();
 
   const [text, setText] = useState("");
+  const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
 
   const onAdd = useCallback(async () => {
@@ -39,6 +48,7 @@ export function VoiceRecorder() {
           return;
         }
         setText("");
+        setComment("");
         if (
           planning.kind === "goal_deposit" ||
           planning.kind === "goal_deposit_by_name"
@@ -64,8 +74,9 @@ export function VoiceRecorder() {
       const parseLocale = inferParseLocale(value, locale);
       const parsed = await parseVoiceTranscripts(value, parseLocale, categories, {
         partnerName,
+        partnerKeywords,
         myName: userName,
-        hasPartner: hasPartnerBudget(partnerName),
+        hasPartner: hasPartnerBudget(partnerName, partnerKeywords),
       });
       if (!parsed || parsed.items.length === 0) {
         toast(t(locale, "voiceTryManual"), "error");
@@ -75,14 +86,15 @@ export function VoiceRecorder() {
       // ИИ не знает про копилки — если фраза про отложить, но правила не сработали раньше, пробуем ещё раз
       const first = parsed.items[0];
       if (
-        looksLikeGoalDeposit(value, locale) ||
-        first.categoryId === "goal_jar"
+        !isIncomeReceiptPhrase(value, locale) &&
+        (looksLikeGoalDeposit(value, locale) || first.categoryId === "goal_jar")
       ) {
         const retry = tryParsePlanningInput(value, locale, savingsGoals);
         if (retry) {
           const ok = applyPlanningInput(retry);
           if (ok) {
             setText("");
+            setComment("");
             if (
               retry.kind === "goal_deposit" ||
               retry.kind === "goal_deposit_by_name"
@@ -107,10 +119,13 @@ export function VoiceRecorder() {
         }
       }
 
+      const extraComment = comment.trim();
       for (const item of parsed.items) {
-        addTransaction(item, item.note?.trim() || value);
+        const note = mergeTransactionComment(item.note, value, extraComment, item.amount);
+        addTransaction({ ...item, note }, note || value);
       }
       setText("");
+      setComment("");
       toast(
         parsed.items.length === 1
           ? t(locale, "voiceSuccess")
@@ -123,6 +138,13 @@ export function VoiceRecorder() {
             }),
         "success",
       );
+      if (isCloudSyncActive()) {
+        window.setTimeout(() => {
+          if (useCloudStore.getState().lastWriteError) {
+            toast(t(locale, "cloudWriteLocalOnly"), "error");
+          }
+        }, 700);
+      }
     } finally {
       setBusy(false);
     }
@@ -133,7 +155,9 @@ export function VoiceRecorder() {
     categories,
     locale,
     partnerName,
+    partnerKeywords,
     savingsGoals,
+    comment,
     text,
     toast,
     userName,
@@ -149,6 +173,15 @@ export function VoiceRecorder() {
           rows={2}
           disabled={busy}
           className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        />
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder={t(locale, "voiceCommentPlaceholder")}
+          rows={1}
+          maxLength={120}
+          disabled={busy}
+          className="flex min-h-[40px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         />
         <Button
           type="button"

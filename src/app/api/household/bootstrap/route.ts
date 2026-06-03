@@ -12,7 +12,17 @@ import {
   getUserMembership,
   upsertTelegramUser,
 } from "@/lib/household/service";
+import { referralCodeFromStartParam } from "@/lib/referrals/code";
+import { referralsEnabled } from "@/lib/referrals/config";
+import { isReferralSchemaReady } from "@/lib/referrals/schema-ready";
+import {
+  applyReferralFromCode,
+  ensureUserReferralCode,
+  getReferralProfile,
+} from "@/lib/referrals/service";
+import { getAccessSummaryForUser } from "@/lib/billing/access-summary";
 import { ensureTrialForUser, getSubscriptionForUser } from "@/lib/payments/subscription";
+import { getStartParamFromInitData } from "@/lib/telegram/start-param";
 
 export async function POST(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
@@ -29,8 +39,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const user = await upsertTelegramUser(tgUser);
+    const referralsOn = referralsEnabled();
+    let referralProfile = null;
+
+    if (referralsOn && (await isReferralSchemaReady())) {
+      await ensureUserReferralCode(user.id);
+      const startParam = auth.initData ? getStartParamFromInitData(auth.initData) : null;
+      const refCode = referralCodeFromStartParam(startParam);
+      if (refCode) {
+        await applyReferralFromCode(user.id, refCode);
+      }
+      try {
+        referralProfile = await getReferralProfile(user.id);
+      } catch (refErr) {
+        console.error("[household/bootstrap referral]", refErr);
+      }
+    }
+
     await ensureTrialForUser(user.id);
     const subscription = await getSubscriptionForUser(user.id);
+    const accessSummary = await getAccessSummaryForUser(user.id);
     const membership = await getUserMembership(user.id);
 
     if (!user.googleSheetsOpenLogged) {
@@ -62,6 +90,9 @@ export async function POST(req: NextRequest) {
         token: null,
         sync: null,
         subscription,
+        accessSummary,
+        referralsEnabled: referralsOn,
+        referralProfile,
       });
     }
 
@@ -79,6 +110,9 @@ export async function POST(req: NextRequest) {
         token,
         sync: null,
         subscription,
+        accessSummary,
+        referralsEnabled: referralsOn,
+        referralProfile,
       });
     }
 
@@ -91,6 +125,9 @@ export async function POST(req: NextRequest) {
       token,
       sync,
       subscription,
+      accessSummary,
+      referralsEnabled: referralsOn,
+      referralProfile,
     });
   } catch (e) {
     console.error("[household/bootstrap]", e);

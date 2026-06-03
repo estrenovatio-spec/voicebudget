@@ -16,6 +16,7 @@ import { hasPartnerBudget, myDisplayName, partnerDisplayName } from "@/lib/owner
 import { parseAmountFromTranscript } from "@/lib/parse-amount";
 import { roundMoneyUp } from "@/lib/format-money";
 import { clearCachedRecommendations } from "@/lib/storage";
+import { displayTransactionNote, sanitizeTransactionNote } from "@/lib/transaction-note";
 import { normalizeGoalAmount } from "@/lib/goal-from-transaction";
 import {
   collectHouseholdMemberUserIds,
@@ -51,6 +52,7 @@ export function TransactionEditDialog({
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
+  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const categories = useCategories();
   const savingsGoals = useStore((s) => s.savingsGoals);
   const allTransactions = useTransactions();
@@ -72,6 +74,7 @@ export function TransactionEditDialog({
   const [owner, setOwner] = useState<BudgetOwner>("me");
   const [goalId, setGoalId] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
+  const [comment, setComment] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -103,6 +106,7 @@ export function TransactionEditDialog({
       guessDefaultVehicleId(vehicles, vehiclePrefs, viewerUserId, partnerIds, lastFuelVehicleId) ??
       "";
     setVehicleId(defaultVid);
+    setComment(displayTransactionNote(raw.note, raw.amount) ?? "");
     setConfirmDelete(false);
   }, [transaction?.id, open]);
 
@@ -164,6 +168,7 @@ export function TransactionEditDialog({
       categoryId,
       owner: spender?.owner,
       createdBy: spender?.createdBy,
+      note: sanitizeTransactionNote(comment, roundMoneyUp(parsed)),
       goalId: txType === "income" && goalId && parsedGoal > 0 ? goalId : null,
       goalAmount:
         txType === "income" && goalId && parsedGoal > 0
@@ -197,7 +202,7 @@ export function TransactionEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-h-[min(90dvh,36rem)] max-w-sm overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t(locale, "txEditTitle")}</DialogTitle>
           <p className="text-sm text-muted-foreground">
@@ -238,6 +243,21 @@ export function TransactionEditDialog({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="500"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium" htmlFor="tx-comment">
+              {t(locale, "txComment")}
+            </label>
+            <textarea
+              id="tx-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t(locale, "txCommentPlaceholder")}
+              rows={2}
+              maxLength={120}
+              className="flex min-h-[56px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">{t(locale, "txCommentHint")}</p>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium" htmlFor="tx-category">
@@ -318,7 +338,7 @@ export function TransactionEditDialog({
               ) : null}
             </div>
           ) : null}
-          {hasPartnerBudget(partnerName) && (
+          {hasPartnerBudget(partnerName, partnerKeywords) && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="tx-owner">
                 {t(locale, "txOwner")}

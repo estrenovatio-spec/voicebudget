@@ -352,6 +352,7 @@ export async function finalizeVoiceCapture(
 
 export type ParseVoiceOwnerContext = {
   partnerName?: string | null;
+  partnerKeywords?: readonly string[];
   myName?: string | null;
   hasPartner?: boolean;
 };
@@ -383,6 +384,8 @@ export async function parseVoiceTranscripts(
           typeof ownerCtx === "string"
             ? ownerCtx
             : (ownerCtx?.partnerName ?? null),
+        partnerKeywords:
+          typeof ownerCtx === "string" ? undefined : ownerCtx?.partnerKeywords,
         myName: typeof ownerCtx === "string" ? null : (ownerCtx?.myName ?? null),
         hasPartner:
           typeof ownerCtx === "string" ? undefined : ownerCtx?.hasPartner,
@@ -403,15 +406,28 @@ export async function parseVoiceTranscripts(
       );
       if (json.success && rawItems.length > 0) {
         const clauses = splitTranscriptClauses(text);
-        const items = rawItems.map((item, index) =>
-          refineParsedTransaction(
-            item,
-            clauses[index]?.trim() || item.note?.trim() || text,
-            mergedCategories,
-            detectType,
-            parseLocale,
-          ),
+        const ownerOpts = normalizeOwnerDetectOptions(ownerCtx, parseLocale);
+        if (ownerOpts.hasPartner === undefined) {
+          ownerOpts.hasPartner = hasPartnerBudget(
+          ownerOpts.partnerName,
+          ownerOpts.partnerKeywords,
         );
+        }
+        const items = rawItems.map((item, index) => {
+          const clause = clauses[index]?.trim() || item.note?.trim() || text;
+          return applyDetectedOwner(
+            refineParsedTransaction(
+              item,
+              clause,
+              mergedCategories,
+              detectType,
+              parseLocale,
+            ),
+            clause,
+            ownerOpts,
+            "me",
+          );
+        });
         return {
           items,
           usedFallback: Boolean(json.fallback),
@@ -429,7 +445,10 @@ export async function parseVoiceTranscripts(
       locale,
     );
     if (ownerOpts.hasPartner === undefined) {
-      ownerOpts.hasPartner = hasPartnerBudget(ownerOpts.partnerName);
+      ownerOpts.hasPartner = hasPartnerBudget(
+        ownerOpts.partnerName,
+        ownerOpts.partnerKeywords,
+      );
     }
     const clauses = splitTranscriptClauses(text);
     const items = local.map((item, index) =>

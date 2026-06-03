@@ -13,15 +13,81 @@ model User {
   telegramId      BigInt    @unique
   firstName       String?
   username        String?
-  trialGrantedAt           DateTime?
-  googleSheetsOpenLogged   Boolean   @default(false)
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
+  trialGrantedAt              DateTime?
+  subscriptionReminderSentAt  DateTime?
+  googleSheetsOpenLogged      Boolean   @default(false)
+  referralCode                String?   @unique
+  referredByUserId            String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
-  memberships      HouseholdMember[]
-  subscription     Subscription?
-  payments         Payment[]
-  promoRedemptions PromoRedemption[]
+  referredBy           User?      @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referrals            User[]     @relation("UserReferrals")
+  memberships          HouseholdMember[]
+  subscription         Subscription?
+  payments             Payment[]
+  promoRedemptions     PromoRedemption[]
+  referralsMade        Referral[] @relation("Referrer")
+  referralReceived     Referral?  @relation("Referred")
+  referralActivityDays ReferralActivityDay[]
+  aiAnalysisReports    AiAnalysisReport[]
+}
+
+enum AiAnalysisKind {
+  weekly
+  monthly
+}
+
+model AiAnalysisReport {
+  id          String         @id @default(cuid())
+  userId      String
+  kind        AiAnalysisKind
+  periodStart String
+  periodEnd   String
+  locale      String         @default("ru")
+  tips        Json
+  fallback    Boolean        @default(false)
+  summaryJson Json?
+  createdAt   DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt(sort: Desc)])
+}
+
+enum ReferralStatus {
+  pending
+  rewarded
+}
+
+model Referral {
+  id                 String         @id @default(cuid())
+  referrerUserId     String
+  referredUserId     String         @unique
+  referrerBonusDays  Int
+  referredBonusDays  Int
+  status             ReferralStatus @default(pending)
+  rewardedAt         DateTime?
+  createdAt          DateTime       @default(now())
+
+  referrer User @relation("Referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("Referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId])
+  @@index([status])
+}
+
+/** Distinct calendar days with at least one expense/income entry (for referral qualify). */
+model ReferralActivityDay {
+  id           String   @id @default(cuid())
+  userId       String
+  activityDate String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityDate])
+  @@index([userId])
 }
 
 model PromoCode {

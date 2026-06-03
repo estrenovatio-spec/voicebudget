@@ -10,9 +10,11 @@ import {
   matchCategoryIdFromText,
   normalizeParsedCategory,
   migrateCategoryId,
+  refineParsedTransaction,
   sanitizeCategories,
   slugifyCategoryId,
 } from "@/lib/categories";
+import { detectType } from "@/lib/ai";
 import { getTrackingStartDate } from "@/lib/budget-analytics";
 import {
   clampMonthStartDay,
@@ -22,6 +24,11 @@ import {
   type BudgetPeriod,
 } from "@/lib/budget-period";
 import { applyDetectedOwner } from "@/lib/detect-owner";
+import {
+  DEFAULT_MY_CHIP_COLOR,
+  DEFAULT_PARTNER_CHIP_COLOR,
+  sanitizeOwnerChipColor,
+} from "@/lib/owner-chip-colors";
 import { hasPartnerBudget } from "@/lib/owner-labels";
 import {
   collectHouseholdMemberUserIds,
@@ -32,7 +39,11 @@ import {
 import { countsInBalance, countsInHouseholdTotal } from "@/lib/transaction-confirmed";
 import { buildPartnerTransferPair } from "@/lib/partner-transfer";
 import { GOAL_JAR_CATEGORY_ID } from "@/lib/planning/goal-transfer";
-import { mapTransactionsForViewer } from "@/lib/transaction-owner";
+import { sanitizeTransactionNote } from "@/lib/transaction-note";
+import {
+  mapTransactionsForViewer,
+  spenderFromViewerOwner,
+} from "@/lib/transaction-owner";
 import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import { roundMoneyUp } from "@/lib/format-money";
@@ -114,6 +125,14 @@ interface StoreState {
   partnerName: string | null;
   /** Пользователь вручную задал имя партнёра в балансе */
   partnerNameCustomized: boolean;
+  /** Слова для распознавания партнёра в фразе (на этом телефоне) */
+  partnerKeywords: string[];
+  setPartnerKeywords: (keywords: string[]) => void;
+  /** HEX цвет кружка «я» в списке операций */
+  myChipColor: string;
+  partnerChipColor: string;
+  setMyChipColor: (hex: string) => void;
+  setPartnerChipColor: (hex: string) => void;
   entryOwner: BudgetOwner;
   householdFilter: HouseholdFilter;
   trackingStartedAt: string | null;
@@ -157,6 +176,7 @@ interface StoreState {
       goalAmount?: number | null;
       odometerKm?: number | null;
       vehicleId?: string | null;
+      note?: string;
     },
   ) => void;
   deleteTransaction: (id: string) => void;
@@ -364,6 +384,21 @@ export const useStore = create<StoreState>()(
       userNameCustomized: false,
       partnerName: null,
       partnerNameCustomized: false,
+      partnerKeywords: [],
+      setPartnerKeywords: (partnerKeywords) =>
+        set({
+          partnerKeywords: partnerKeywords
+            .map((k) => k.trim().toLowerCase())
+            .filter((k) => k.length >= 2),
+        }),
+      myChipColor: DEFAULT_MY_CHIP_COLOR,
+      partnerChipColor: DEFAULT_PARTNER_CHIP_COLOR,
+      setMyChipColor: (hex) =>
+        set({ myChipColor: sanitizeOwnerChipColor(hex, DEFAULT_MY_CHIP_COLOR) }),
+      setPartnerChipColor: (hex) =>
+        set({
+          partnerChipColor: sanitizeOwnerChipColor(hex, DEFAULT_PARTNER_CHIP_COLOR),
+        }),
       entryOwner: "me",
       householdFilter: "all",
       trackingStartedAt: null,
@@ -395,24 +430,49 @@ export const useStore = create<StoreState>()(
       addTransaction: (data, transcript, opts) => {
         const newId = makeId();
         set((state) => {
-          const normalized = normalizeIncoming(
+          let normalized = normalizeIncoming(
             data,
             state.categories,
             state.locale,
             transcript,
           );
+          if (transcript?.trim()) {
+            normalized = refineParsedTransaction(
+              normalized,
+              transcript,
+              state.categories,
+              detectType,
+              state.locale,
+            );
+          }
           const withOwner = applyDetectedOwner(
             normalized,
             transcript ?? normalized.note,
             {
               partnerName: state.partnerName,
+              partnerKeywords: state.partnerKeywords,
               myName: state.userName,
               locale: state.locale,
-              hasPartner: hasPartnerBudget(state.partnerName),
+              hasPartner: hasPartnerBudget(state.partnerName, state.partnerKeywords),
             },
             data.owner ?? state.entryOwner,
           );
-          const owner = withOwner.owner ?? state.entryOwner;
+          const viewerOwner = withOwner.owner ?? data.owner ?? state.entryOwner;
+          let owner = viewerOwner;
+          let createdBy = data.createdBy;
+          const viewerId = ensureCloudViewerUserId();
+          if (!createdBy && viewerId) {
+            const memberIds = collectHouseholdMemberUserIds(
+              useCloudStore.getState().householdMemberUserIds,
+              state.transactions,
+              viewerId,
+            );
+            const spender = spenderFromViewerOwner(viewerId, memberIds, viewerOwner);
+            owner = spender.owner;
+            createdBy = spender.createdBy ?? undefined;
+          } else if (!createdBy) {
+            createdBy = viewerId ?? undefined;
+          }
           let goalId = data.goalId ?? null;
           let goalAmount = normalizeGoalAmount(data.goalAmount);
           if (!goalId || goalAmount <= 0) {
@@ -435,7 +495,6 @@ export const useStore = create<StoreState>()(
           } else if (goalAmount < normalized.amount) {
             goalAmount = normalized.amount;
           }
-          const creatorId = data.createdBy ?? ensureCloudViewerUserId();
           const created: Transaction = {
             id: newId,
             owner,
@@ -444,7 +503,8 @@ export const useStore = create<StoreState>()(
             goalAmount: goalId && goalAmount ? goalAmount : null,
             confirmed: data.confirmed === false ? false : true,
             recurringId: data.recurringId ?? null,
-            ...(creatorId ? { createdBy: creatorId } : {}),
+            updatedAt: new Date().toISOString(),
+            ...(createdBy ? { createdBy } : {}),
             ...(data.odometerKm != null && Number.isFinite(data.odometerKm)
               ? { odometerKm: Math.max(0, Math.round(data.odometerKm)) }
               : {}),
@@ -654,17 +714,23 @@ export const useStore = create<StoreState>()(
                 : tx.odometerKm ?? null;
             const vehicleId =
               patch.vehicleId !== undefined ? patch.vehicleId : tx.vehicleId ?? null;
+            const note =
+              patch.note !== undefined
+                ? sanitizeTransactionNote(patch.note, amount)
+                : tx.note;
             updated = {
               ...tx,
               amount,
               categoryId,
               type,
               owner,
+              note,
               ...(patch.createdBy !== undefined ? { createdBy: patch.createdBy } : {}),
               goalId: goalId && goalAmount ? goalId : null,
               goalAmount: goalId && goalAmount ? goalAmount : null,
               odometerKm,
               vehicleId,
+              updatedAt: new Date().toISOString(),
             };
             return updated;
           });
@@ -688,6 +754,7 @@ export const useStore = create<StoreState>()(
             goalAmount: after.goalAmount,
             odometerKm: after.odometerKm,
             vehicleId: after.vehicleId,
+            note: after.note,
           });
           for (const gid of goalIds) {
             const goal = get().savingsGoals.find((g) => g.id === gid);
@@ -722,7 +789,7 @@ export const useStore = create<StoreState>()(
         });
         if (goalAfterDelete) void cloudPushGoal(goalAfterDelete);
         for (const delId of idsToDelete) {
-          useCloudStore.getState().removeFromLastSyncedRemoteTxIds(delId);
+          useCloudStore.getState().markTransactionDeleted(delId);
           void cloudPushTransactionDelete(delId);
         }
       },
@@ -747,7 +814,7 @@ export const useStore = create<StoreState>()(
       setBudgetMonthStartDay: (day) => set({ budgetMonthStartDay: clampMonthStartDay(day) }),
       transferToPartner: (amount, direction) => {
         const amt = roundMoneyUp(amount);
-        if (amt <= 0 || !hasPartnerBudget(get().partnerName)) return false;
+        if (amt <= 0 || !hasPartnerBudget(get().partnerName, get().partnerKeywords)) return false;
         const partnerLabel = get().partnerName?.trim() || "Партнёр";
         const pair = buildPartnerTransferPair(amt, direction, partnerLabel);
         const viewerId = ensureCloudViewerUserId();
@@ -1064,7 +1131,9 @@ export const useStore = create<StoreState>()(
             return updated;
           }),
         }));
-        if (updated) void cloudPushTransaction(updated);
+        if (updated) {
+          void cloudPushTransaction(updated);
+        }
         return Boolean(updated);
       },
       dismissPendingTransaction: (id) => {
@@ -1139,7 +1208,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "voicebudget-store",
-      version: 20,
+      version: 22,
       migrate: (persisted, version) => {
         const raw = (persisted ?? {}) as Record<string, unknown>;
         const categories = sanitizeCategories(raw.categories);
@@ -1180,6 +1249,20 @@ export const useStore = create<StoreState>()(
           partnerNameCustomized:
             Boolean(raw.partnerNameCustomized) ||
             (typeof raw.partnerName === "string" && raw.partnerName.trim().length > 0),
+          partnerKeywords: Array.isArray(raw.partnerKeywords)
+            ? raw.partnerKeywords
+                .filter((k): k is string => typeof k === "string")
+                .map((k) => k.trim().toLowerCase())
+                .filter((k) => k.length >= 2)
+            : [],
+          myChipColor: sanitizeOwnerChipColor(
+            typeof raw.myChipColor === "string" ? raw.myChipColor : null,
+            DEFAULT_MY_CHIP_COLOR,
+          ),
+          partnerChipColor: sanitizeOwnerChipColor(
+            typeof raw.partnerChipColor === "string" ? raw.partnerChipColor : null,
+            DEFAULT_PARTNER_CHIP_COLOR,
+          ),
           entryOwner: raw.entryOwner === "partner" ? "partner" : "me",
           householdFilter:
             raw.householdFilter === "me" || raw.householdFilter === "partner"
@@ -1308,6 +1391,13 @@ function useViewerMappedTransactions(forBalance = false): Transaction[] {
   }, [transactions, cloudUserId, token, storedMemberIds, forBalance]);
 }
 
+/** Доходы/расходы по «я / партнёр» — с переводами между супругами, без неподтверждённых. */
+function useViewerTransactionsForOwnerStats(): Transaction[] {
+  const viewerTxs = useViewerMappedTransactions(false);
+
+  return useMemo(() => viewerTxs.filter(countsInBalance), [viewerTxs]);
+}
+
 export function useComputedBalance(owner: "me" | "partner" | "all" = "all"): number {
   const viewerTxs = useViewerMappedTransactions(false);
   return useMemo(() => {
@@ -1361,7 +1451,7 @@ export type OwnerTypeTotals = {
 };
 
 export function useOwnerTypeTotals(days = 30): OwnerTypeTotals {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
 
   return useMemo(() => {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -1398,7 +1488,7 @@ export function useStatsPeriod(): BudgetPeriod {
 }
 
 export function usePeriodOwnerTotals(): OwnerTypeTotals {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
   const period = useStatsPeriod();
 
   return useMemo(() => {
@@ -1420,8 +1510,9 @@ export function usePeriodOwnerTotals(): OwnerTypeTotals {
 
 export function usePeriodTypeCategoryBreakdown(
   type: TxType,
+  ownerFilter: HouseholdFilter = "all",
 ): { category: string; value: number }[] {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
@@ -1432,6 +1523,7 @@ export function usePeriodTypeCategoryBreakdown(
     viewerTxs.forEach((tx) => {
       if (tx.type !== type) return;
       if (!isDateInBudgetPeriod(tx.date, period)) return;
+      if (ownerFilter !== "all" && tx.owner !== ownerFilter) return;
       const label = getCategoryLabel(tx.categoryId, categories, locale);
       map.set(label, (map.get(label) ?? 0) + tx.amount);
     });
@@ -1439,7 +1531,7 @@ export function usePeriodTypeCategoryBreakdown(
     return Array.from(map.entries())
       .map(([category, value]) => ({ category, value }))
       .sort((a, b) => b.value - a.value);
-  }, [viewerTxs, categories, locale, period, type]);
+  }, [viewerTxs, categories, locale, period, type, ownerFilter]);
 }
 
 export function usePeriodCategoryBreakdown(): { category: string; value: number }[] {
@@ -1472,7 +1564,7 @@ export function usePeriodCategoryBreakdown(): { category: string; value: number 
 export function usePeriodOwnerExpenseBreakdown(
   owner: BudgetOwner,
 ): { category: string; value: number }[] {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
@@ -1502,7 +1594,7 @@ export function useTypeCategoryBreakdown(
   days: number,
   type: TxType,
 ): { category: string; value: number }[] {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
 
@@ -1527,7 +1619,7 @@ export function useOwnerExpenseBreakdown(
   days: number,
   owner: BudgetOwner,
 ): { category: string; value: number }[] {
-  const viewerTxs = useViewerMappedTransactions(true);
+  const viewerTxs = useViewerTransactionsForOwnerStats();
   const categories = useCategories();
   const locale = useStore((s) => s.locale);
 
@@ -1580,6 +1672,9 @@ export function useCategoryBreakdown(days = 30): { category: string; value: numb
   }, [viewerTxs, categories, locale, householdFilter, days]);
 }
 
+/** Сколько операций показываем на главной (раньше 10 — свежие записи терялись из вида). */
+export const TRANSACTION_LIST_PREVIEW = 80;
+
 export function useFilteredTransactions(filter: "all" | TxType): Transaction[] {
   const viewerTxs = useViewerMappedTransactions(false);
   const householdFilter = useStore((s) => s.householdFilter);
@@ -1587,7 +1682,7 @@ export function useFilteredTransactions(filter: "all" | TxType): Transaction[] {
     householdFilter === "all"
       ? viewerTxs
       : viewerTxs.filter((tx) => tx.owner === householdFilter);
-  const list = byOwner.filter(countsInBalance).slice(0, 10);
+  const list = byOwner.filter(countsInBalance).slice(0, TRANSACTION_LIST_PREVIEW);
   if (filter === "all") return list;
   return list.filter((tx) => tx.type === filter);
 }
