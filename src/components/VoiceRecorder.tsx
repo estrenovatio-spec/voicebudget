@@ -164,7 +164,7 @@ export function VoiceRecorder() {
   ]);
 
   return (
-    <section className="flex flex-col items-center py-2">
+    <section className="flex flex-col items-center py-2" data-onboarding="voice">
       <div className="w-full max-w-md space-y-1.5">
         <textarea
           value={text}

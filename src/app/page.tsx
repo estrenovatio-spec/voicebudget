@@ -1,7 +1,7 @@
 "use client";
 
 import { AppVersionBanner } from "@/components/AppVersionBanner";
-import { AppTabShell } from "@/components/app/AppTabShell";
+import { PreviewAppShell } from "@/components/app/PreviewAppShell";
 import { HomeSections } from "@/components/HomeSections";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
@@ -16,13 +16,23 @@ import { TransactionList } from "@/components/TransactionList";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { VehicleMaintenanceBanner } from "@/components/VehicleMaintenanceBanner";
 import { VehicleOdometerDialog } from "@/components/VehicleOdometerDialog";
-import { bottomNavEnabled } from "@/lib/app-bottom-nav";
+import {
+  bottomNavEnabled,
+  readStoredAppTab,
+  writeStoredAppTab,
+  type AppTabId,
+} from "@/lib/app-bottom-nav";
+import { FamilyOnboarding } from "@/components/FamilyOnboarding";
 import { detectLocale } from "@/lib/i18n";
 import { clearDismissibleHintKeys } from "@/lib/storage-reset";
 import { useStore } from "@/store/useStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-function FamilyHomeContent({ bottomNav }: { bottomNav: boolean }) {
+function FamilyHomeContent({
+  previewNav,
+}: {
+  previewNav?: { active: AppTabId; onChange: (tab: AppTabId) => void };
+}) {
   return (
     <>
       <SubscriptionAccessBanner />
@@ -30,7 +40,7 @@ function FamilyHomeContent({ bottomNav }: { bottomNav: boolean }) {
       <SubscriptionExpiredReminder />
       <AppVersionBanner />
       <VehicleMaintenanceBanner />
-      <TMAHeader hideBusinessButton={bottomNav} />
+      <TMAHeader previewNav={previewNav} />
       <VoiceRecorder />
       <VehicleOdometerDialog />
       <PendingRecurringCard />
@@ -43,11 +53,21 @@ function FamilyHomeContent({ bottomNav }: { bottomNav: boolean }) {
 export default function HomePage() {
   const setLocale = useStore((s) => s.setLocale);
   const locale = useStore((s) => s.locale);
-  const bottomNav = bottomNavEnabled();
+  const previewMode = bottomNavEnabled();
+  const [appView, setAppView] = useState<AppTabId>("family");
 
   useEffect(() => {
     clearDismissibleHintKeys();
   }, []);
+
+  useEffect(() => {
+    if (previewMode) setAppView(readStoredAppTab());
+  }, [previewMode]);
+
+  const onAppViewChange = (tab: AppTabId) => {
+    setAppView(tab);
+    writeStoredAppTab(tab);
+  };
 
   useEffect(() => {
     if (window.Telegram?.WebApp) return;
@@ -56,20 +76,33 @@ export default function HomePage() {
 
   useRecurringProcessor();
 
-  const family = <FamilyHomeContent bottomNav={bottomNav} />;
+  const previewNav = previewMode
+    ? { active: appView, onChange: onAppViewChange }
+    : undefined;
+
+  const family = <FamilyHomeContent previewNav={previewNav} />;
 
   return (
     <main
       className={[
         "mx-auto flex min-h-[var(--tg-viewport-height,100vh)] max-w-lg flex-col gap-2 px-4",
-        bottomNav ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))]" : "pb-8",
+        previewMode && appView !== "family"
+          ? "pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          : previewMode
+            ? "pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            : "pb-8",
       ].join(" ")}
       lang={locale}
     >
       <HouseholdCloudBootstrap />
       <PaymentReturnRefresh />
       <SettingsDialogHost />
-      {bottomNav ? <AppTabShell familyContent={family} /> : family}
+      {!previewMode ? <FamilyOnboarding /> : null}
+      {previewMode ? (
+        <PreviewAppShell familyContent={family} previewNav={{ active: appView, onChange: onAppViewChange }} />
+      ) : (
+        family
+      )}
     </main>
   );
 }

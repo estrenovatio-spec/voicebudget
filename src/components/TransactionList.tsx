@@ -326,7 +326,7 @@ export function TransactionList() {
 
   if (hidden) {
     return (
-      <>
+      <div data-onboarding="transactions">
         <HomeSectionCollapsedBar
           icon={List}
           title={t(locale, "transactions")}
@@ -350,12 +350,12 @@ export function TransactionList() {
             if (!open) setEditing(null);
           }}
         />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div data-onboarding="transactions">
       <Card className="border-primary/20">
         <HomeSectionCardHeader
           icon={List}
@@ -412,6 +412,6 @@ export function TransactionList() {
           if (!open) setEditing(null);
         }}
       />
-    </>
+    </div>
   );
 }

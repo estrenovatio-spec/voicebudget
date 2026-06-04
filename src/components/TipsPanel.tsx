@@ -99,7 +99,8 @@ export function TipsPanel() {
 
   if (hidden) {
     return (
-      <HomeSectionCollapsedBar
+      <div data-onboarding="tips">
+        <HomeSectionCollapsedBar
         icon={Sparkles}
         title={t(locale, "tipsPanelTitle")}
         action={
@@ -115,11 +116,12 @@ export function TipsPanel() {
           </Button>
         }
       />
+      </div>
     );
   }
 
   return (
-    <Card className="border-primary/20">
+    <Card className="border-primary/20" data-onboarding="tips">
       <HomeSectionCardHeader
         icon={Sparkles}
         title={t(locale, "tipsPanelTitle")}

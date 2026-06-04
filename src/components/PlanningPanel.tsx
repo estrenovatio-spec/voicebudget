@@ -297,16 +297,18 @@ export function PlanningPanel() {
 
   if (hydrated && !open) {
     return (
-      <HomeSectionCollapsedBar
-        icon={PiggyBank}
-        title={t(locale, "planningTitle")}
-        action={showToggle}
-      />
+      <div data-onboarding="planning">
+        <HomeSectionCollapsedBar
+          icon={PiggyBank}
+          title={t(locale, "planningTitle")}
+          action={showToggle}
+        />
+      </div>
     );
   }
 
   return (
-    <Card className="border-primary/20">
+    <Card className="border-primary/20" data-onboarding="planning">
       <HomeSectionCardHeader
         icon={PiggyBank}
         title={t(locale, "planningTitle")}

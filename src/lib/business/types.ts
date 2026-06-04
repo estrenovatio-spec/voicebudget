@@ -1,0 +1,114 @@
+export type BusinessTxKind =
+  | "operating_income"
+  | "operating_expense"
+  | "cushion_deposit"
+  | "family_withdrawal";
+
+export type BusinessTransaction = {
+  id: string;
+  unitId: string;
+  type: "income" | "expense";
+  amount: number;
+  kind: BusinessTxKind;
+  note: string;
+  date: string;
+};
+
+export type BusinessAssetType = "investment" | "rental" | "freelance";
+
+export type BusinessAsset = {
+  id: string;
+  unitId: string;
+  type: BusinessAssetType;
+  name: string;
+  capitalValue: number;
+  monthlyNet: number;
+  /** Для фриланса: часов в месяц — чтобы посчитать ₽/ч */
+  hoursPerMonth?: number;
+};
+
+export type BusinessUnit = {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  /** Целевая стоимость часа, ₽ */
+  hourlyRate?: number;
+};
+
+export type BusinessUnitPeriodStats = {
+  unitId: string;
+  income: number;
+  expense: number;
+  remaining: number;
+};
+
+export type BusinessIncomeSource = {
+  label: string;
+  amount: number;
+};
+
+export type BusinessPeriodStats = {
+  income: number;
+  expense: number;
+  profit: number;
+  profitMarginPct: number;
+};
+
+export type BusinessExpenseRow = {
+  label: string;
+  amount: number;
+};
+
+export type BusinessAssetsByType = {
+  investment: BusinessAsset[];
+  rental: BusinessAsset[];
+  freelance: BusinessAsset[];
+};
+
+export type BusinessSnapshot = {
+  operatingBalance: number;
+  cushionBalance: number;
+  cushionTarget: number;
+  cushionGap: number;
+  avgMonthlyExpense: number;
+  monthIncome: number;
+  monthExpense: number;
+  monthProfit: number;
+  canToCushion: number;
+  canToFamily: number;
+  assetsAnnualIncome: number;
+  totalCapital: number;
+  passiveIncomeMonthly: number;
+  weightedYieldPct: number;
+  runwayMonths: number;
+  suggestedTaxReserve: number;
+};
+
+export type BusinessCloudPayload = {
+  version: 2;
+  units: BusinessUnit[];
+  transactions: BusinessTransaction[];
+  assets: BusinessAsset[];
+  taxRatePct?: number;
+};
+
+export const BUSINESS_UNIT_COLORS = [
+  "#6366f1",
+  "#10b981",
+  "#f59e0b",
+  "#ec4899",
+  "#8b5cf6",
+  "#14b8a6",
+  "#ef4444",
+  "#3b82f6",
+] as const;
+
+export function defaultBusinessUnit(name = "Мой бизнес"): BusinessUnit {
+  return {
+    id: `unit-${Date.now().toString(36)}`,
+    name: name.slice(0, 60),
+    color: BUSINESS_UNIT_COLORS[0],
+    createdAt: new Date().toISOString(),
+  };
+}

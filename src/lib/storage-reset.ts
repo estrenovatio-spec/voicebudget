@@ -25,6 +25,7 @@ export const CHART_HIDDEN_KEY = "voicebudget-chart-hidden";
 export const BALANCE_AMOUNTS_HIDDEN_KEY = "voicebudget-balance-amounts-hidden";
 const HOME_SECTION_ORDER_KEY = "voicebudget-home-section-order";
 export const APP_BUILD_KEY = "voicebudget-app-build";
+export const FAMILY_ONBOARDING_DONE_KEY = "voicebudget-family-onboarding-v1";
 
 const DISMISSIBLE_HINTS_PREFIX = "voicebudget-hints-hidden:";
 
@@ -66,6 +67,7 @@ export function clearAppStorage(): void {
     localStorage.removeItem(CHART_HIDDEN_KEY);
     localStorage.removeItem(BALANCE_AMOUNTS_HIDDEN_KEY);
     localStorage.removeItem(HOME_SECTION_ORDER_KEY);
+    localStorage.removeItem(FAMILY_ONBOARDING_DONE_KEY);
     clearDismissibleHintKeys();
     localStorage.removeItem(CLOUD_KEY);
     sessionStorage.removeItem(WEB_LOGIN_KEY);

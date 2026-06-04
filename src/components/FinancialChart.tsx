@@ -325,7 +325,8 @@ export function FinancialChart() {
 
   if (hidden) {
     return (
-      <HomeSectionCollapsedBar
+      <div data-onboarding="chart">
+        <HomeSectionCollapsedBar
         icon={BarChart3}
         title={title}
         action={
@@ -341,6 +342,7 @@ export function FinancialChart() {
           </Button>
         }
       />
+      </div>
     );
   }
 
@@ -349,7 +351,7 @@ export function FinancialChart() {
   const meChartLabel = myDisplayName(locale, userName);
 
   return (
-    <Card className="border-primary/20">
+    <Card className="border-primary/20" data-onboarding="chart">
       <HomeSectionCardHeader
         icon={BarChart3}
         title={title}
