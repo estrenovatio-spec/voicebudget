@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getCategoryLabel } from "@/lib/categories";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
+import { formatIsoDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import {
   deleteAiMemoryRule,
@@ -196,6 +197,39 @@ function sourceLabel(source: AiMemoryRule["source"], locale: "ru" | "en"): strin
   return "текст";
 }
 
+function localDateKey(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${day}`;
+}
+
+function dateHeading(dateKey: string, locale: Locale): string {
+  const today = localDateKey(new Date().toISOString());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = localDateKey(yesterdayDate.toISOString());
+  if (dateKey === today) return locale === "ru" ? "Сегодня" : "Today";
+  if (dateKey === yesterday) return locale === "ru" ? "Вчера" : "Yesterday";
+  return formatIsoDate(dateKey, locale);
+}
+
+function groupRulesByDate(rules: AiMemoryRule[]): { dateKey: string; rules: AiMemoryRule[] }[] {
+  const groups = new Map<string, AiMemoryRule[]>();
+  for (const rule of rules) {
+    const dateKey = localDateKey(rule.lastSeenAt);
+    groups.set(dateKey, [...(groups.get(dateKey) ?? []), rule]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([dateKey, groupedRules]) => ({
+      dateKey,
+      rules: groupedRules.sort((a, b) => b.weight - a.weight || b.lastSeenAt.localeCompare(a.lastSeenAt)),
+    }));
+}
+
 export function AiMemoryCenter() {
   const locale = useStore((s) => s.locale);
   const budgetMonthStartDay = useStore((s) => s.budgetMonthStartDay);
@@ -241,7 +275,7 @@ export function AiMemoryCenter() {
   const insights = ctx.personalMemory?.insights ?? [];
   const signals = ctx.smartSignals;
   const advisoryText = advisorySignalText(signals, locale);
-  const rules = learnedRules.slice(0, 24);
+  const ruleGroups = groupRulesByDate(learnedRules);
   const missions = buildWeeklyMissions({
     locale,
     periodStart: period.from,
@@ -355,44 +389,55 @@ export function AiMemoryCenter() {
             {locale === "ru" ? `${learnedRules.length} правил` : `${learnedRules.length} rules`}
           </p>
         </div>
-        {rules.length === 0 ? (
+        {learnedRules.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-sm leading-snug text-muted-foreground">
             {locale === "ru"
               ? "Память пустая. Запишите несколько операций голосом или текстом, а если категория ошиблась — исправьте её. Это самый сильный сигнал для обучения."
               : "Memory is empty. Add a few entries by voice or text, and correct the category when needed."}
           </p>
         ) : (
-          <ul className="space-y-1.5">
-            {rules.map((rule) => (
-              <li
-                key={`${rule.phrase}-${rule.categoryId}-${rule.type}`}
-                className="flex items-center justify-between gap-2 rounded-md border border-border/70 p-2.5"
-              >
-                <div className="min-w-0 text-xs leading-snug">
-                  <p className="truncate">
-                    <span className="font-medium text-foreground">“{rule.phrase}”</span>
-                    <span className="mx-1 text-muted-foreground" aria-hidden>
-                      →
-                    </span>
-                    <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
-                  </p>
-                  <p className="text-muted-foreground">
-                    {sourceLabel(rule.source, locale)} · вес {rule.weight}
+          <div className="max-h-[min(420px,52vh)] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border/70 p-2">
+            {ruleGroups.map((group) => (
+              <div key={group.dateKey} className="space-y-1.5">
+                <div className="sticky top-0 z-10 bg-background/95 py-1 backdrop-blur">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {dateHeading(group.dateKey, locale)} · {group.rules.length}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground"
-                  onClick={() => removeRule(rule)}
-                  aria-label={locale === "ru" ? "Удалить правило" : "Delete rule"}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                </Button>
-              </li>
+                <ul className="space-y-1.5">
+                  {group.rules.map((rule) => (
+                    <li
+                      key={`${rule.phrase}-${rule.categoryId}-${rule.type}`}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border/70 p-2.5"
+                    >
+                      <div className="min-w-0 text-xs leading-snug">
+                        <p className="truncate">
+                          <span className="font-medium text-foreground">“{rule.phrase}”</span>
+                          <span className="mx-1 text-muted-foreground" aria-hidden>
+                            →
+                          </span>
+                          <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          {sourceLabel(rule.source, locale)} · вес {rule.weight}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground"
+                        onClick={() => removeRule(rule)}
+                        aria-label={locale === "ru" ? "Удалить правило" : "Delete rule"}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
