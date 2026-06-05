@@ -120,7 +120,7 @@ export async function createYookassaCheckout(
   const result = await createRedirectYookassaPayment({
     userId,
     amountRub: chargeRub,
-    description: `VoiceBudget — облако и бот, ${process.env.YOOKASSA_SUBSCRIPTION_DAYS ?? 30} дн.`,
+    description: `Просто Бюджет — облако и бот, ${process.env.YOOKASSA_SUBSCRIPTION_DAYS ?? 30} дн.`,
     returnUrl,
     metadata,
   });

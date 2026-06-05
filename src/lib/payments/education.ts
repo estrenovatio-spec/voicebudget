@@ -73,7 +73,7 @@ export async function createEducationCheckout(userId: string): Promise<YookassaC
   return createRedirectYookassaPayment({
     userId,
     amountRub: amount,
-    description: "VoiceBudget — курс финансовой грамотности (18 уроков)",
+    description: "Просто Бюджет — курс финансовой грамотности (18 уроков)",
     returnUrl: educationReturnUrl(),
     metadata: { userId, product: "education" },
   });

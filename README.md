@@ -1,4 +1,4 @@
-# VoiceBudget — Telegram Mini App MVP
+# Просто Бюджет — Telegram Mini App MVP
 
 Голосовой учёт финансов в Telegram WebView.
 

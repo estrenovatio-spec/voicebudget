@@ -7,8 +7,8 @@ import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VoiceBudget",
-  description: "Voice-powered budget tracker for Telegram Mini App",
+  title: "Просто Бюджет",
+  description: "Учёт бюджета в Telegram Mini App",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

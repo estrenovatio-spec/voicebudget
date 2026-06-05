@@ -2,7 +2,7 @@ import type { Locale } from "@/types";
 
 export const DICT = {
   ru: {
-    appTitle: "VoiceBudget",
+    appTitle: "Просто Бюджет",
     balance: "Баланс",
     balanceAdjustTitle: "Реально в кармане",
     balanceAdjustHint:
@@ -162,7 +162,7 @@ export const DICT = {
     moreReportsCount: "Записей за период: {count}",
     moreReportsExcel: "Таблица Excel",
     moreReportsPdf: "PDF",
-    moreReportsExportTitle: "VoiceBudget — операции",
+    moreReportsExportTitle: "Просто Бюджет — операции",
     moreReportsAiSection: "AI-отчёты",
     moreReportsCloudRequired:
       "Подключите облако — тогда история отчётов сохранится на сервере.",
@@ -1057,7 +1057,7 @@ export const DICT = {
     planningGoalDepositSuccess: "+{amount} ₽ → копилка «{name}»",
   },
   en: {
-    appTitle: "VoiceBudget",
+    appTitle: "Просто Бюджет",
     balance: "Balance",
     balanceAdjustTitle: "Cash on hand",
     balanceAdjustHint:
@@ -1218,7 +1218,7 @@ export const DICT = {
     moreReportsCount: "Entries in period: {count}",
     moreReportsExcel: "Excel table",
     moreReportsPdf: "PDF",
-    moreReportsExportTitle: "VoiceBudget — transactions",
+    moreReportsExportTitle: "Просто Бюджет — transactions",
     moreReportsAiSection: "AI reports",
     moreReportsCloudRequired:
       "Connect cloud to save report history on the server.",

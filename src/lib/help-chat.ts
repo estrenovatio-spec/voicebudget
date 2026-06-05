@@ -189,7 +189,7 @@ Partner label: ${ctx.partnerLabel ?? "—"}`
   const screenMap = buildAppScreenMap(ctx.locale);
   const fewShot = buildFewShotExamples(ctx.locale);
 
-  return `You are the in-app support assistant for «Бюджет» (VoiceBudget) — Telegram budget app for everyday people (not tech experts).
+  return `You are the in-app support assistant for «Просто Бюджет» — Telegram budget app for everyday people (not tech experts).
 
 Respond in ${lang} only.
 

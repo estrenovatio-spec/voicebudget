@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     let tgUser: TelegramWebAppUser = {
       id: 999999001,
       first_name: body.firstName ?? "Тест",
-      last_name: body.lastName ?? "VoiceBudget",
+      last_name: body.lastName ?? "Просто Бюджет",
       username: body.username ?? "voicebudget_test",
     };
     let household: HouseholdPublic | null = null;

@@ -150,7 +150,7 @@ export function MoreReportsTab() {
       periodEnd: period.to,
     });
     downloadTextFile(
-      `voicebudget-${period.from}_${period.to}.xls`,
+      `prosto-budget-${period.from}_${period.to}.xls`,
       workbook,
       "application/vnd.ms-excel;charset=utf-8",
     );
