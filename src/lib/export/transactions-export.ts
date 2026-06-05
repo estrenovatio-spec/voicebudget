@@ -1,5 +1,10 @@
 import { getCategoryLabel } from "@/lib/categories";
 import { formatIsoDate } from "@/lib/format-date";
+import type {
+  BusinessAsset,
+  BusinessTransaction,
+  BusinessUnit,
+} from "@/lib/business/types";
 import type { CategoryDefinition, Locale, Transaction } from "@/types";
 
 function escapeCsvCell(value: string): string {
@@ -63,6 +68,145 @@ export function buildTransactionsCsv(
   });
 
   return `\uFEFF${header}\n${rows.join("\n")}`;
+}
+
+export function filterBusinessTransactionsByPeriod(
+  transactions: BusinessTransaction[],
+  periodStart: string,
+  periodEnd: string,
+): BusinessTransaction[] {
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+  end.setHours(23, 59, 59, 999);
+  return transactions
+    .filter((tx) => {
+      const d = new Date(tx.date);
+      return d >= start && d <= end;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function escapeXmlCell(value: string | number): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function worksheet(name: string, rows: (string | number)[][]): string {
+  const safeName = escapeXmlCell(name.slice(0, 31));
+  const body = rows
+    .map(
+      (row) =>
+        `<Row>${row
+          .map((cell) => {
+            const type = typeof cell === "number" ? "Number" : "String";
+            return `<Cell><Data ss:Type="${type}">${escapeXmlCell(cell)}</Data></Cell>`;
+          })
+          .join("")}</Row>`,
+    )
+    .join("");
+  return `<Worksheet ss:Name="${safeName}"><Table>${body}</Table></Worksheet>`;
+}
+
+function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): string {
+  const isRu = locale === "ru";
+  switch (kind) {
+    case "operating_income":
+      return isRu ? "Доход бизнеса" : "Business income";
+    case "operating_expense":
+      return isRu ? "Расход бизнеса" : "Business expense";
+    case "cushion_deposit":
+      return isRu ? "В резерв бизнеса" : "Business reserve";
+    case "family_withdrawal":
+      return isRu ? "Вывод в семью" : "Family withdrawal";
+  }
+}
+
+export function buildBudgetExcelXml(params: {
+  transactions: Transaction[];
+  categories: CategoryDefinition[];
+  businessTransactions: BusinessTransaction[];
+  businessUnits: BusinessUnit[];
+  businessAssets: BusinessAsset[];
+  locale: Locale;
+  periodStart: string;
+  periodEnd: string;
+}): string {
+  const {
+    transactions,
+    categories,
+    businessTransactions,
+    businessUnits,
+    businessAssets,
+    locale,
+    periodStart,
+    periodEnd,
+  } = params;
+  const isRu = locale === "ru";
+  const unitName = (unitId: string) =>
+    businessUnits.find((unit) => unit.id === unitId)?.name ?? (isRu ? "Бизнес" : "Business");
+
+  const familyRows: (string | number)[][] = [
+    isRu
+      ? ["Дата", "Тип", "Сумма", "Категория", "Заметка", "Кто"]
+      : ["Date", "Type", "Amount", "Category", "Note", "Owner"],
+    ...transactions.map((tx) => [
+      tx.date,
+      tx.type === "income" ? (isRu ? "Доход" : "Income") : isRu ? "Расход" : "Expense",
+      tx.amount,
+      getCategoryLabel(tx.categoryId, categories, locale),
+      tx.note ?? "",
+      tx.owner === "partner" ? (isRu ? "Партнёр" : "Partner") : isRu ? "Я" : "Me",
+    ]),
+  ];
+
+  const businessRows: (string | number)[][] = [
+    isRu
+      ? ["Дата", "Бизнес", "Тип", "Сумма", "Заметка"]
+      : ["Date", "Business", "Type", "Amount", "Note"],
+    ...businessTransactions.map((tx) => [
+      tx.date,
+      unitName(tx.unitId),
+      businessKindLabel(tx.kind, locale),
+      tx.amount,
+      tx.note ?? "",
+    ]),
+  ];
+
+  const projectRows: (string | number)[][] = [
+    isRu
+      ? ["Бизнес", "Проект/актив", "Тип", "Капитал", "Плановый доход в месяц", "Часов в месяц"]
+      : ["Business", "Project/asset", "Type", "Capital", "Planned monthly income", "Hours per month"],
+    ...businessAssets.map((asset) => [
+      unitName(asset.unitId),
+      asset.name,
+      asset.type,
+      asset.capitalValue,
+      asset.monthlyNet,
+      asset.hoursPerMonth ?? "",
+    ]),
+  ];
+
+  const metaRows: (string | number)[][] = [
+    [isRu ? "Период" : "Period", `${periodStart} — ${periodEnd}`],
+    [isRu ? "Семейных операций" : "Family entries", transactions.length],
+    [isRu ? "Бизнес-операций" : "Business entries", businessTransactions.length],
+    [isRu ? "Проектов/активов" : "Projects/assets", businessAssets.length],
+  ];
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+${worksheet(isRu ? "Итог" : "Summary", metaRows)}
+${worksheet(isRu ? "Семья" : "Family", familyRows)}
+${worksheet(isRu ? "Бизнес" : "Business", businessRows)}
+${worksheet(isRu ? "Проекты" : "Projects", projectRows)}
+</Workbook>`;
 }
 
 export function downloadTextFile(filename: string, content: string, mime: string): void {

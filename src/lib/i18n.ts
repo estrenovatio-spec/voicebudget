@@ -156,7 +156,7 @@ export const DICT = {
     moreReportsHint: "Excel/PDF за период и история AI-разборов",
     moreReportsExportSection: "Экспорт операций",
     moreReportsExportHint:
-      "Выберите период — скачайте таблицу (Excel) или PDF для печати.",
+      "Выберите период — Excel включает семью, бизнес и проекты; PDF подходит для печати операций.",
     moreReportsFrom: "С",
     moreReportsTo: "По",
     moreReportsCount: "Записей за период: {count}",
@@ -1212,7 +1212,7 @@ export const DICT = {
     moreReportsHint: "Excel/PDF export and AI report history",
     moreReportsExportSection: "Export transactions",
     moreReportsExportHint:
-      "Pick a period — download spreadsheet (Excel) or PDF.",
+      "Pick a period — Excel includes Family, Business, and Projects; PDF is for printable entries.",
     moreReportsFrom: "From",
     moreReportsTo: "To",
     moreReportsCount: "Entries in period: {count}",

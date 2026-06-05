@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
 import {
-  buildTransactionsCsv,
+  buildBudgetExcelXml,
   downloadTextFile,
+  filterBusinessTransactionsByPeriod,
   filterTransactionsByPeriod,
   openTransactionsPdfPrint,
 } from "@/lib/export/transactions-export";
 import { formatIsoPeriod } from "@/lib/format-date";
 import { t } from "@/lib/i18n";
+import { useBusinessStore } from "@/store/useBusinessStore";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 
@@ -89,6 +91,9 @@ export function MoreReportsTab() {
   const locale = useStore((s) => s.locale);
   const transactions = useTransactions();
   const categories = useCategories();
+  const businessTransactions = useBusinessStore((s) => s.transactions);
+  const businessUnits = useBusinessStore((s) => s.units);
+  const businessAssets = useBusinessStore((s) => s.assets);
   const token = useCloudStore((s) => s.token);
   const [period, setPeriod] = useState(defaultPeriod);
   const [reports, setReports] = useState<AiReportRecord[]>([]);
@@ -100,6 +105,11 @@ export function MoreReportsTab() {
     () => filterTransactionsByPeriod(transactions, period.from, period.to),
     [transactions, period.from, period.to],
   );
+  const periodBusinessTxs = useMemo(
+    () => filterBusinessTransactionsByPeriod(businessTransactions, period.from, period.to),
+    [businessTransactions, period.from, period.to],
+  );
+  const exportCount = periodTxs.length + periodBusinessTxs.length + businessAssets.length;
 
   const loadHistory = useCallback(async () => {
     if (!token) {
@@ -128,12 +138,21 @@ export function MoreReportsTab() {
   }, [loadHistory]);
 
   const exportExcel = () => {
-    if (periodTxs.length === 0) return;
-    const csv = buildTransactionsCsv(periodTxs, categories, locale);
+    if (exportCount === 0) return;
+    const workbook = buildBudgetExcelXml({
+      transactions: periodTxs,
+      categories,
+      businessTransactions: periodBusinessTxs,
+      businessUnits,
+      businessAssets,
+      locale,
+      periodStart: period.from,
+      periodEnd: period.to,
+    });
     downloadTextFile(
-      `voicebudget-${period.from}_${period.to}.csv`,
-      csv,
-      "text/csv;charset=utf-8",
+      `voicebudget-${period.from}_${period.to}.xls`,
+      workbook,
+      "application/vnd.ms-excel;charset=utf-8",
     );
   };
 
@@ -173,14 +192,14 @@ export function MoreReportsTab() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {t(locale, "moreReportsCount", { count: String(periodTxs.length) })}
+          {t(locale, "moreReportsCount", { count: String(exportCount) })}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
             variant="secondary"
             className="gap-1.5"
-            disabled={periodTxs.length === 0}
+            disabled={exportCount === 0}
             onClick={exportExcel}
           >
             <FileSpreadsheet className="h-4 w-4" aria-hidden />
@@ -240,7 +259,7 @@ export function MoreReportsTab() {
         </Button>
 
         <p className="text-xs font-medium">{t(locale, "moreReportsGenerate")}</p>
-        <AiAnalysisTab active />
+        <AiAnalysisTab active reportsOnly />
       </section>
     </div>
   );
