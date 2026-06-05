@@ -34,6 +34,14 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Arial,
+      "Noto Sans",
+      sans-serif;
     background-color: var(--tg-bg, hsl(var(--background)));
     color: var(--tg-text, hsl(var(--foreground)));
     min-height: var(--tg-viewport-height, 100vh);
