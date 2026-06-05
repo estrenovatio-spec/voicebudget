@@ -138,7 +138,7 @@ export function AiMemoryCenter() {
         <div className="mb-2 flex items-center gap-2">
           <BrainCircuit className="h-4 w-4 text-primary" aria-hidden />
           <p className="text-sm font-medium">
-            {locale === "ru" ? "ИИ заметил" : "AI noticed"}
+            {locale === "ru" ? "Финсоветник заметил" : "Advisor noticed"}
           </p>
         </div>
         <div className="space-y-2 text-sm">

@@ -85,7 +85,7 @@ export function PersonalAiCoachCard() {
   const rulesCount = ctx.personalMemory?.learnedRules.length ?? 0;
   const signals = ctx.smartSignals;
   const advisoryText = advisorySignalText(signals, locale);
-  const title = locale === "ru" ? "ИИ заметил" : "AI noticed";
+  const title = locale === "ru" ? "Финсоветник заметил" : "Advisor noticed";
 
   if (transactions.length < 3 && rulesCount === 0) return null;
 

@@ -348,7 +348,7 @@ export const DICT = {
     bizKpiExpenses: "Расходы",
     bizTotalBalanceTitle: "Все бизнесы за период",
     bizCanWithdraw: "Можно вывести",
-    bizAdvisorTitle: "ИИ заметил",
+    bizAdvisorTitle: "Финсоветник заметил",
     bizAdvisorSafeWithdraw:
       "Можно вывести после налога: {amount} ₽. Резерв бизнеса — отдельное решение собственника.",
     bizAdvisorReserve: "Резерв закрывает {months} мес расходов из цели 3 мес.",
@@ -1400,7 +1400,7 @@ export const DICT = {
     bizKpiExpenses: "Expenses",
     bizTotalBalanceTitle: "All businesses this period",
     bizCanWithdraw: "Can withdraw",
-    bizAdvisorTitle: "AI noticed",
+    bizAdvisorTitle: "Advisor noticed",
     bizAdvisorSafeWithdraw:
       "Available after tax: {amount}. Business reserve is a separate owner decision.",
     bizAdvisorReserve: "Reserve covers {months} mo of the 3 mo target.",
