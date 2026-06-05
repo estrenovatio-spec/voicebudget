@@ -17,14 +17,11 @@ type AiAnalysisTabProps = {
 
 export function AiAnalysisTab({ active }: AiAnalysisTabProps) {
   const locale = useStore((s) => s.locale);
-  const [subTab, setSubTab] = useState<AiSubTab>("memory");
+  const [subTab, setSubTab] = useState<AiSubTab>("mission");
 
   return (
     <Tabs value={subTab} onValueChange={(v) => setSubTab(v as AiSubTab)}>
       <TabsList className="mb-3 grid w-full grid-cols-4">
-        <TabsTrigger value="memory" className="h-auto min-h-10 px-1 text-xs leading-tight">
-          {locale === "ru" ? "Память" : "Memory"}
-        </TabsTrigger>
         <TabsTrigger value="mission" className="h-auto min-h-10 px-1 text-xs leading-tight">
           {locale === "ru" ? (
             <>
@@ -40,6 +37,9 @@ export function AiAnalysisTab({ active }: AiAnalysisTabProps) {
             </>
           )}
         </TabsTrigger>
+        <TabsTrigger value="memory" className="h-auto min-h-10 px-1 text-xs leading-tight">
+          {locale === "ru" ? "Память" : "Memory"}
+        </TabsTrigger>
         <TabsTrigger value="weekly" className="h-auto min-h-10 px-1 text-xs leading-tight">
           {locale === "ru" ? "7 дней" : t(locale, "aiTabWeekly")}
         </TabsTrigger>
@@ -47,11 +47,11 @@ export function AiAnalysisTab({ active }: AiAnalysisTabProps) {
           {locale === "ru" ? "30 дней" : t(locale, "aiTabMonthly")}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="memory">
-        <AiMemoryCenter />
-      </TabsContent>
       <TabsContent value="mission">
         <AiWeeklyMissionTab />
+      </TabsContent>
+      <TabsContent value="memory">
+        <AiMemoryCenter />
       </TabsContent>
       <TabsContent value="weekly">
         <WeeklyAnalysisTab active={active && subTab === "weekly"} />
