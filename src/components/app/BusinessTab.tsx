@@ -4,7 +4,6 @@ import {
   ArrowDownToLine,
   BriefcaseBusiness,
   ChevronDown,
-  Cloud,
   Pencil,
   Plus,
   Trash2,
@@ -48,7 +47,6 @@ import {
 } from "@/lib/business/projects-unit";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStatsPeriod, useStore } from "@/store/useStore";
-import { useCloudStore } from "@/store/useCloudStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 
@@ -376,8 +374,6 @@ export function BusinessTab() {
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
   const periodLabel = formatBudgetPeriodLabel(period, locale);
-  const cloudToken = useCloudStore((s) => s.token);
-  const cloudSyncedAt = useBusinessStore((s) => s.cloudSyncedAt);
 
   const units = useBusinessStore((s) => s.units);
   const transactions = useBusinessStore((s) => s.transactions);
@@ -557,12 +553,6 @@ export function BusinessTab() {
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t(locale, "bizSubtitle")}</p>
         </div>
-        {cloudToken && cloudSyncedAt ? (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Cloud className="h-3 w-3" aria-hidden />
-            {t(locale, "bizCloudOk")}
-          </span>
-        ) : null}
       </div>
 
       <div className="space-y-2">
