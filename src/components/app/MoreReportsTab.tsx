@@ -138,7 +138,6 @@ export function MoreReportsTab() {
   }, [loadHistory]);
 
   const exportExcel = () => {
-    if (exportCount === 0) return;
     const workbook = buildBudgetExcelXml({
       transactions: periodTxs,
       categories,
@@ -199,7 +198,6 @@ export function MoreReportsTab() {
             type="button"
             variant="secondary"
             className="gap-1.5"
-            disabled={exportCount === 0}
             onClick={exportExcel}
           >
             <FileSpreadsheet className="h-4 w-4" aria-hidden />
