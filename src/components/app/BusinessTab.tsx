@@ -683,6 +683,7 @@ export function BusinessTab() {
     useState<BusinessSection>("operations");
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(false);
+  const [cushionAmount, setCushionAmount] = useState("");
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
@@ -821,6 +822,23 @@ export function BusinessTab() {
   const hideBusinessHow = () => {
     setShowBusinessHow(false);
     localStorage.setItem(BUSINESS_HOW_HIDDEN_KEY, "1");
+  };
+
+  const submitCushionAmount = () => {
+    if (!activeUnit || !activeMetrics) return;
+    const amount = parseMoneyAmount(cushionAmount);
+    if (!amount || amount > activeMetrics.canToCushion) {
+      toast(t(locale, "bizCushionInvalid"), "error");
+      return;
+    }
+    transferToCushion(activeUnit.id, amount);
+    setCushionAmount("");
+    toast(
+      t(locale, "bizVoiceCushionOk", {
+        amount: formatMoney(amount, locale),
+      }),
+      "success",
+    );
   };
 
   return (
@@ -1116,19 +1134,40 @@ export function BusinessTab() {
                         })}
                   </p>
                   {activeMetrics.canToCushion > 0 ? (
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={() =>
-                        transferToCushion(
-                          activeUnit.id,
-                          activeMetrics.canToCushion,
-                        )
-                      }
-                    >
-                      {t(locale, "bizUnitToCushion")}{" "}
-                      {formatMoney(activeMetrics.canToCushion, locale)}
-                    </Button>
+                    <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2">
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="business-cushion-amount"
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          {t(locale, "bizCushionAmountLabel")}
+                        </label>
+                        <Input
+                          id="business-cushion-amount"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder={t(locale, "bizCushionAmountPh")}
+                          value={cushionAmount}
+                          onChange={(e) => setCushionAmount(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizCushionRecommended", {
+                          amount: formatMoney(
+                            activeMetrics.canToCushion,
+                            locale,
+                          ),
+                        })}
+                      </p>
+                      <Button
+                        type="button"
+                        className="w-full"
+                        disabled={!cushionAmount.trim()}
+                        onClick={submitCushionAmount}
+                      >
+                        {t(locale, "bizCushionSubmit")}
+                      </Button>
+                    </div>
                   ) : null}
                 </CardContent>
               </Card>
