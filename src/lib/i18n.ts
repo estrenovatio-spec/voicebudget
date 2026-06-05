@@ -349,7 +349,7 @@ export const DICT = {
     bizCanWithdraw: "Можно вывести",
     bizAdvisorTitle: "ИИ заметил",
     bizAdvisorSafeWithdraw:
-      "Безопасно к выводу: {amount} ₽ — после резерва бизнеса и налога.",
+      "Можно вывести после налога: {amount} ₽. Резерв бизнеса — отдельное решение собственника.",
     bizAdvisorReserve: "Резерв закрывает {months} мес расходов из цели 3 мес.",
     bizAdvisorNoRevenue:
       "За период уже есть расходы, но нет выручки. Проверьте, какие траты прямо ведут к продажам, а какие можно поставить на паузу.",
@@ -424,6 +424,7 @@ export const DICT = {
     bizCushionGap: "ещё {amount} ₽ до резерва",
     bizCushionFull: "цель достигнута",
     bizTaxTitle: "Резерв на налоги",
+    bizTaxShort: "Налог",
     bizTaxHint:
       "Выберите ставку — покажем, сколько отложить с дохода текущего месяца.",
     bizTaxOff: "Выкл",
@@ -1393,7 +1394,7 @@ export const DICT = {
     bizCanWithdraw: "Can withdraw",
     bizAdvisorTitle: "AI noticed",
     bizAdvisorSafeWithdraw:
-      "Safe to withdraw: {amount}, after business reserve and tax.",
+      "Available after tax: {amount}. Business reserve is a separate owner decision.",
     bizAdvisorReserve: "Reserve covers {months} mo of the 3 mo target.",
     bizAdvisorNoRevenue:
       "Expenses have started, but there is no revenue this period. Check which costs directly lead to sales and which can pause.",
@@ -1468,6 +1469,7 @@ export const DICT = {
     bizCushionGap: "{amount} to reserve target",
     bizCushionFull: "target reached",
     bizTaxTitle: "Tax reserve",
+    bizTaxShort: "Tax",
     bizTaxHint:
       "Pick a rate — we show how much to set aside from this month's income.",
     bizTaxOff: "Off",

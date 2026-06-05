@@ -405,14 +405,7 @@ function BusinessUnitTabs({
 }
 
 function safeWithdrawAmount(metrics: UnitCardMetrics): number {
-  const reserveGap = Math.max(
-    0,
-    metrics.cushionTarget - metrics.cushionBalance,
-  );
-  return Math.max(
-    0,
-    Math.floor(metrics.operatingBalance - metrics.taxReserve - reserveGap),
-  );
+  return Math.max(0, Math.floor(metrics.operatingBalance - metrics.taxReserve));
 }
 
 function BusinessKpis({
@@ -448,6 +441,19 @@ function BusinessKpis({
       value: formatMoney(safeWithdraw, locale),
       tone: safeWithdraw > 0 ? "text-primary" : "text-muted-foreground",
     },
+    {
+      label: t(locale, "bizCushionShort"),
+      value: `${formatMoney(metrics.cushionBalance, locale)} / ${formatMoney(metrics.cushionTarget, locale)}`,
+      tone: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      label: t(locale, "bizTaxShort"),
+      value: formatMoney(metrics.taxReserve, locale),
+      tone:
+        metrics.taxReserve > 0
+          ? "text-amber-700 dark:text-amber-300"
+          : "text-muted-foreground",
+    },
   ];
 
   return (
@@ -458,7 +464,12 @@ function BusinessKpis({
           className="rounded-lg border border-border/80 bg-card px-3 py-2"
         >
           <p className="text-[11px] text-muted-foreground">{item.label}</p>
-          <p className={cn("mt-0.5 text-lg font-bold tabular-nums", item.tone)}>
+          <p
+            className={cn(
+              "mt-0.5 break-words text-base font-bold tabular-nums sm:text-lg",
+              item.tone,
+            )}
+          >
             {item.value}
           </p>
         </div>
@@ -954,123 +965,114 @@ export function BusinessTab() {
                     </span>
                   </button>
                   {businessPeriodOpen ? (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2 space-y-3">
                       <StatisticsPeriodControls />
                       <p className="text-[11px] text-muted-foreground">
                         {t(locale, "bizPeriodHint", { period: periodLabel })}
                       </p>
+                      {incomeSources.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium">
+                            {t(locale, "bizIncomeSources")}
+                          </p>
+                          <div className="space-y-1.5">
+                            {incomeSources.slice(0, 8).map((row) => (
+                              <div
+                                key={row.label}
+                                className="flex items-center justify-between gap-2 rounded-md bg-muted/60 px-2 py-1.5 text-sm"
+                              >
+                                <span className="min-w-0 truncate">
+                                  {row.label}
+                                </span>
+                                <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                                  +{formatMoney(row.amount, locale)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {expenseBreakdown.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium">
+                            {t(locale, "bizExpenseBreakdown")}
+                          </p>
+                          <div className="space-y-1.5">
+                            {expenseBreakdown.slice(0, 8).map((row) => (
+                              <div
+                                key={row.label}
+                                className="flex items-center justify-between gap-2 rounded-md bg-muted/60 px-2 py-1.5 text-sm"
+                              >
+                                <span className="min-w-0 truncate">
+                                  {row.label}
+                                </span>
+                                <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
+                                  −{formatMoney(row.amount, locale)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {recentTxs.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium">
+                            {t(locale, "bizRecentTx")}
+                          </p>
+                          <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                            {recentTxs.map((tx) => (
+                              <li
+                                key={tx.id}
+                                className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5 text-sm"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {txKindLabel(tx, locale)} · {tx.date}
+                                  </p>
+                                  <p className="truncate">{tx.note}</p>
+                                </div>
+                                <span
+                                  className={`shrink-0 font-semibold tabular-nums ${
+                                    tx.type === "income"
+                                      ? "text-emerald-700 dark:text-emerald-400"
+                                      : "text-red-700 dark:text-red-400"
+                                  }`}
+                                >
+                                  {tx.type === "income" ? "+" : "−"}
+                                  {formatMoney(tx.amount, locale)}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0"
+                                  aria-label={t(locale, "txEdit")}
+                                  onClick={() => setEditTx(tx)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0"
+                                  aria-label={t(locale, "txDelete")}
+                                  onClick={() => removeTransaction(tx.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                          {t(locale, "bizNoRecentTx")}
+                        </p>
+                      )}
                     </div>
                   ) : null}
                 </div>
-                {recentTxs.length > 0 ? (
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-medium">
-                      {t(locale, "bizRecentTx")}
-                    </p>
-                    <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
-                      {recentTxs.map((tx) => (
-                        <li
-                          key={tx.id}
-                          className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5 text-sm"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs text-muted-foreground">
-                              {txKindLabel(tx, locale)} · {tx.date}
-                            </p>
-                            <p className="truncate">{tx.note}</p>
-                          </div>
-                          <span
-                            className={`shrink-0 font-semibold tabular-nums ${
-                              tx.type === "income"
-                                ? "text-emerald-700 dark:text-emerald-400"
-                                : "text-red-700 dark:text-red-400"
-                            }`}
-                          >
-                            {tx.type === "income" ? "+" : "−"}
-                            {formatMoney(tx.amount, locale)}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
-                            aria-label={t(locale, "txEdit")}
-                            onClick={() => setEditTx(tx)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
-                            aria-label={t(locale, "txDelete")}
-                            onClick={() => removeTransaction(tx.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
-                    {t(locale, "bizNoRecentTx")}
-                  </p>
-                )}
-
-                {incomeSources.length > 0 || expenseBreakdown.length > 0 ? (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {incomeSources.length > 0 ? (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">
-                            {t(locale, "bizIncomeSources")}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-1.5">
-                          {incomeSources.slice(0, 8).map((row) => (
-                            <div
-                              key={row.label}
-                              className="flex items-center justify-between gap-2 text-sm"
-                            >
-                              <span className="min-w-0 truncate">
-                                {row.label}
-                              </span>
-                              <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                                +{formatMoney(row.amount, locale)}
-                              </span>
-                            </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                    {expenseBreakdown.length > 0 ? (
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">
-                            {t(locale, "bizExpenseBreakdown")}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-1.5">
-                          {expenseBreakdown.slice(0, 8).map((row) => (
-                            <div
-                              key={row.label}
-                              className="flex items-center justify-between gap-2 text-sm"
-                            >
-                              <span className="min-w-0 truncate">
-                                {row.label}
-                              </span>
-                              <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
-                                −{formatMoney(row.amount, locale)}
-                              </span>
-                            </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
