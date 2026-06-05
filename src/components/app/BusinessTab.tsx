@@ -839,9 +839,6 @@ export function BusinessTab() {
       </div>
 
       <div className="space-y-2">
-        <div>
-          <p className="text-sm font-medium">{t(locale, "bizUnitsTitle")}</p>
-        </div>
         <BusinessUnitTabs
           units={visibleUnits}
           activeUnitId={activeUnitId}
