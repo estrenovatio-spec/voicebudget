@@ -339,7 +339,7 @@ export const DICT = {
     bizHowTitle: "Как пользоваться",
     bizHowDismiss: "Скрыть инструкцию",
     bizHowBody:
-      "1) Выберите вкладку бизнеса. 2) Нажмите «Доход» или «Расход» и запишите сумму. 3) Прибыль можно оставить на счёте, перевести в резерв бизнеса или вывести в семью.",
+      "1) Сверху выберите нужный бизнес или нажмите «+», чтобы добавить новый. 2) В карточке бизнеса нажмите «Доход» или «Расход» и запишите сумму. 3) Ниже смотрите операции, резерв, налог и проекты — всё считается отдельно от семьи.",
     bizAssetsPassiveLine: "Пассив по выбранному бизнесу: {amount}/мес",
     bizIncomeSources: "Откуда доход за период",
     bizPeriodSection: "Период",
@@ -1391,7 +1391,7 @@ export const DICT = {
     bizHowTitle: "How to use",
     bizHowDismiss: "Hide instructions",
     bizHowBody:
-      "1) Pick a business tab. 2) Tap Income or Expense and enter the amount. 3) Keep profit on the account, move it to business reserve, or transfer it to Family.",
+      "1) Choose a business at the top or tap “+” to add one. 2) In the business card, tap Income or Expense and enter the amount. 3) Below, use Operations, Reserve, Tax, and Projects — all separate from Family.",
     bizAssetsPassiveLine: "Passive for selected business: {amount}/mo",
     bizIncomeSources: "Income sources this period",
     bizPeriodSection: "Period",

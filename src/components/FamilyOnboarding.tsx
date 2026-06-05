@@ -99,9 +99,20 @@ export function FamilyOnboarding() {
       }
     : null;
 
-  const bubbleTop = highlight
-    ? Math.min(highlight.top + highlight.height + 12, window.innerHeight - 180)
-    : window.innerHeight * 0.35;
+  const bubbleHeight = 220;
+  const viewportHeight = window.innerHeight;
+  const bottomSafe = bottomNavEnabled() ? 96 : 24;
+  const bubbleTop = (() => {
+    if (!highlight) return Math.max(16, viewportHeight * 0.35);
+    const below = highlight.top + highlight.height + 12;
+    const above = highlight.top - bubbleHeight - 12;
+    const canPlaceBelow = below + bubbleHeight <= viewportHeight - bottomSafe;
+    const rawTop = canPlaceBelow ? below : above;
+    return Math.min(
+      Math.max(16, rawTop),
+      Math.max(16, viewportHeight - bottomSafe - bubbleHeight),
+    );
+  })();
 
   const labels = STEP_I18N[step];
 
@@ -133,8 +144,8 @@ export function FamilyOnboarding() {
       ) : null}
 
       <div
-        className="absolute left-4 right-4 mx-auto max-w-sm rounded-xl border border-border bg-card p-4 shadow-xl"
-        style={{ top: bubbleTop }}
+        className="absolute left-4 right-4 mx-auto max-w-sm overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-xl"
+        style={{ top: bubbleTop, maxHeight: `calc(100vh - ${bottomSafe + 16}px)` }}
       >
         <div className="mb-2 flex items-start justify-between gap-2">
           <p className="text-xs font-medium text-muted-foreground">
