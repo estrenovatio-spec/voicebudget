@@ -38,7 +38,7 @@ import {
   findHouseholdPartnerUserId,
 } from "@/lib/cloud/viewer-identity";
 import { countsInBalance, countsInHouseholdTotal } from "@/lib/transaction-confirmed";
-import { buildPartnerTransferPair } from "@/lib/partner-transfer";
+import { buildPartnerTransferPair, isPartnerTransferCategory } from "@/lib/partner-transfer";
 import { GOAL_JAR_CATEGORY_ID } from "@/lib/planning/goal-transfer";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import {
@@ -792,7 +792,18 @@ export const useStore = create<StoreState>()(
           ? get()
               .transactions.filter((t) => t.transferPairId === pairId)
               .map((t) => t.id)
-          : [id];
+          : tx && isPartnerTransferCategory(tx.categoryId)
+            ? get()
+                .transactions.filter(
+                  (t) =>
+                    t.id === id ||
+                    (isPartnerTransferCategory(t.categoryId) &&
+                      t.amount === tx.amount &&
+                      t.date === tx.date &&
+                      t.type !== tx.type),
+                )
+                .map((t) => t.id)
+            : [id];
         let goalAfterDelete: SavingsGoal | null = null;
         set((state) => {
           const deleteSet = new Set(idsToDelete);

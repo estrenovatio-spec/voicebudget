@@ -6,6 +6,7 @@ import {
   isMissingDbObject,
   type HouseholdDbCapabilities,
 } from "@/lib/household/db-capabilities";
+import { PARTNER_TRANSFER_CATEGORY_ID } from "@/lib/partner-transfer";
 import { appTransactionToDb, dbTransactionToApp } from "@/lib/household/sync-mapper";
 import type { Transaction } from "@/types";
 
@@ -234,13 +235,40 @@ export async function deleteTransactionForHousehold(
   id: string,
 ): Promise<void> {
   const caps = await getHouseholdDbCapabilities();
+  const existing = await findTransactionInHousehold(householdId, id);
+  const shouldDeletePartnerPair =
+    existing?.categoryId === PARTNER_TRANSFER_CATEGORY_ID;
+
   if (canUsePrismaTransactionModel(caps)) {
     try {
-      await prisma.transaction.delete({ where: { id } });
+      if (shouldDeletePartnerPair) {
+        await prisma.transaction.deleteMany({
+          where: {
+            householdId,
+            categoryId: PARTNER_TRANSFER_CATEGORY_ID,
+            date: existing.date,
+            amount: existing.amount,
+            OR: [{ id }, { type: existing.type === "income" ? "expense" : "income" }],
+          },
+        });
+      } else {
+        await prisma.transaction.delete({ where: { id } });
+      }
       return;
     } catch (err) {
       if (!isMissingDbObject(err)) throw err;
     }
+  }
+  if (shouldDeletePartnerPair) {
+    await prisma.$executeRaw`
+      DELETE FROM "Transaction"
+      WHERE "householdId" = ${householdId}
+        AND "categoryId" = ${PARTNER_TRANSFER_CATEGORY_ID}
+        AND date = ${existing.date}
+        AND amount = ${existing.amount}
+        AND (id = ${id} OR type = ${existing.type === "income" ? "expense" : "income"})
+    `;
+    return;
   }
   await prisma.$executeRaw`
     DELETE FROM "Transaction"
