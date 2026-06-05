@@ -49,11 +49,6 @@ export async function POST(req: NextRequest) {
   const userId = await resolveUserIdFromBody(req, body);
   if (!userId) return unauthorized();
 
-  const sub = await getSubscriptionForUser(userId);
-  if (sub.active) {
-    return NextResponse.json({ error: "already_subscribed" }, { status: 409 });
-  }
-
   const useReferralWallet = readUseReferralWallet(body);
 
   try {

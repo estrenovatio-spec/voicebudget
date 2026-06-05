@@ -785,7 +785,7 @@ export const DICT = {
     referralWalletApplyAtRenewal: "Использовать при продлении",
     referralWalletApplyAtRenewalHint:
       "При оплате подписки в настройках → облако спишется доступный баланс, остаток — картой.",
-    referralWalletApplyHint: "Откройте настройки → Облако → оплатите подписку — там будет кнопка списания с кошелька.",
+    referralWalletApplyHint: "Откройте настройки → Облако. Если на кошельке есть доступные рубли, там появится кнопка оплаты/продления с кошелька.",
     referralWalletPaySubscribe: "Оплатить с кошелька",
     referralWalletPayFull: "С кошелька спишется {amount} ₽ — подписка без карты.",
     referralWalletPayPartial: "С кошелька {wallet} ₽, картой ещё {card} ₽.",
@@ -1718,7 +1718,7 @@ export const DICT = {
     referralWalletApplyAtRenewal: "Use when renewing",
     referralWalletApplyAtRenewalHint:
       "Pay in Settings → Cloud — available balance is applied, the rest by card.",
-    referralWalletApplyHint: "Open Settings → Cloud → pay subscription to use wallet balance.",
+    referralWalletApplyHint: "Open Settings → Cloud. If wallet balance is available, the wallet payment/renewal button appears there.",
     referralWalletPaySubscribe: "Pay with wallet",
     referralWalletPayFull: "{amount} ₽ from wallet — no card needed.",
     referralWalletPayPartial: "{wallet} ₽ from wallet, {card} ₽ by card.",

@@ -114,7 +114,7 @@ export function ReferralWalletPaywall({
 
   return (
     <div className="space-y-2 border-t border-border/60 pt-3">
-      <ReferralWalletCard locale={locale} wallet={wallet} />
+      <ReferralWalletCard locale={locale} wallet={wallet} showApplyHint={false} />
       {paySummary ? <p className="text-xs text-muted-foreground">{paySummary}</p> : null}
       <Button
         type="button"

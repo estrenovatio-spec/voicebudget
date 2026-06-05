@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloudSyncActions } from "@/components/CloudSyncActions";
 import { PaywallPanel } from "@/components/PaywallPanel";
 import { PromoCodeRedeem } from "@/components/PromoCodeRedeem";
+import { ReferralWalletPaywall } from "@/components/ReferralWalletPaywall";
 import { TelegramLoginButton } from "@/components/TelegramLoginButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -160,7 +161,13 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
         <CloudSyncActions embedded />
 
         {subscription?.enforced && subscription.active && (
-          <PromoCodeRedeem compact onRedeemed={() => void runHouseholdBootstrap()} />
+          <>
+            <ReferralWalletPaywall
+              priceRub={subscription.priceRub}
+              onPaid={() => void runHouseholdBootstrap()}
+            />
+            <PromoCodeRedeem compact onRedeemed={() => void runHouseholdBootstrap()} />
+          </>
         )}
 
         {error && <p className="text-xs text-destructive">{mapCloudError(locale, error)}</p>}

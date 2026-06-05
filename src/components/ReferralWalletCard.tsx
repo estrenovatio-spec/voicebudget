@@ -19,10 +19,12 @@ export function ReferralWalletCard({
   locale,
   wallet,
   onDismissPending,
+  showApplyHint = true,
 }: {
   locale: "ru" | "en";
   wallet: ReferralWalletPublic;
   onDismissPending?: (referralId: string) => Promise<boolean>;
+  showApplyHint?: boolean;
 }) {
   const { toast } = useToast();
   const [dismissingId, setDismissingId] = useState<string | null>(null);
@@ -119,10 +121,14 @@ export function ReferralWalletCard({
         </ul>
       ) : null}
 
-      <Button type="button" size="sm" className="w-full" variant="secondary" onClick={onApplyHint}>
-        {t(locale, "referralWalletApplyAtRenewal")}
-      </Button>
-      <p className="text-[10px] text-muted-foreground">{t(locale, "referralWalletApplyAtRenewalHint")}</p>
+      {showApplyHint ? (
+        <>
+          <Button type="button" size="sm" className="w-full" variant="secondary" onClick={onApplyHint}>
+            {t(locale, "referralWalletApplyAtRenewal")}
+          </Button>
+          <p className="text-[10px] text-muted-foreground">{t(locale, "referralWalletApplyAtRenewalHint")}</p>
+        </>
+      ) : null}
     </section>
   );
 }
