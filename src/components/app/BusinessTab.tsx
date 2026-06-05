@@ -412,11 +412,13 @@ function BusinessTotalBalance({
   income,
   expense,
   profit,
+  safeWithdraw,
   locale,
 }: {
   income: number;
   expense: number;
   profit: number;
+  safeWithdraw: number;
   locale: "ru" | "en";
 }) {
   const rowClass =
@@ -458,6 +460,17 @@ function BusinessTotalBalance({
           >
             {profit >= 0 ? "+" : "−"}
             {formatMoney(Math.abs(profit), locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizCanWithdraw")}:</span>
+          <span
+            className={cn(
+              amountClass,
+              safeWithdraw > 0 ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            {formatMoney(safeWithdraw, locale)}
           </span>
         </div>
       </div>
@@ -804,9 +817,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         acc.income += metrics.income;
         acc.expense += metrics.expense;
         acc.profit += metrics.profit;
+        acc.safeWithdraw += safeWithdrawAmount(metrics);
         return acc;
       },
-      { income: 0, expense: 0, profit: 0 },
+      { income: 0, expense: 0, profit: 0, safeWithdraw: 0 },
     );
   }, [visibleUnits, unitMetricsMap]);
   const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
@@ -924,6 +938,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               income={totalMetrics.income}
               expense={totalMetrics.expense}
               profit={totalMetrics.profit}
+              safeWithdraw={totalMetrics.safeWithdraw}
               locale={locale}
             />
           </div>
@@ -944,6 +959,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
             income={totalMetrics.income}
             expense={totalMetrics.expense}
             profit={totalMetrics.profit}
+            safeWithdraw={totalMetrics.safeWithdraw}
             locale={locale}
           />
         </>
