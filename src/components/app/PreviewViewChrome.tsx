@@ -2,6 +2,7 @@
 
 import { PreviewHeaderNav } from "@/components/app/PreviewHeaderNav";
 import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
+import { LiveRatesBar } from "@/components/LiveRatesBar";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 
 /** Верхняя полоска для «Бизнес» / «Ещё» (навигация; настройки — во вкладке Ещё). */
@@ -14,9 +15,11 @@ export function PreviewViewChrome({
 }) {
   return (
     <div className="flex items-start justify-between gap-2 pb-2 pt-1">
-      <PreviewHeaderNav active={active} onChange={onChange} />
+      <div className="min-w-0 flex-1" aria-hidden />
       <div className="flex shrink-0 flex-col items-end gap-1">
+        <PreviewHeaderNav active={active} onChange={onChange} />
         <CloudHeaderStatus />
+        <LiveRatesBar />
       </div>
     </div>
   );
