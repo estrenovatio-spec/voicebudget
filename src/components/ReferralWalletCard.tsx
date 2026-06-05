@@ -1,6 +1,7 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import { useState } from "react";
+import { Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 import type { ReferralWalletPublic } from "@/lib/referrals/wallet";
@@ -10,18 +11,21 @@ function formatRub(amount: number, locale: "ru" | "en"): string {
   return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-  }).format(amount);
+    maximumFractionDigits: 0,
+  }).format(Math.ceil(amount));
 }
 
 export function ReferralWalletCard({
   locale,
   wallet,
+  onDismissPending,
 }: {
   locale: "ru" | "en";
   wallet: ReferralWalletPublic;
+  onDismissPending?: (referralId: string) => Promise<boolean>;
 }) {
   const { toast } = useToast();
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   const onApplyHint = () => {
     toast(t(locale, "referralWalletApplyHint"), "default");
@@ -75,10 +79,10 @@ export function ReferralWalletCard({
         <ul className="max-h-32 space-y-1 overflow-y-auto text-xs">
           {wallet.recentEarnings.map((e, i) => (
             <li
-              key={`${e.at}-${i}`}
+              key={e.referralId ?? `${e.at}-${i}`}
               className="flex items-center justify-between gap-2 rounded-md bg-background/60 px-2 py-1"
             >
-              <span className="min-w-0 truncate">
+              <span className="min-w-0 flex-1 truncate">
                 {e.label}
                 <span className="ml-1 text-muted-foreground">
                   {e.status === "pending"
@@ -89,6 +93,27 @@ export function ReferralWalletCard({
               <span className="shrink-0 font-medium tabular-nums">
                 +{formatRub(e.amountRub, locale)}
               </span>
+              {e.status === "pending" && e.referralId && e.canDismiss && onDismissPending ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label={t(locale, "referralWalletDismiss")}
+                  disabled={dismissingId === e.referralId}
+                  onClick={() => {
+                    void (async () => {
+                      setDismissingId(e.referralId!);
+                      const ok = await onDismissPending(e.referralId!);
+                      setDismissingId(null);
+                      if (ok) toast(t(locale, "referralWalletDismissOk"), "success");
+                      else toast(t(locale, "referralWalletDismissFail"), "error");
+                    })();
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>

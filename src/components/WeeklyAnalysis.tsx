@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
-import { t } from "@/lib/i18n";
+import { formatDaysLabel, t } from "@/lib/i18n";
 import {
   getCachedWeeklyAnalysis,
   setCachedWeeklyAnalysis,
@@ -218,7 +218,7 @@ export function WeeklyAnalysis() {
           </p>
           {nextInDays !== null && isFullAnalysis && (
             <p className="text-xs text-muted-foreground">
-              {t(locale, "weeklyNextIn", { days: String(nextInDays) })}
+              {t(locale, "weeklyNextIn", { daysLabel: formatDaysLabel(nextInDays, locale) })}
             </p>
           )}
         </div>

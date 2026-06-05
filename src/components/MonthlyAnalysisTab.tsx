@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
-import { t } from "@/lib/i18n";
+import { formatDaysLabel, t } from "@/lib/i18n";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import {
   MONTHLY_CHAT_MAX_USER_MESSAGES,
@@ -77,6 +77,8 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
         (id) => getCategoryLabel(id, categories, locale),
         summary.periodStart,
         summary.periodEnd,
+        categories,
+        locale,
       ),
     [
       transactions,
@@ -230,13 +232,14 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
       const res = await fetch("/api/monthly-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locale,
-          summary: chatSummary,
-          reportTips: report,
-          messages: chat,
-          question: q,
-        }),
+          body: JSON.stringify({
+            locale,
+            summary: chatSummary,
+            reportTips: report,
+            messages: chat,
+            question: q,
+            coaching: coachingPayload,
+          }),
       });
 
       const json = (await res.json()) as {
@@ -278,6 +281,7 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
     locale,
     question,
     report,
+    coachingPayload,
     summary,
     trackingStartedAt,
     transactions,
@@ -310,7 +314,7 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
       </div>
       {nextInDays !== null && isFullReport && (
         <p className="text-xs text-muted-foreground">
-          {t(locale, "monthlyNextIn", { days: String(nextInDays) })}
+          {t(locale, "monthlyNextIn", { daysLabel: formatDaysLabel(nextInDays, locale) })}
         </p>
       )}
       {loadingReport && report.length === 0 ? (
@@ -372,7 +376,9 @@ export function MonthlyAnalysisTab({ active }: MonthlyAnalysisTabProps) {
           </div>
           {(chatLimitHit || userMessageCount >= MONTHLY_CHAT_MAX_USER_MESSAGES) && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              {t(locale, "monthlyChatLimit", { days: String(nextInDays ?? 30) })}
+              {t(locale, "monthlyChatLimit", {
+                daysLabel: formatDaysLabel(nextInDays ?? 30, locale),
+              })}
             </p>
           )}
           <div className="flex gap-2">

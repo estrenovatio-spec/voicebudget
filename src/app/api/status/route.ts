@@ -26,7 +26,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const BUILD_TAG = "header-buttons-v1";
+const BUILD_TAG =
+  process.env.VERCEL_DEPLOYMENT_ID?.slice(0, 7) ??
+  process.env.NEXT_PUBLIC_BUILD_TAG ??
+  process.env.VERCEL_ENV ??
+  "dev";
 
 export async function GET() {
   const telegramToken = Boolean(getTelegramBotTokenForEnv());

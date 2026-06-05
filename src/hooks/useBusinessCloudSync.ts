@@ -16,7 +16,15 @@ export function useBusinessCloudSync() {
 
   useEffect(() => {
     if (!preview || !token) return;
-    void pullBusinessFromCloud();
+    const run = () => void pullBusinessFromCloud();
+    if (useBusinessStore.persist.hasHydrated()) {
+      void run();
+      return;
+    }
+    const unsub = useBusinessStore.persist.onFinishHydration(() => {
+      void run();
+    });
+    return unsub;
   }, [preview, token]);
 
   useEffect(() => {

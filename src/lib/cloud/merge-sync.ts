@@ -47,10 +47,11 @@ export function mergeTransactions(
   for (const raw of local) {
     const tx = normalizeTx(raw);
     if (deletedTransactionIds?.has(tx.id)) continue;
+    // Партнёр удалил в облаке — не держим локальную копию и не воскрешаем push'ем.
+    if (previouslySyncedRemoteIds?.has(tx.id) && !remoteIds.has(tx.id)) continue;
     const existing = map.get(tx.id);
     if (!existing) {
-      // Локальную операцию не удаляем, если её нет в ответе сервера:
-      // stale pull / гонка push+sync иначе затирают только что введённые записи.
+      // Локальная операция ещё не на сервере (новая запись на этом устройстве).
       map.set(tx.id, tx);
       continue;
     }
@@ -264,8 +265,13 @@ export function mergeSyncPayload(
 
   const localOnlyTransactionIds = localTransactions
     .map((t) => t.id)
-    .filter((id) => !remoteTxIds.has(id))
-    .filter((id) => !previouslySyncedRemoteIds?.has(id));
+    .filter((id) => {
+      if (remoteTxIds.has(id)) return false;
+      // Была в облаке, в pull уже нет — удаление на другом устройстве, не создаём снова.
+      if (previouslySyncedRemoteIds?.has(id)) return false;
+      if (deletedTransactionIds?.has(id)) return false;
+      return true;
+    });
   const localOnlyCategories = localCategories.filter(
     (c) => !remoteCategoryIds.has(c.id) && !previouslySyncedRemoteCategoryIds?.has(c.id),
   );

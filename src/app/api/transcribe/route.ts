@@ -40,6 +40,12 @@ export async function POST(request: NextRequest) {
 
     const { transcript, method, lastError } = await transcribeAudioFile(audio, locale);
     if (!transcript) {
+      console.warn("[transcribe] empty", {
+        size: audio.size,
+        type: audio.type || "(none)",
+        locale,
+        lastError,
+      });
       return NextResponse.json(
         {
           error: "empty_transcript",
@@ -51,8 +57,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info("[transcribe] ok", {
+      size: audio.size,
+      type: audio.type || "(none)",
+      locale,
+      method,
+    });
     return NextResponse.json({ success: true, transcript, method }, { headers: corsHeaders(origin) });
   } catch (error) {
+    console.error("[transcribe] failed", error);
     return NextResponse.json(
       {
         error: "transcription_failed",

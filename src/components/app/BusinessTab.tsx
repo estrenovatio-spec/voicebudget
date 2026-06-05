@@ -2,26 +2,19 @@
 
 import {
   ArrowDownToLine,
-  ArrowUpFromLine,
   BriefcaseBusiness,
-  Building2,
   ChevronDown,
   Cloud,
-  Clock,
-  LineChart,
-  Percent,
-  PiggyBank,
+  Pencil,
   Plus,
-  Receipt,
-  Shield,
   Trash2,
-  TrendingUp,
-  Wallet,
-  Zap,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BusinessVoiceInput } from "@/components/app/BusinessVoiceInput";
+import { useEffect, useMemo, useState } from "react";
+import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
+import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,27 +25,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  assetAnnualYieldPct,
-  assetEffectiveHourlyRate,
   expenseBreakdownForPeriod,
-  groupAssetsByType,
-  impliedOperatingHourlyRate,
   incomeSourcesForPeriod,
-  periodOperatingStats,
-  typeAssetsSummary,
-  unitPeriodStats,
+  unitCardMetrics,
+  type UnitCardMetrics,
 } from "@/lib/business/analytics";
-import type { BusinessAsset, BusinessAssetType, BusinessTransaction, BusinessUnit } from "@/lib/business/types";
+import { parseMoneyAmount } from "@/lib/business/parse-input";
+import { cn } from "@/lib/utils";
+import { taxPeriodLabel } from "@/lib/business/tax";
+import type {
+  BusinessTaxPeriod,
+  BusinessTransaction,
+  BusinessUnit,
+} from "@/lib/business/types";
 import { formatBudgetPeriodLabel } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { useBusinessSnapshot, useBusinessStore } from "@/store/useBusinessStore";
+import {
+  isProjectsServiceUnit,
+  resolveVisibleUnitId,
+  visibleBusinessUnits,
+} from "@/lib/business/projects-unit";
+import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStatsPeriod, useStore } from "@/store/useStore";
 import { useCloudStore } from "@/store/useCloudStore";
 
-function formatRub(n: number, locale: "ru" | "en"): string {
-  return `${formatMoney(n, locale)} ${t(locale, "currency")}`;
-}
+const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
@@ -65,171 +63,311 @@ function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   }
 }
 
-function AssetIcon({ type }: { type: BusinessAssetType }) {
-  if (type === "rental") return <Building2 className="h-4 w-4 text-primary" aria-hidden />;
-  if (type === "freelance") return <Wallet className="h-4 w-4 text-primary" aria-hidden />;
-  return <LineChart className="h-4 w-4 text-primary" aria-hidden />;
-}
-
-function assetTypeLabel(type: BusinessAssetType, locale: "ru" | "en"): string {
-  if (type === "rental") return t(locale, "bizAssetRental");
-  if (type === "freelance") return t(locale, "bizAssetFreelance");
-  return t(locale, "bizAssetInvestment");
-}
-
-function KpiChip({
-  icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  accent?: "green" | "amber" | "blue";
-}) {
-  const bg =
-    accent === "green"
-      ? "bg-emerald-500/10"
-      : accent === "amber"
-        ? "bg-amber-500/10"
-        : accent === "blue"
-          ? "bg-blue-500/10"
-          : "bg-muted/60";
-  return (
-    <div className={`rounded-lg px-2.5 py-2 text-center ${bg}`}>
-      <div className="mx-auto mb-0.5 flex h-5 w-5 items-center justify-center text-muted-foreground">
-        {icon}
-      </div>
-      <p className="text-[10px] leading-tight text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-xs font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
-
 function UnitCard({
   unit,
-  stats,
+  metrics,
   selected,
   locale,
   onSelect,
+  onEdit,
+  onToCushion,
+  onToFamily,
+  onQuickTx,
 }: {
   unit: BusinessUnit;
-  stats: { income: number; expense: number; remaining: number };
+  metrics: UnitCardMetrics;
   selected: boolean;
   locale: "ru" | "en";
   onSelect: () => void;
+  onEdit: () => void;
+  onToCushion: () => void;
+  onToFamily: () => void;
+  onQuickTx: (type: "income" | "expense", amount: number, note: string) => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={[
-        "flex min-h-[7.5rem] flex-col rounded-xl border-2 p-3 text-left transition-shadow",
-        selected ? "border-primary shadow-md ring-2 ring-primary/20" : "border-border/80 hover:border-primary/40",
-      ].join(" ")}
-      style={{ borderTopColor: unit.color, borderTopWidth: 4 }}
-    >
-      <p className="line-clamp-2 text-sm font-semibold leading-snug">{unit.name}</p>
-      <div className="mt-auto space-y-0.5 pt-2 text-[11px] tabular-nums">
-        <p className="text-emerald-700 dark:text-emerald-400">
-          {t(locale, "bizUnitIn")} +{formatMoney(stats.income, locale)}
-        </p>
-        <p className="text-red-700 dark:text-red-400">
-          {t(locale, "bizUnitOut")} −{formatMoney(stats.expense, locale)}
-        </p>
-        <p className="font-semibold text-foreground">
-          {t(locale, "bizUnitLeft")} {formatMoney(stats.remaining, locale)}
-        </p>
-      </div>
-    </button>
-  );
-}
+  const [quickMode, setQuickMode] = useState<"income" | "expense" | null>(null);
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickNote, setQuickNote] = useState("");
 
-function AssetRow({
-  asset,
-  locale,
-  onRemove,
-}: {
-  asset: BusinessAsset;
-  locale: "ru" | "en";
-  onRemove: () => void;
-}) {
-  const yieldPct = assetAnnualYieldPct(asset);
-  const effectiveHourly = assetEffectiveHourlyRate(asset);
+  const openQuick = (mode: "income" | "expense", e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    onSelect();
+    setQuickMode((prev) => (prev === mode ? null : mode));
+    setQuickAmount("");
+    setQuickNote("");
+  };
+
+  const submitQuick = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    if (!quickMode) return;
+    const raw = quickAmount.trim();
+    let amountRaw = raw;
+    if (/^\+\s*(\d|[\d\s.,])/.test(raw)) amountRaw = raw.replace(/^\+\s*/, "");
+    else if (/^[-−–]\s*(\d|[\d\s.,])/.test(raw)) amountRaw = raw.replace(/^[-−–]\s*/, "");
+    const n = parseMoneyAmount(amountRaw);
+    if (!n) return;
+    onQuickTx(quickMode, n, quickNote.trim());
+    setQuickMode(null);
+    setQuickAmount("");
+    setQuickNote("");
+  };
+
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-border/80 p-2.5">
-      <AssetIcon type={asset.type} />
-      <div className="min-w-0 flex-1">
-        <p className="font-medium leading-tight">{asset.name}</p>
-        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums">
-          {asset.capitalValue > 0 ? (
-            <span className="text-muted-foreground">
-              {t(locale, "bizAssetCapital")}: {formatMoney(asset.capitalValue, locale)}
-            </span>
-          ) : null}
-          <span className="text-emerald-700 dark:text-emerald-400">
-            +{formatMoney(asset.monthlyNet, locale)}/{t(locale, "bizPerMonth")}
-          </span>
-          {yieldPct > 0 ? (
-            <span className="text-primary">
-              {yieldPct}% {t(locale, "bizPerYear")}
-            </span>
-          ) : null}
-          {effectiveHourly > 0 ? (
-            <span className="font-medium text-foreground">
-              {formatMoney(effectiveHourly, locale)}/{t(locale, "bizPerHour")}
-            </span>
+    <div
+      className={cn(
+        "relative flex flex-col rounded-xl border-[3px] transition-all",
+        selected
+          ? "border-emerald-500 bg-emerald-500/20 shadow-md"
+          : "border-border/80 bg-card hover:border-emerald-500/35",
+      )}
+    >
+      <div className="flex flex-1 flex-col p-3">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="line-clamp-2 pr-7 text-left text-sm font-semibold leading-snug hover:opacity-95"
+        >
+          {unit.name}
+        </button>
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => openQuick("income", e)}
+            className={cn(
+              "rounded-lg border px-2 py-1.5 text-center transition-all active:scale-[0.98]",
+              quickMode === "income"
+                ? "border-emerald-500 bg-emerald-500/25 ring-2 ring-emerald-500/50"
+                : "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20",
+            )}
+          >
+            <p className="text-[9px] font-medium uppercase tracking-wide text-emerald-800/80 dark:text-emerald-300/80">
+              {t(locale, "bizUnitIncome")}
+            </p>
+            <p className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+              +{formatMoney(metrics.income, locale)}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => openQuick("expense", e)}
+            className={cn(
+              "rounded-lg border px-2 py-1.5 text-center transition-all active:scale-[0.98]",
+              quickMode === "expense"
+                ? "border-red-500 bg-red-500/25 ring-2 ring-red-500/50"
+                : "border-red-500/35 bg-red-500/10 hover:bg-red-500/20",
+            )}
+          >
+            <p className="text-[9px] font-medium uppercase tracking-wide text-red-800/80 dark:text-red-300/80">
+              {t(locale, "bizUnitExpense")}
+            </p>
+            <p className="text-sm font-bold tabular-nums text-red-700 dark:text-red-400">
+              −{formatMoney(metrics.expense, locale)}
+            </p>
+          </button>
+        </div>
+        {quickMode ? (
+          <div
+            className={cn(
+              "mt-2 space-y-2 rounded-lg border p-2",
+              quickMode === "income"
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-red-500/40 bg-red-500/5",
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder={t(locale, "txAmount")}
+              value={quickAmount}
+              onChange={(e) => setQuickAmount(e.target.value)}
+              className="h-9 text-sm"
+              autoFocus
+            />
+            <Input
+              placeholder={t(locale, "bizTxNotePh")}
+              value={quickNote}
+              onChange={(e) => setQuickNote(e.target.value)}
+              className="h-9 text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setQuickMode(null);
+                }}
+              >
+                {t(locale, "bizQuickTxCancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className={cn(
+                  "flex-1 text-xs",
+                  quickMode === "income"
+                    ? "bg-emerald-600 hover:bg-emerald-600/90"
+                    : "bg-red-600 hover:bg-red-600/90",
+                )}
+                disabled={!quickAmount.trim()}
+                onClick={submitQuick}
+              >
+                {t(locale, "bizQuickTxSave")}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      <button type="button" onClick={onSelect} className="flex w-full flex-col text-left hover:opacity-95">
+        <p
+          className={`mt-1.5 text-center text-[11px] font-semibold tabular-nums ${
+            metrics.profit >= 0
+              ? "text-emerald-700 dark:text-emerald-400"
+              : "text-red-700 dark:text-red-400"
+          }`}
+        >
+          {t(locale, "bizUnitProfit")} {metrics.profit >= 0 ? "+" : "−"}
+          {formatMoney(Math.abs(metrics.profit), locale)}
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] tabular-nums">
+          <div className="min-w-0 space-y-0.5 text-muted-foreground">
+            <p className="font-medium text-foreground">{t(locale, "bizUnitCushion")}</p>
+            <p className="font-semibold text-foreground">
+              {formatMoney(metrics.cushionBalance, locale)}
+            </p>
+            <p className="text-[10px] leading-snug">
+              {t(locale, "bizUnitCushionTargetLine", {
+                amount: formatMoney(metrics.cushionTarget, locale),
+              })}
+            </p>
+            <p className="text-[10px] leading-snug">{t(locale, "bizUnitCushionPeriod")}</p>
+          </div>
+          <div className="min-w-0 space-y-0.5 text-right text-muted-foreground">
+            <p className="font-medium text-foreground">{t(locale, "bizOperatingBalance")}</p>
+            <p className="font-semibold text-foreground">
+              {formatMoney(metrics.operatingBalance, locale)}
+            </p>
+            {metrics.operatingBalance > 0 ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToFamily();
+                }}
+                className="mt-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+              >
+                {t(locale, "bizUnitToFamily")} {formatMoney(metrics.operatingBalance, locale)}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-2 space-y-0.5 border-t border-border/60 pt-2 text-[10px] tabular-nums text-muted-foreground">
+          <p>
+            {t(locale, "bizUnitMargin")} {metrics.profitMarginPct}%
+          </p>
+          {metrics.taxRatePct > 0 ? (
+            <p className="text-amber-800 dark:text-amber-200">
+              {t(locale, "bizUnitTax", {
+                amount: formatMoney(metrics.taxReserve, locale),
+                rate: String(metrics.taxRatePct),
+                period: taxPeriodLabel(metrics.taxPeriod, locale),
+              })}
+            </p>
           ) : null}
         </div>
+        {metrics.canToCushion > 0 ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToCushion();
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-primary/40 bg-primary/10 py-1 text-[10px] font-medium text-primary"
+          >
+            <ArrowDownToLine className="h-3 w-3" aria-hidden />
+            {t(locale, "bizUnitToCushion")} {formatMoney(metrics.canToCushion, locale)}
+          </button>
+        ) : null}
+      </button>
       </div>
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="h-8 w-8 shrink-0 text-muted-foreground"
-        aria-label={t(locale, "txDelete")}
-        onClick={onRemove}
+        className="absolute right-1 top-1 h-7 w-7 text-muted-foreground"
+        aria-label={t(locale, "bizUnitEdit")}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
       </Button>
     </div>
   );
 }
 
-function AssetTypeSection({
-  type,
-  assets,
+function BusinessUnitTabs({
+  units,
+  activeUnitId,
   locale,
-  onRemove,
+  onSelect,
+  onAdd,
 }: {
-  type: BusinessAssetType;
-  assets: BusinessAsset[];
+  units: BusinessUnit[];
+  activeUnitId: string | null;
   locale: "ru" | "en";
-  onRemove: (id: string) => void;
+  onSelect: (unitId: string) => void;
+  onAdd: () => void;
 }) {
-  if (assets.length === 0) return null;
-  const summary = typeAssetsSummary(assets, type);
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          <AssetIcon type={type} />
-          {assetTypeLabel(type, locale)}
-        </p>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {summary.capital > 0
-            ? t(locale, "bizTypeSummary", {
-                capital: formatMoney(summary.capital, locale),
-                monthly: formatMoney(summary.monthlyNet, locale),
-                yield: String(summary.yieldPct),
-              })
-            : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`}
-        </span>
+    <div className="-mx-4 overflow-x-auto px-4">
+      <div
+        className="flex min-w-max items-center gap-1 border-b border-border/70"
+        role="tablist"
+        aria-label={t(locale, "bizUnitsTitle")}
+      >
+        {units.map((unit) => {
+          const active = unit.id === activeUnitId;
+          return (
+            <button
+              key={unit.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onSelect(unit.id)}
+              title={unit.name}
+              className={cn(
+                "max-w-[10rem] border-b-2 px-3 py-2 text-left text-sm font-medium transition-colors",
+                active
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span
+                className="block break-words leading-tight"
+                style={{
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                  overflow: "hidden",
+                }}
+              >
+                {unit.name}
+              </span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex h-9 w-9 shrink-0 items-center justify-center border-b-2 border-transparent text-muted-foreground transition-colors hover:text-foreground"
+          aria-label={t(locale, "bizUnitAdd")}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+        </button>
       </div>
-      {assets.map((a) => (
-        <AssetRow key={a.id} asset={a} locale={locale} onRemove={() => onRemove(a.id)} />
-      ))}
     </div>
   );
 }
@@ -244,36 +382,34 @@ export function BusinessTab() {
   const units = useBusinessStore((s) => s.units);
   const transactions = useBusinessStore((s) => s.transactions);
   const assets = useBusinessStore((s) => s.assets);
-  const taxRatePct = useBusinessStore((s) => s.taxRatePct);
   const selectedUnitId = useBusinessStore((s) => s.selectedUnitId);
   const setSelectedUnitId = useBusinessStore((s) => s.setSelectedUnitId);
-  const setTaxRatePct = useBusinessStore((s) => s.setTaxRatePct);
-  const setUnitHourlyRate = useBusinessStore((s) => s.setUnitHourlyRate);
   const addUnit = useBusinessStore((s) => s.addUnit);
+  const updateUnitSettings = useBusinessStore((s) => s.updateUnitSettings);
+  const removeUnit = useBusinessStore((s) => s.removeUnit);
   const addOperatingTx = useBusinessStore((s) => s.addOperatingTx);
   const transferToCushion = useBusinessStore((s) => s.transferToCushion);
   const transferToFamily = useBusinessStore((s) => s.transferToFamily);
   const removeTransaction = useBusinessStore((s) => s.removeTransaction);
-  const addAsset = useBusinessStore((s) => s.addAsset);
-  const removeAsset = useBusinessStore((s) => s.removeAsset);
 
-  const activeUnitId = selectedUnitId ?? units[0]?.id ?? null;
-  const snap = useBusinessSnapshot(activeUnitId);
+  const visibleUnits = useMemo(() => visibleBusinessUnits(units), [units]);
+  const activeUnitId = useMemo(
+    () => resolveVisibleUnitId(units, selectedUnitId),
+    [units, selectedUnitId],
+  );
 
   const [ready, setReady] = useState(false);
-  const [txType, setTxType] = useState<"income" | "expense">("expense");
-  const [txAmount, setTxAmount] = useState("");
-  const [txNote, setTxNote] = useState("");
   const [newUnitName, setNewUnitName] = useState("");
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
-  const [assetOpen, setAssetOpen] = useState(false);
-  const [assetType, setAssetType] = useState<BusinessAssetType>("investment");
-  const [assetName, setAssetName] = useState("");
-  const [assetCapital, setAssetCapital] = useState("");
-  const [assetMonthly, setAssetMonthly] = useState("");
-  const [assetHours, setAssetHours] = useState("");
-  const [hourlyRateInput, setHourlyRateInput] = useState("");
+  const [editUnitId, setEditUnitId] = useState<string | null>(null);
+  const [editUnitName, setEditUnitName] = useState("");
+  const [editTaxRate, setEditTaxRate] = useState(0);
+  const [editTaxPeriod, setEditTaxPeriod] = useState<BusinessTaxPeriod>("quarter");
   const [showExpenses, setShowExpenses] = useState(true);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
+  const [showBusinessHow, setShowBusinessHow] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (useBusinessStore.persist.hasHydrated()) setReady(true);
@@ -281,25 +417,25 @@ export function BusinessTab() {
   }, []);
 
   useEffect(() => {
+    setShowBusinessHow(localStorage.getItem(BUSINESS_HOW_HIDDEN_KEY) !== "1");
+  }, []);
+
+  useEffect(() => {
     if (!ready) return;
     const s = useBusinessStore.getState();
-    if (!s.selectedUnitId && s.units[0]) {
-      s.setSelectedUnitId(s.units[0].id);
+    const nextId = resolveVisibleUnitId(s.units, s.selectedUnitId);
+    if (nextId && nextId !== s.selectedUnitId) {
+      s.setSelectedUnitId(nextId);
     }
-  }, [ready]);
+  }, [ready, units, selectedUnitId]);
 
-  const unitStatsMap = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof unitPeriodStats>>();
+  const unitMetricsMap = useMemo(() => {
+    const map = new Map<string, UnitCardMetrics>();
     for (const u of units) {
-      map.set(u.id, unitPeriodStats(transactions, u.id, period));
+      map.set(u.id, unitCardMetrics(transactions, [], u, period));
     }
     return map;
   }, [units, transactions, period]);
-
-  const periodStats = useMemo(
-    () => periodOperatingStats(transactions, period, activeUnitId),
-    [transactions, period, activeUnitId],
-  );
 
   const incomeSources = useMemo(
     () => incomeSourcesForPeriod(transactions, period, activeUnitId),
@@ -311,35 +447,28 @@ export function BusinessTab() {
     [transactions, period, activeUnitId],
   );
 
-  const assetsByType = useMemo(
-    () => groupAssetsByType(assets, activeUnitId),
-    [assets, activeUnitId],
-  );
-
   const recentTxs = useMemo(() => {
     if (!activeUnitId) return [];
     return transactions.filter((tx) => tx.unitId === activeUnitId).slice(0, 30);
   }, [transactions, activeUnitId]);
 
-  const cushionPct = useMemo(() => {
-    if (snap.cushionTarget <= 0) return snap.cushionBalance > 0 ? 100 : 0;
-    return Math.min(100, Math.round((snap.cushionBalance / snap.cushionTarget) * 100));
-  }, [snap.cushionBalance, snap.cushionTarget]);
+  const activeUnit = useMemo(
+    () => visibleUnits.find((unit) => unit.id === activeUnitId) ?? null,
+    [visibleUnits, activeUnitId],
+  );
+  const activeMetrics = useMemo(() => {
+    if (!activeUnit) return null;
+    return (
+      unitMetricsMap.get(activeUnit.id) ??
+      unitCardMetrics(transactions, [], activeUnit, period)
+    );
+  }, [activeUnit, unitMetricsMap, transactions, period]);
 
   if (!ready) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground">{t(locale, "bizLoading")}</p>
     );
   }
-
-  const submitTx = () => {
-    if (!activeUnitId) return;
-    const n = Number(String(txAmount).replace(/\s/g, "").replace(",", "."));
-    if (!Number.isFinite(n) || n <= 0) return;
-    addOperatingTx(activeUnitId, txType, n, txNote);
-    setTxAmount("");
-    setTxNote("");
-  };
 
   const submitUnit = () => {
     const id = addUnit(newUnitName);
@@ -349,33 +478,77 @@ export function BusinessTab() {
     }
   };
 
-  const submitAsset = () => {
-    if (!activeUnitId) return;
-    const cap = Number(String(assetCapital).replace(/\s/g, "").replace(",", ".")) || 0;
-    const monthly = Number(String(assetMonthly).replace(/\s/g, "").replace(",", "."));
-    const hours = Number(String(assetHours).replace(/\s/g, "").replace(",", "."));
-    if (!Number.isFinite(monthly) || monthly < 0 || !assetName.trim()) return;
-    addAsset(activeUnitId, assetType, assetName, cap, monthly, hours);
-    setAssetOpen(false);
-    setAssetName("");
-    setAssetCapital("");
-    setAssetMonthly("");
-    setAssetHours("");
+  const openEditUnit = (unitId: string) => {
+    const u = units.find((x) => x.id === unitId);
+    if (!u) return;
+    setEditUnitId(unitId);
+    setEditUnitName(u.name);
+    setEditTaxRate(u.taxRatePct ?? 0);
+    setEditTaxPeriod(u.taxPeriod ?? "quarter");
+    setSelectedUnitId(unitId);
   };
 
-  const activeUnitName = units.find((u) => u.id === activeUnitId)?.name ?? t(locale, "bizTitle");
-  const activeUnit = units.find((u) => u.id === activeUnitId);
-  const targetHourly = activeUnit?.hourlyRate ?? 0;
-  const impliedHourly = impliedOperatingHourlyRate(snap.monthProfit);
-  const hasAssets =
-    assetsByType.investment.length + assetsByType.rental.length + assetsByType.freelance.length > 0;
+  const submitEditUnit = () => {
+    if (!editUnitId) return;
+    const name = editUnitName.trim();
+    if (!name) return;
+    updateUnitSettings(editUnitId, {
+      name,
+      taxRatePct: editTaxRate,
+      taxPeriod: editTaxPeriod,
+    });
+    setEditUnitId(null);
+    setEditUnitName("");
+  };
+
+  const deleteEditUnit = () => {
+    if (!editUnitId) return;
+    if (visibleUnits.length <= 1) {
+      toast(t(locale, "bizUnitDeleteLast"), "error");
+      return;
+    }
+    const unit = units.find((u) => u.id === editUnitId);
+    if (unit && isProjectsServiceUnit(unit)) {
+      toast(t(locale, "bizUnitDeleteProjectsHint"), "error");
+      return;
+    }
+    const assetCount = assets.filter((a) => a.unitId === editUnitId).length;
+    const txCount = transactions.filter((tx) => tx.unitId === editUnitId).length;
+    if (
+      assetCount + txCount > 0 &&
+      !window.confirm(
+        t(locale, "bizUnitDeleteConfirm", {
+          assets: String(assetCount),
+          txs: String(txCount),
+        }),
+      )
+    ) {
+      return;
+    }
+    if (!removeUnit(editUnitId)) {
+      toast(t(locale, "bizUnitDeleteLast"), "error");
+      return;
+    }
+    setEditUnitId(null);
+    setEditUnitName("");
+    toast(t(locale, "bizUnitDeleted"), "success");
+  };
+
+  const editUnitIsProjects =
+    editUnitId != null && isProjectsServiceUnit({ name: editUnitName });
+
+  const hideBusinessHow = () => {
+    setShowBusinessHow(false);
+    localStorage.setItem(BUSINESS_HOW_HIDDEN_KEY, "1");
+  };
 
   return (
     <div className="space-y-3 py-1">
-      <span className="inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-        {t(locale, "bizPreviewBadge")}
-      </span>
-
+      {process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? (
+        <span className="inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+          {t(locale, "bizPreviewBadge")}
+        </span>
+      ) : null}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold">
@@ -392,471 +565,198 @@ export function BusinessTab() {
         ) : null}
       </div>
 
-      {activeUnitId ? (
-        <Card className="border-2 border-primary/30 bg-gradient-to-br from-card via-card to-primary/8">
-          <CardContent className="space-y-1 pt-4">
-            <p className="text-xs font-medium text-muted-foreground">{activeUnitName}</p>
-            <p className="text-[11px] text-muted-foreground">{t(locale, "bizPulse")}</p>
-            <p className="text-3xl font-bold tabular-nums tracking-tight">
-              {formatRub(snap.operatingBalance, locale)}
-            </p>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
-              <span className="text-muted-foreground">
-                {t(locale, "bizCushionShort")}: {formatMoney(snap.cushionBalance, locale)}
-              </span>
-              {snap.totalCapital > 0 ? (
-                <span className="text-muted-foreground">
-                  {t(locale, "bizCapitalShort")}: {formatMoney(snap.totalCapital, locale)}
-                </span>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <BusinessVoiceInput unitId={activeUnitId} />
-
-      <StatisticsPeriodControls />
-
-      <p className="text-[11px] text-muted-foreground">
-        {t(locale, "bizPeriodHint", { period: periodLabel })}
-      </p>
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {units.map((unit) => {
-          const stats = unitStatsMap.get(unit.id) ?? { income: 0, expense: 0, remaining: 0 };
-          return (
-            <UnitCard
-              key={unit.id}
-              unit={unit}
-              stats={stats}
-              selected={unit.id === activeUnitId}
-              locale={locale}
-              onSelect={() => setSelectedUnitId(unit.id)}
-            />
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setUnitDialogOpen(true)}
-          className="flex min-h-[7.5rem] flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border/80 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-        >
-          <Plus className="h-6 w-6" aria-hidden />
-          <span className="text-xs font-medium">{t(locale, "bizUnitAdd")}</span>
-        </button>
+      <div className="space-y-2">
+        <div>
+          <p className="text-sm font-medium">{t(locale, "bizUnitsTitle")}</p>
+          <p className="text-[11px] text-muted-foreground">{t(locale, "bizUnitsLegend")}</p>
+        </div>
+        <BusinessUnitTabs
+          units={visibleUnits}
+          activeUnitId={activeUnitId}
+          locale={locale}
+          onSelect={setSelectedUnitId}
+          onAdd={() => setUnitDialogOpen(true)}
+        />
+        {showBusinessHow ? (
+          <div className="relative rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 pr-9 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground">{t(locale, "bizHowTitle")}</p>
+            <p>{t(locale, "bizHowBody")}</p>
+            <button
+              type="button"
+              className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+              onClick={hideBusinessHow}
+              aria-label={t(locale, "bizHowDismiss")}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+        ) : null}
+        {activeUnit && activeMetrics ? (
+          <UnitCard
+            unit={activeUnit}
+            metrics={activeMetrics}
+            selected
+            locale={locale}
+            onSelect={() => setSelectedUnitId(activeUnit.id)}
+            onEdit={() => openEditUnit(activeUnit.id)}
+            onToCushion={() => transferToCushion(activeUnit.id, activeMetrics.canToCushion)}
+            onToFamily={() => transferToFamily(activeUnit.id, activeMetrics.operatingBalance)}
+            onQuickTx={(type, amount, note) => {
+              addOperatingTx(activeUnit.id, type, amount, note);
+              toast(
+                type === "income"
+                  ? t(locale, "bizVoiceIncomeOk", { amount: formatMoney(amount, locale) })
+                  : t(locale, "bizVoiceExpenseOk", { amount: formatMoney(amount, locale) }),
+                "success",
+              );
+            }}
+          />
+        ) : null}
       </div>
 
-      {activeUnitId ? (
-        <>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t(locale, "bizPnlTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="rounded-lg bg-emerald-500/10 px-2 py-2">
-                  <p className="text-muted-foreground">{t(locale, "bizPeriodIncome")}</p>
-                  <p className="mt-0.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                    +{formatMoney(periodStats.income, locale)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-red-500/10 px-2 py-2">
-                  <p className="text-muted-foreground">{t(locale, "bizPeriodExpense")}</p>
-                  <p className="mt-0.5 font-semibold tabular-nums text-red-700 dark:text-red-400">
-                    −{formatMoney(periodStats.expense, locale)}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-primary/10 px-2 py-2">
-                  <p className="text-muted-foreground">{t(locale, "bizPeriodProfit")}</p>
-                  <p
-                    className={`mt-0.5 font-semibold tabular-nums ${
-                      periodStats.profit >= 0
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-red-700 dark:text-red-400"
-                    }`}
-                  >
-                    {periodStats.profit >= 0 ? "+" : "−"}
-                    {formatMoney(Math.abs(periodStats.profit), locale)}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                <KpiChip
-                  icon={<Percent className="h-3.5 w-3.5" />}
-                  label={t(locale, "bizKpiMargin")}
-                  value={`${periodStats.profitMarginPct}%`}
-                  accent={periodStats.profitMarginPct >= 20 ? "green" : "amber"}
-                />
-                <KpiChip
-                  icon={<Clock className="h-3.5 w-3.5" />}
-                  label={t(locale, "bizKpiRunway")}
-                  value={
-                    snap.runwayMonths >= 99
-                      ? "∞"
-                      : t(locale, "bizKpiMonths", { n: String(snap.runwayMonths) })
-                  }
-                  accent="blue"
-                />
-                <KpiChip
-                  icon={<TrendingUp className="h-3.5 w-3.5" />}
-                  label={t(locale, "bizKpiPassive")}
-                  value={`+${formatMoney(snap.passiveIncomeMonthly, locale)}`}
-                  accent="green"
-                />
-                <KpiChip
-                  icon={<Zap className="h-3.5 w-3.5" />}
-                  label={t(locale, "bizKpiBurn")}
-                  value={formatMoney(snap.avgMonthlyExpense, locale)}
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {t(locale, "bizMonthSnapshot", {
-                  income: formatMoney(snap.monthIncome, locale),
-                  expense: formatMoney(snap.monthExpense, locale),
-                  profit: formatMoney(snap.monthProfit, locale),
-                })}
-              </p>
-            </CardContent>
-          </Card>
+      <BusinessProjectsSection />
 
-          <Card className="border-primary/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4 text-primary" aria-hidden />
-                {t(locale, "bizHourlyTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <p className="text-xs text-muted-foreground">{t(locale, "bizHourlyHint")}</p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={t(locale, "bizHourlyPh")}
-                  value={hourlyRateInput || (targetHourly > 0 ? String(targetHourly) : "")}
-                  onChange={(e) => setHourlyRateInput(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => {
-                    if (!activeUnitId) return;
-                    const n = Number(String(hourlyRateInput).replace(/\s/g, "").replace(",", "."));
-                    if (!Number.isFinite(n) || n <= 0) return;
-                    setUnitHourlyRate(activeUnitId, n);
-                    setHourlyRateInput("");
-                  }}
-                >
-                  {t(locale, "bizSave")}
-                </Button>
-              </div>
-              {targetHourly > 0 ? (
-                <p className="text-lg font-bold tabular-nums">
-                  {formatMoney(targetHourly, locale)} {t(locale, "bizPerHour")}
-                </p>
-              ) : null}
-              {impliedHourly > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t(locale, "bizHourlyImplied", {
-                    amount: formatMoney(impliedHourly, locale),
-                  })}
-                  {targetHourly > 0 && impliedHourly < targetHourly
-                    ? ` · ${t(locale, "bizHourlyBelowTarget", {
-                        pct: String(Math.round(((targetHourly - impliedHourly) / targetHourly) * 100)),
-                      })}`
-                    : targetHourly > 0 && impliedHourly >= targetHourly
-                      ? ` · ${t(locale, "bizHourlyOnTarget")}`
-                      : ""}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+      <div className="border-t border-border/60 pt-3">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 py-1 text-sm font-medium"
+          onClick={() => setPeriodOpen((v) => !v)}
+        >
+          <span>
+            {t(locale, "bizPeriodSection")}: {periodLabel}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${periodOpen ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </button>
+        {periodOpen ? (
+          <div className="mt-2 space-y-3">
+            <StatisticsPeriodControls />
+            <p className="text-[11px] text-muted-foreground">
+              {t(locale, "bizPeriodHint", { period: periodLabel })}
+            </p>
+            {activeUnitId ? (
+              <>
+                {incomeSources.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">{t(locale, "bizIncomeSources")}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1.5">
+                      {incomeSources.slice(0, 10).map((row) => (
+                        <div
+                          key={row.label}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span className="min-w-0 truncate">{row.label}</span>
+                          <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                            +{formatMoney(row.amount, locale)}
+                          </span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : null}
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <PiggyBank className="h-4 w-4 text-primary" aria-hidden />
-                {t(locale, "bizCushionTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <p className="text-xs text-muted-foreground">{t(locale, "bizCushionHint")}</p>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold tabular-nums">{formatRub(snap.cushionBalance, locale)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t(locale, "bizCushionTarget", { amount: formatMoney(snap.cushionTarget, locale) })}
-                </span>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${cushionPct}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t(locale, "bizAvgBurn", { amount: formatMoney(snap.avgMonthlyExpense, locale) })}
-                {snap.cushionGap > 0
-                  ? ` · ${t(locale, "bizCushionGap", { amount: formatMoney(snap.cushionGap, locale) })}`
-                  : ` · ${t(locale, "bizCushionFull")}`}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto min-h-10 flex-col gap-0.5 py-2 text-xs"
-                  disabled={snap.canToCushion <= 0}
-                  onClick={() => transferToCushion(activeUnitId, snap.canToCushion)}
-                >
-                  <ArrowDownToLine className="h-3.5 w-3.5" aria-hidden />
-                  {t(locale, "bizToCushion")}
-                  <span className="font-semibold tabular-nums">{formatMoney(snap.canToCushion, locale)}</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-auto min-h-10 flex-col gap-0.5 py-2 text-xs"
-                  disabled={snap.canToFamily <= 0}
-                  onClick={() => transferToFamily(activeUnitId, snap.canToFamily)}
-                >
-                  <ArrowUpFromLine className="h-3.5 w-3.5" aria-hidden />
-                  {t(locale, "bizToFamily")}
-                  <span className="font-semibold tabular-nums">{formatMoney(snap.canToFamily, locale)}</span>
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">{t(locale, "bizFamilyLinkHint")}</p>
-            </CardContent>
-          </Card>
+                {expenseBreakdown.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between"
+                        onClick={() => setShowExpenses((v) => !v)}
+                      >
+                        <CardTitle className="text-base">
+                          {t(locale, "bizExpenseBreakdown")}
+                        </CardTitle>
+                        <ChevronDown
+                          className={`h-4 w-4 text-muted-foreground transition-transform ${showExpenses ? "rotate-180" : ""}`}
+                          aria-hidden
+                        />
+                      </button>
+                    </CardHeader>
+                    {showExpenses ? (
+                      <CardContent className="space-y-1.5">
+                        {expenseBreakdown.slice(0, 12).map((row) => (
+                          <div
+                            key={row.label}
+                            className="flex items-center justify-between gap-2 text-sm"
+                          >
+                            <span className="min-w-0 truncate">{row.label}</span>
+                            <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
+                              −{formatMoney(row.amount, locale)}
+                            </span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    ) : null}
+                  </Card>
+                ) : null}
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Receipt className="h-4 w-4 text-primary" aria-hidden />
-                {t(locale, "bizTaxTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p className="text-xs text-muted-foreground">{t(locale, "bizTaxHint")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[0, 6, 13, 15, 20].map((pct) => (
-                  <Button
-                    key={pct}
-                    type="button"
-                    size="sm"
-                    variant={taxRatePct === pct ? "default" : "outline"}
-                    className="h-7 px-2.5 text-xs"
-                    onClick={() => setTaxRatePct(pct)}
-                  >
-                    {pct === 0 ? t(locale, "bizTaxOff") : `${pct}%`}
-                  </Button>
-                ))}
-              </div>
-              {taxRatePct > 0 ? (
-                <div className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs">
-                  <p className="font-medium">{t(locale, "bizTaxReserve")}</p>
-                  <p className="mt-0.5 text-lg font-bold tabular-nums">
-                    {formatRub(snap.suggestedTaxReserve, locale)}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {t(locale, "bizTaxFromIncome", {
-                      rate: String(taxRatePct),
-                      income: formatMoney(snap.monthIncome, locale),
-                    })}
-                  </p>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Shield className="h-4 w-4 text-primary" aria-hidden />
-                {t(locale, "bizAssetsTitle")}
-              </CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={() => setAssetOpen(true)}>
-                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-                {t(locale, "bizAssetAdd")}
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!hasAssets ? (
-                <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
-              ) : (
-                <>
-                  {snap.totalCapital > 0 ? (
-                    <div className="rounded-lg bg-primary/8 px-3 py-2 text-xs">
-                      <p className="font-medium">{t(locale, "bizPortfolioSummary")}</p>
-                      <p className="mt-0.5 tabular-nums text-muted-foreground">
-                        {t(locale, "bizAssetsTotal", {
-                          capital: formatMoney(snap.totalCapital, locale),
-                          income: formatMoney(snap.assetsAnnualIncome, locale),
-                        })}
-                        {snap.weightedYieldPct > 0
-                          ? ` · ${t(locale, "bizWeightedYield", { pct: String(snap.weightedYieldPct) })}`
-                          : ""}
-                      </p>
-                    </div>
-                  ) : null}
-                  <AssetTypeSection
-                    type="investment"
-                    assets={assetsByType.investment}
-                    locale={locale}
-                    onRemove={removeAsset}
-                  />
-                  <AssetTypeSection
-                    type="rental"
-                    assets={assetsByType.rental}
-                    locale={locale}
-                    onRemove={removeAsset}
-                  />
-                  <AssetTypeSection
-                    type="freelance"
-                    assets={assetsByType.freelance}
-                    locale={locale}
-                    onRemove={removeAsset}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {incomeSources.length > 0 ? (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{t(locale, "bizIncomeSources")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                {incomeSources.slice(0, 10).map((row) => (
-                  <div key={row.label} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate">{row.label}</span>
-                    <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                      +{formatMoney(row.amount, locale)}
-                    </span>
+                {recentTxs.length > 0 ? (
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium">{t(locale, "bizRecentTx")}</p>
+                    <ul className="space-y-1">
+                      {recentTxs.map((tx) => (
+                        <li
+                          key={tx.id}
+                          className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5 text-sm"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs text-muted-foreground">
+                              {txKindLabel(tx, locale)} · {tx.date}
+                            </p>
+                            <p className="truncate">{tx.note}</p>
+                          </div>
+                          <span
+                            className={`shrink-0 font-semibold tabular-nums ${
+                              tx.type === "income"
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-red-700 dark:text-red-400"
+                            }`}
+                          >
+                            {tx.type === "income" ? "+" : "−"}
+                            {formatMoney(tx.amount, locale)}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            aria-label={t(locale, "txEdit")}
+                            onClick={() => setEditTx(tx)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            aria-label={t(locale, "txDelete")}
+                            onClick={() => removeTransaction(tx.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : null}
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
-          {expenseBreakdown.length > 0 ? (
-            <Card>
-              <CardHeader className="pb-2">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between"
-                  onClick={() => setShowExpenses((v) => !v)}
-                >
-                  <CardTitle className="text-base">{t(locale, "bizExpenseBreakdown")}</CardTitle>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform ${showExpenses ? "rotate-180" : ""}`}
-                    aria-hidden
-                  />
-                </button>
-              </CardHeader>
-              {showExpenses ? (
-                <CardContent className="space-y-1.5">
-                  {expenseBreakdown.slice(0, 12).map((row) => (
-                    <div key={row.label} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="min-w-0 truncate">{row.label}</span>
-                      <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
-                        −{formatMoney(row.amount, locale)}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              ) : null}
-            </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t(locale, "bizAddTx")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={txType === "expense" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => setTxType("expense")}
-                >
-                  {t(locale, "expense")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={txType === "income" ? "default" : "outline"}
-                  className="flex-1"
-                  onClick={() => setTxType("income")}
-                >
-                  {t(locale, "income")}
-                </Button>
-              </div>
-              <Input
-                type="number"
-                inputMode="numeric"
-                placeholder={t(locale, "txAmount")}
-                value={txAmount}
-                onChange={(e) => setTxAmount(e.target.value)}
-              />
-              <Input
-                placeholder={t(locale, "txCommentPlaceholder")}
-                value={txNote}
-                onChange={(e) => setTxNote(e.target.value)}
-              />
-              <Button type="button" className="w-full" onClick={submitTx}>
-                {t(locale, "fallbackSubmit")}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {recentTxs.length > 0 ? (
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">{t(locale, "bizRecentTx")}</p>
-              <ul className="space-y-1">
-                {recentTxs.map((tx) => (
-                  <li
-                    key={tx.id}
-                    className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5 text-sm"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs text-muted-foreground">
-                        {txKindLabel(tx, locale)} · {tx.date}
-                      </p>
-                      <p className="truncate">{tx.note}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 font-semibold tabular-nums ${
-                        tx.type === "income"
-                          ? "text-emerald-700 dark:text-emerald-400"
-                          : "text-red-700 dark:text-red-400"
-                      }`}
-                    >
-                      {tx.type === "income" ? "+" : "−"}
-                      {formatMoney(tx.amount, locale)}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      aria-label={t(locale, "txDelete")}
-                      onClick={() => removeTransaction(tx.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </>
-      ) : null}
+      <BusinessTxEditDialog
+        transaction={editTx}
+        open={editTx !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTx(null);
+        }}
+      />
 
       <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
         <DialogContent className="max-w-xs">
@@ -875,59 +775,78 @@ export function BusinessTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={assetOpen} onOpenChange={setAssetOpen}>
+      <Dialog
+        open={editUnitId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditUnitId(null);
+            setEditUnitName("");
+          }
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t(locale, "bizAssetAdd")}</DialogTitle>
+            <DialogTitle>{t(locale, "bizUnitEdit")}</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">{t(locale, "bizAssetDialogHint")}</p>
-          <div className="flex gap-2">
-            {(["investment", "rental", "freelance"] as BusinessAssetType[]).map((kind) => (
+          <Input
+            placeholder={t(locale, "bizUnitNamePh")}
+            value={editUnitName}
+            onChange={(e) => setEditUnitName(e.target.value)}
+            autoFocus
+          />
+          <p className="text-xs font-medium text-muted-foreground">{t(locale, "bizUnitTaxSettings")}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[0, 6, 13, 15, 20].map((pct) => (
               <Button
-                key={kind}
+                key={pct}
                 type="button"
                 size="sm"
-                variant={assetType === kind ? "default" : "outline"}
-                className="flex-1 text-[11px]"
-                onClick={() => setAssetType(kind)}
+                variant={editTaxRate === pct ? "default" : "outline"}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setEditTaxRate(pct)}
               >
-                {assetTypeLabel(kind, locale)}
+                {pct === 0 ? t(locale, "bizTaxOff") : `${pct}%`}
               </Button>
             ))}
           </div>
-          <Input
-            placeholder={t(locale, "bizAssetNamePh")}
-            value={assetName}
-            onChange={(e) => setAssetName(e.target.value)}
-          />
-          <Input
-            type="number"
-            inputMode="numeric"
-            placeholder={t(locale, "bizAssetCapitalPh")}
-            value={assetCapital}
-            onChange={(e) => setAssetCapital(e.target.value)}
-          />
-          <Input
-            type="number"
-            inputMode="numeric"
-            placeholder={t(locale, "bizAssetMonthlyPh")}
-            value={assetMonthly}
-            onChange={(e) => setAssetMonthly(e.target.value)}
-          />
-          {assetType === "freelance" ? (
-            <Input
-              type="number"
-              inputMode="numeric"
-              placeholder={t(locale, "bizAssetHoursPh")}
-              value={assetHours}
-              onChange={(e) => setAssetHours(e.target.value)}
-            />
-          ) : null}
-          <Button type="button" className="w-full" onClick={submitAsset}>
+          <div className="flex flex-wrap gap-1.5">
+            {(["month", "quarter", "halfyear", "year"] as BusinessTaxPeriod[]).map((p) => (
+              <Button
+                key={p}
+                type="button"
+                size="sm"
+                variant={editTaxPeriod === p ? "default" : "outline"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setEditTaxPeriod(p)}
+              >
+                {taxPeriodLabel(p, locale)}
+              </Button>
+            ))}
+          </div>
+          <Button type="button" className="w-full" onClick={submitEditUnit}>
             {t(locale, "bizSave")}
           </Button>
+          {visibleUnits.length > 1 && !editUnitIsProjects ? (
+            <div className="space-y-1 border-t border-border/60 pt-3">
+              <p className="text-[11px] text-muted-foreground">{t(locale, "bizUnitDeleteHint")}</p>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                onClick={deleteEditUnit}
+              >
+                {t(locale, "bizUnitDelete")}
+              </Button>
+            </div>
+          ) : null}
+          {editUnitIsProjects ? (
+            <p className="border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+              {t(locale, "bizUnitDeleteProjectsHint")}
+            </p>
+          ) : null}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

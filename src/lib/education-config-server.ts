@@ -1,3 +1,4 @@
+import { DEFAULT_DIAGNOSTICS_FORM_URL } from "@/data/diagnostics-form-default";
 import { DEFAULT_EDUCATION_VIDEOS } from "@/data/education-videos-default";
 import type { EducationVideoLink } from "@/lib/education-links";
 import { parseEducationVideosJson } from "@/lib/education-videos-parse";
@@ -28,11 +29,11 @@ export function getEducationConfigFromEnv(): {
     "NEXT_PUBLIC_DIAGNOSTICS_FORM_URL_PREVIEW",
   );
 
-  let formUrl = formRaw ?? null;
-  if (formUrl && !formUrl.startsWith("http")) {
+  let formUrl = formRaw ?? DEFAULT_DIAGNOSTICS_FORM_URL;
+  if (!formUrl.startsWith("http")) {
     formUrl = formUrl.startsWith("//") ? `https:${formUrl}` : `https://${formUrl}`;
   }
-  if (formUrl && !formUrl.startsWith("http")) formUrl = null;
+  if (!formUrl.startsWith("http")) formUrl = DEFAULT_DIAGNOSTICS_FORM_URL;
 
   const fromEnv = parseEducationVideosJson(videosRaw);
   const videos = fromEnv.length > 0 ? fromEnv : DEFAULT_EDUCATION_VIDEOS;

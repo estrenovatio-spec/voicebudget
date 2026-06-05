@@ -11,12 +11,21 @@ import { hasPartnerBudget } from "@/lib/owner-labels";
 import { fetchWithRetry } from "@/lib/fetch-retry";
 import { cleanTranscript, isGarbageTranscript } from "@/lib/transcript-guard";
 import { transcribeUserAudioFile } from "@/lib/voice-transcribe-client";
+import {
+  canUseWavCapture,
+  createWavCaptureAsync,
+  minWavBytes,
+  type WavCapture,
+} from "@/lib/wav-capture";
 import type { DictKey } from "@/lib/i18n";
 import { detectAppLocale, inferParseLocale } from "@/lib/locale-infer";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
+const MOBILE_MIC_IDLE_MS = 120_000;
+const CAPTURE_START_MS = 5_000;
+const CAPTURE_STOP_MS = 18_000;
 
 export type VoiceErrorCode =
   | "insecure"
@@ -103,10 +112,100 @@ function attachLevelMeter(stream: MediaStream): LevelMeter {
   };
 }
 
-let session: ActiveSession | null = null;
+type WavSession = {
+  mode: "wav";
+  stream: MediaStream;
+  wav: WavCapture;
+  getLevel: () => number;
+  startedAt: number;
+};
+
+type RecorderSession = ActiveSession & { mode: "recorder" };
+
+type SpeechSession = {
+  mode: "speech";
+  recognition: SpeechRecognition;
+  startedAt: number;
+  transcript: string;
+  interim: string;
+  error?: VoiceErrorCode;
+  stopped: boolean;
+  getLevel: () => number;
+};
+
+type VoiceSession = WavSession | RecorderSession | SpeechSession;
+
+let session: VoiceSession | null = null;
+let cachedMobileStream: MediaStream | null = null;
+let cachedMobileStreamTimer: number | null = null;
 
 function isMobileUa(): boolean {
   return typeof navigator !== "undefined" && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isAndroidUa(): boolean {
+  return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+}
+
+function isIosUa(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    (/iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+  );
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function clearCachedMobileStreamTimer(): void {
+  if (cachedMobileStreamTimer !== null) {
+    window.clearTimeout(cachedMobileStreamTimer);
+    cachedMobileStreamTimer = null;
+  }
+}
+
+function isLiveStream(stream: MediaStream | null): stream is MediaStream {
+  return Boolean(stream?.getAudioTracks().some((track) => track.readyState === "live"));
+}
+
+function stopStream(stream: MediaStream): void {
+  stream.getTracks().forEach((t) => {
+    try {
+      t.stop();
+    } catch {
+      /* ignore */
+    }
+  });
+  if (stream === cachedMobileStream) {
+    cachedMobileStream = null;
+    clearCachedMobileStreamTimer();
+  }
+}
+
+function releaseMobileStreamAfterIdle(stream: MediaStream): void {
+  if (!isAndroidUa()) {
+    stopStream(stream);
+    return;
+  }
+  cachedMobileStream = stream;
+  clearCachedMobileStreamTimer();
+  cachedMobileStreamTimer = window.setTimeout(() => {
+    if (cachedMobileStream === stream && !session) stopStream(stream);
+  }, MOBILE_MIC_IDLE_MS);
 }
 
 function pickMimeType(): string {
@@ -120,18 +219,31 @@ function pickMimeType(): string {
   return "";
 }
 
+function getSpeechRecognitionCtor(): (new () => SpeechRecognition) | null {
+  if (typeof window === "undefined") return null;
+  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+}
+
+function canUseSpeechRecognition(): boolean {
+  return Boolean(getSpeechRecognitionCtor());
+}
+
 export function canUseVoiceInput(): boolean {
   if (typeof window === "undefined") return false;
   if (!window.isSecureContext) return false;
-  return Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined";
+  return (
+    canUseSpeechRecognition() ||
+    (Boolean(navigator.mediaDevices?.getUserMedia) &&
+      (typeof MediaRecorder !== "undefined" || canUseWavCapture()))
+  );
 }
 
 export function isVoiceRecording(): boolean {
-  return session?.recorder.state === "recording";
+  return session !== null;
 }
 
 export function getVoiceInputLevel(): number {
-  if (!session || session.recorder.state !== "recording") return 0;
+  if (!session) return 0;
   try {
     return session.getLevel();
   } catch {
@@ -147,22 +259,155 @@ export async function cancelVoiceRecording(): Promise<void> {
   const s = session;
   session = null;
   if (!s) return;
-  s.stopMeter();
-  try {
-    if (s.recorder.state === "recording") s.recorder.stop();
-  } catch {
-    /* ignore */
-  }
-  s.stream.getTracks().forEach((t) => {
+  if (s.mode === "speech") {
+    s.stopped = true;
     try {
-      t.stop();
+      s.recognition.abort();
     } catch {
       /* ignore */
     }
-  });
+    return;
+  }
+  if (s.mode === "wav") {
+    s.wav.dispose();
+  } else {
+    s.stopMeter();
+    try {
+      if (s.recorder.state === "recording") s.recorder.stop();
+    } catch {
+      /* ignore */
+    }
+  }
+  stopStream(s.stream);
+}
+
+function speechLang(locale: Locale): string {
+  return locale === "en" ? "en-US" : "ru-RU";
+}
+
+function normalizeSpeechCompare(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function appendUniqueSpeechPart(parts: string[], next: string): void {
+  const clean = next.trim();
+  if (!clean) return;
+  const normalizedNext = normalizeSpeechCompare(clean);
+  const prev = parts.at(-1);
+  if (prev && normalizeSpeechCompare(prev) === normalizedNext) return;
+  const all = normalizeSpeechCompare(parts.join(" "));
+  if (all.endsWith(normalizedNext)) return;
+  parts.push(clean);
+}
+
+function collapseRepeatedSpeechText(text: string): string {
+  const words = text
+    .replace(/\b(\d{2,5})\1\b/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  if (words.length === 0) return "";
+
+  const compact: string[] = [];
+  for (const word of words) {
+    const prev = compact.at(-1);
+    if (prev && normalizeSpeechCompare(prev) === normalizeSpeechCompare(word)) continue;
+    compact.push(word);
+  }
+
+  for (let size = Math.floor(compact.length / 2); size >= 2; size--) {
+    for (let i = 0; i + size * 2 <= compact.length; i++) {
+      const left = normalizeSpeechCompare(compact.slice(i, i + size).join(" "));
+      const right = normalizeSpeechCompare(compact.slice(i + size, i + size * 2).join(" "));
+      if (left !== right) continue;
+      compact.splice(i + size, size);
+      i = Math.max(-1, i - size);
+    }
+  }
+
+  return compact.join(" ");
+}
+
+function finalSpeechText(finalText: string, interimText: string): string {
+  const finalClean = finalText.trim();
+  const interimClean = interimText.trim();
+  if (!finalClean) return collapseRepeatedSpeechText(interimClean);
+  if (!interimClean) return collapseRepeatedSpeechText(finalClean);
+
+  const finalNorm = normalizeSpeechCompare(finalClean);
+  const interimNorm = normalizeSpeechCompare(interimClean);
+  if (finalNorm.includes(interimNorm) || interimNorm.includes(finalNorm)) {
+    return collapseRepeatedSpeechText(interimClean.length > finalClean.length ? interimClean : finalClean);
+  }
+  return collapseRepeatedSpeechText(`${finalClean} ${interimClean}`);
+}
+
+async function createSpeechSession(locale: Locale): Promise<SpeechSession | null> {
+  const Ctor = getSpeechRecognitionCtor();
+  if (!Ctor) return null;
+
+  const recognition = new Ctor();
+  const finalParts: string[] = [];
+  const speechSession: SpeechSession = {
+    mode: "speech",
+    recognition,
+    startedAt: Date.now(),
+    transcript: "",
+    interim: "",
+    stopped: false,
+    getLevel: () => 0,
+  };
+
+  recognition.lang = speechLang(locale);
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (event) => {
+    const start = Math.max(0, event.resultIndex ?? 0);
+    let interimText = "";
+    for (let i = start; i < event.results.length; i++) {
+      const result = event.results[i];
+      const text = result[0]?.transcript?.trim();
+      if (!text) continue;
+      if (result.isFinal) appendUniqueSpeechPart(finalParts, text);
+      else interimText += ` ${text}`;
+    }
+    speechSession.transcript = finalParts.join(" ");
+    speechSession.interim = interimText.trim();
+  };
+  recognition.onerror = (event) => {
+    speechSession.error =
+      event.error === "no-speech" || event.error === "audio-capture"
+        ? "no_speech"
+        : event.error === "not-allowed" || event.error === "service-not-allowed"
+          ? "mic_denied"
+          : "record_failed";
+  };
+  recognition.onend = () => {
+    speechSession.stopped = true;
+  };
+
+  try {
+    recognition.start();
+  } catch {
+    return null;
+  }
+
+  return speechSession;
 }
 
 async function openMicStream(): Promise<MediaStream> {
+  clearCachedMobileStreamTimer();
+  if (isAndroidUa() && isLiveStream(cachedMobileStream)) {
+    return cachedMobileStream;
+  }
+
   const ask = (constraints: MediaStreamConstraints) =>
     Promise.race([
       navigator.mediaDevices.getUserMedia(constraints),
@@ -203,6 +448,23 @@ function createRecorder(stream: MediaStream): MediaRecorder {
   return new MediaRecorder(stream);
 }
 
+async function createWavSession(stream: MediaStream): Promise<WavSession | null> {
+  if (!canUseWavCapture()) return null;
+  const wav = await withTimeout(
+    createWavCaptureAsync(stream),
+    CAPTURE_START_MS,
+    "wav_start_timeout",
+  ).catch(() => null);
+  if (!wav) return null;
+  return {
+    mode: "wav",
+    stream,
+    wav,
+    getLevel: wav.getLevel,
+    startedAt: Date.now(),
+  };
+}
+
 async function waitRecorderStart(recorder: MediaRecorder): Promise<void> {
   if (recorder.state === "recording") return;
 
@@ -226,7 +488,7 @@ async function waitRecorderStart(recorder: MediaRecorder): Promise<void> {
 }
 
 export async function startVoiceRecording(
-  _locale: Locale,
+  locale: Locale,
 ): Promise<{ ok: boolean; error?: VoiceErrorCode }> {
   if (!canUseVoiceInput()) return { ok: false, error: "unavailable" };
   if (!window.isSecureContext) return { ok: false, error: "insecure" };
@@ -234,15 +496,42 @@ export async function startVoiceRecording(
   await cancelVoiceRecording();
 
   try {
+    if (isAndroidUa()) {
+      const speechSession = await createSpeechSession(locale);
+      if (speechSession) {
+        session = speechSession;
+        return { ok: true };
+      }
+    }
+
     const stream = await openMicStream();
     const track = stream.getAudioTracks()[0];
     if (!track || track.readyState !== "live") {
-      stream.getTracks().forEach((t) => t.stop());
+      stopStream(stream);
       return { ok: false, error: "mic_denied" };
     }
 
+    if (isMobileUa() && !isAndroidUa() && !isIosUa()) {
+      const wavSession = await createWavSession(stream);
+      if (wavSession) {
+        session = wavSession;
+        return { ok: true };
+      }
+    }
+
     const mime = pickMimeType();
-    const recorder = createRecorder(stream);
+    let recorder: MediaRecorder;
+    try {
+      recorder = createRecorder(stream);
+    } catch {
+      const wavSession = await createWavSession(stream);
+      if (wavSession) {
+        session = wavSession;
+        return { ok: true };
+      }
+      stopStream(stream);
+      return { ok: false, error: "recorder_start_failed" };
+    }
     const chunks: BlobPart[] = [];
     recorder.ondataavailable = (e) => {
       if (e.data?.size > 0) chunks.push(e.data);
@@ -251,6 +540,7 @@ export async function startVoiceRecording(
     const meter = attachLevelMeter(stream);
 
     session = {
+      mode: "recorder",
       stream,
       recorder,
       chunks,
@@ -260,7 +550,19 @@ export async function startVoiceRecording(
       stopMeter: meter.stop,
     };
 
-    await waitRecorderStart(recorder);
+    try {
+      await waitRecorderStart(recorder);
+    } catch (e) {
+      session = null;
+      meter.stop();
+      const wavSession = await createWavSession(stream);
+      if (wavSession) {
+        session = wavSession;
+        return { ok: true };
+      }
+      stopStream(stream);
+      throw e;
+    }
     if (recorder.state !== "recording") {
       await cancelVoiceRecording();
       return { ok: false, error: "recorder_start_failed" };
@@ -313,6 +615,29 @@ async function stopRecorderBlob(s: ActiveSession): Promise<Blob> {
   });
 }
 
+async function stopSpeechSession(s: SpeechSession): Promise<string> {
+  if (s.stopped) return cleanTranscript(finalSpeechText(s.transcript, s.interim));
+
+  await new Promise<void>((resolve) => {
+    const done = () => resolve();
+    const timer = window.setTimeout(done, 1_800);
+    const prevEnd = s.recognition.onend;
+    s.recognition.onend = function onSpeechEnd(event) {
+      window.clearTimeout(timer);
+      prevEnd?.call(this, event);
+      done();
+    };
+    try {
+      s.recognition.stop();
+    } catch {
+      window.clearTimeout(timer);
+      done();
+    }
+  });
+
+  return cleanTranscript(finalSpeechText(s.transcript, s.interim));
+}
+
 export async function finalizeVoiceCapture(
   locale: Locale,
 ): Promise<{ text: string; error?: VoiceErrorCode }> {
@@ -320,31 +645,48 @@ export async function finalizeVoiceCapture(
   if (!s) return { text: "", error: "unavailable" };
 
   session = null;
-  s.stopMeter();
 
-  let blob: Blob;
-  try {
-    blob = await stopRecorderBlob(s);
-  } catch (e) {
-    s.stream.getTracks().forEach((t) => t.stop());
-    const msg = e instanceof Error ? e.message : "";
-    return { text: "", error: msg === "too_short" ? "too_short" : "record_failed" };
+  if (s.mode === "speech") {
+    const text = await stopSpeechSession(s);
+    if (text && !isGarbageTranscript(text)) return { text };
+    return { text: "", error: s.error ?? "no_speech" };
   }
 
-  s.stream.getTracks().forEach((t) => {
-    try {
-      t.stop();
-    } catch {
-      /* ignore */
-    }
-  });
-
-  const file = new File([blob], "voice.webm", { type: blob.type || "audio/webm" });
   const tgLang =
     typeof window !== "undefined"
       ? window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code
       : undefined;
   const sttLocale = detectAppLocale(tgLang);
+
+  let blob: Blob;
+  if (s.mode === "wav") {
+    try {
+      blob = await withTimeout(s.wav.stop(), CAPTURE_STOP_MS, "wav_stop_timeout");
+    } catch {
+      releaseMobileStreamAfterIdle(s.stream);
+      return { text: "", error: "record_failed" };
+    }
+    if (blob.size < minWavBytes()) {
+      releaseMobileStreamAfterIdle(s.stream);
+      return { text: "", error: "too_short" };
+    }
+  } else {
+    s.stopMeter();
+    try {
+      blob = await withTimeout(stopRecorderBlob(s), CAPTURE_STOP_MS, "recorder_stop_timeout");
+    } catch (e) {
+      releaseMobileStreamAfterIdle(s.stream);
+      const msg = e instanceof Error ? e.message : "";
+      return { text: "", error: msg === "too_short" ? "too_short" : "record_failed" };
+    }
+  }
+
+  releaseMobileStreamAfterIdle(s.stream);
+
+  const isWav = s.mode === "wav" || blob.type.includes("wav");
+  const file = new File([blob], isWav ? "voice.wav" : "voice.webm", {
+    type: blob.type || (isWav ? "audio/wav" : "audio/webm"),
+  });
   const server = await transcribeUserAudioFile(file, sttLocale);
   if (server.text) return server;
   return { text: "", error: server.error ?? "stt_failed" };

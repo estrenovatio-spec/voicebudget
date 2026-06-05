@@ -1,3 +1,4 @@
+import { DEFAULT_DIAGNOSTICS_FORM_URL } from "@/data/diagnostics-form-default";
 import { DEFAULT_EDUCATION_VIDEOS } from "@/data/education-videos-default";
 import { parseEducationVideosJson } from "@/lib/education-videos-parse";
 
@@ -15,7 +16,8 @@ export function getEducationVideos(): EducationVideoLink[] {
 export function getDiagnosticsFormUrl(): string | null {
   const url =
     process.env.NEXT_PUBLIC_DIAGNOSTICS_FORM_URL?.trim() ||
-    process.env.NEXT_PUBLIC_DIAGNOSTICS_FORM_URL_PREVIEW?.trim();
+    process.env.NEXT_PUBLIC_DIAGNOSTICS_FORM_URL_PREVIEW?.trim() ||
+    DEFAULT_DIAGNOSTICS_FORM_URL;
   if (!url?.startsWith("http")) return null;
   return url;
 }

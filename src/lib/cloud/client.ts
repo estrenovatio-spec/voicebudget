@@ -368,6 +368,34 @@ export async function apiDeleteRecurring(token: string, id: string) {
   }
 }
 
+export async function apiEducationAccess(token: string) {
+  const res = await apiFetch("/api/payments/education", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return parseJson<{
+    ok: boolean;
+    access: import("@/lib/payments/education").EducationAccessPublic;
+  }>(res);
+}
+
+export async function apiCreateEducationCheckout(token: string) {
+  const res = await apiFetch("/api/payments/education", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+  return parseJson<{
+    ok: boolean;
+    confirmationUrl?: string;
+    paymentId?: string;
+    amountDueRub?: number;
+    error?: string;
+  }>(res);
+}
+
 export async function apiCreateYookassaCheckout(token: string, useReferralWallet = false) {
   const res = await apiFetch("/api/payments/yookassa/create", {
     method: "POST",
@@ -436,4 +464,39 @@ export async function apiRedeemPromoCode(token: string, code: string) {
     label: string | null;
     subscription: SubscriptionPublic;
   }>(res);
+}
+
+export async function apiPullBusiness(token: string) {
+  const res = await apiFetch("/api/business/sync", {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (res.status === 503) return { ok: false as const, business: null };
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false as const, error: data.error, business: null };
+  }
+  return parseJson<{ ok: boolean; business: import("@/lib/business/types").BusinessCloudPayload | null }>(
+    res,
+  );
+}
+
+export async function apiPushBusiness(
+  token: string,
+  business: import("@/lib/business/types").BusinessCloudPayload,
+) {
+  const res = await apiFetch("/api/business/sync", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(business),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false as const, error: data.error };
+  }
+  return parseJson<{ ok: boolean }>(res);
 }

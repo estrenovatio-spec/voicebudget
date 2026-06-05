@@ -12,9 +12,18 @@ export type BusinessTransaction = {
   kind: BusinessTxKind;
   note: string;
   date: string;
+  /** Связанная операция во вкладке «Семья» (перевод себе) */
+  linkedFamilyTxId?: string;
 };
 
 export type BusinessAssetType = "investment" | "rental" | "freelance";
+
+/** Журнал ЖКХ по месяцам (YYYY-MM) для недвижимости — синхронизируется в облаке в assets. */
+export type HousingUtilitiesEntry = {
+  month: string;
+  amount: number;
+  updatedAt?: string;
+};
 
 export type BusinessAsset = {
   id: string;
@@ -22,10 +31,28 @@ export type BusinessAsset = {
   type: BusinessAssetType;
   name: string;
   capitalValue: number;
+  /** Плановый пассив в месяц (справочник, не сумма перевода) */
   monthlyNet: number;
+  /** Журнал ЖКХ по месяцам (недвижимость). */
+  housingUtilitiesLog?: HousingUtilitiesEntry[];
+  /** @deprecated миграция в housingUtilitiesLog */
+  housingUtilitiesRub?: number;
+  /** @deprecated миграция в housingUtilitiesLog */
+  housingUtilitiesMonth?: string;
   /** Для фриланса: часов в месяц — чтобы посчитать ₽/ч */
   hoursPerMonth?: number;
 };
+
+/** Зачисление пассива с проекта в семейный бюджет (история по проекту). */
+export type BusinessPassiveReceipt = {
+  id: string;
+  assetId: string;
+  amount: number;
+  date: string;
+  linkedFamilyTxId: string;
+};
+
+export type BusinessTaxPeriod = "month" | "quarter" | "halfyear" | "year";
 
 export type BusinessUnit = {
   id: string;
@@ -34,6 +61,10 @@ export type BusinessUnit = {
   createdAt: string;
   /** Целевая стоимость часа, ₽ */
   hourlyRate?: number;
+  /** Ставка налога для этого бизнеса, % */
+  taxRatePct?: number;
+  /** За какой период считать резерв налога */
+  taxPeriod?: BusinessTaxPeriod;
 };
 
 export type BusinessUnitPeriodStats = {
@@ -90,6 +121,7 @@ export type BusinessCloudPayload = {
   units: BusinessUnit[];
   transactions: BusinessTransaction[];
   assets: BusinessAsset[];
+  passiveReceipts?: BusinessPassiveReceipt[];
   taxRatePct?: number;
 };
 

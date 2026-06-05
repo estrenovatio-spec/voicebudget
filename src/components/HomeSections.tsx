@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { PlanningPanel } from "@/components/PlanningPanel";
+import { PersonalAiCoachCard } from "@/components/PersonalAiCoachCard";
 import { TipsPanel } from "@/components/TipsPanel";
 
 const FinancialChart = dynamic(
@@ -18,6 +19,7 @@ export function HomeSections() {
   return (
     <div className="space-y-2">
       <PlanningPanel />
+      <PersonalAiCoachCard />
       <FinancialChart />
       <TipsPanel />
     </div>

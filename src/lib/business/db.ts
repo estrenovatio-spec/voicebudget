@@ -3,9 +3,38 @@ import { defaultBusinessUnit } from "@/lib/business/types";
 import { prisma } from "@/lib/db";
 import { isMissingDbObject } from "@/lib/household/db-capabilities";
 
+let ledgerTableExistsCache: { value: boolean; checkedAt: number } | null = null;
+const LEDGER_TABLE_CACHE_MS = 60_000;
+
+async function userBusinessLedgerTableExists(): Promise<boolean> {
+  if (
+    ledgerTableExistsCache &&
+    Date.now() - ledgerTableExistsCache.checkedAt < LEDGER_TABLE_CACHE_MS
+  ) {
+    return ledgerTableExistsCache.value;
+  }
+
+  try {
+    const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'UserBusinessLedger'
+      ) AS "exists"
+    `;
+    const value = Boolean(rows[0]?.exists);
+    ledgerTableExistsCache = { value, checkedAt: Date.now() };
+    return value;
+  } catch {
+    ledgerTableExistsCache = { value: false, checkedAt: Date.now() };
+    return false;
+  }
+}
+
 function emptyPayload(): BusinessCloudPayload {
   const unit = defaultBusinessUnit();
-  return { version: 2, units: [unit], transactions: [], assets: [] };
+  return { version: 2, units: [unit], transactions: [], assets: [], passiveReceipts: [] };
 }
 
 function normalizePayload(raw: unknown): BusinessCloudPayload {
@@ -27,14 +56,18 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
         ...(a as object),
         unitId: (a as { unitId?: string }).unitId ?? unit.id,
       })) as BusinessCloudPayload["assets"],
+      passiveReceipts: [],
       taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
     };
   }
+  const passiveReceipts = Array.isArray(o.passiveReceipts) ? o.passiveReceipts : [];
+
   return {
     version: 2,
     units: units as BusinessCloudPayload["units"],
     transactions: transactions as BusinessCloudPayload["transactions"],
     assets: assets as BusinessCloudPayload["assets"],
+    passiveReceipts: passiveReceipts as BusinessCloudPayload["passiveReceipts"],
     taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
   };
 }
@@ -42,6 +75,8 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
 export async function fetchUserBusinessPayload(
   userId: string,
 ): Promise<BusinessCloudPayload | null> {
+  if (!(await userBusinessLedgerTableExists())) return null;
+
   try {
     const row = await prisma.userBusinessLedger.findUnique({ where: { userId } });
     if (!row) return null;
@@ -63,7 +98,9 @@ export async function fetchUserBusinessPayload(
 export async function saveUserBusinessPayload(
   userId: string,
   payload: BusinessCloudPayload,
-): Promise<void> {
+): Promise<boolean> {
+  if (!(await userBusinessLedgerTableExists())) return false;
+
   const data = normalizePayload(payload);
   try {
     await prisma.userBusinessLedger.upsert({
@@ -71,14 +108,11 @@ export async function saveUserBusinessPayload(
       create: { userId, payload: data },
       update: { payload: data },
     });
+    return true;
   } catch (err) {
     if (!isMissingDbObject(err)) throw err;
-    await prisma.$executeRaw`
-      INSERT INTO "UserBusinessLedger" ("userId", payload, "updatedAt")
-      VALUES (${userId}, ${JSON.stringify(data)}::jsonb, NOW())
-      ON CONFLICT ("userId") DO UPDATE
-      SET payload = EXCLUDED.payload, "updatedAt" = NOW()
-    `;
+    ledgerTableExistsCache = { value: false, checkedAt: Date.now() };
+    return false;
   }
 }
 
@@ -95,17 +129,26 @@ export function mergeBusinessPayload(
   for (const t of local.transactions) txMap.set(t.id, t);
 
   const assetMap = new Map<string, (typeof local.assets)[0]>();
-  for (const a of remote.assets) assetMap.set(a.id, a);
-  for (const a of local.assets) assetMap.set(a.id, a);
+  for (const a of [...remote.assets, ...local.assets]) {
+    if (a && typeof a.id === "string") assetMap.set(a.id, a);
+  }
 
   const units = Array.from(unitMap.values());
   if (units.length === 0) units.push(defaultBusinessUnit());
+
+  const receiptMap = new Map<string, NonNullable<BusinessCloudPayload["passiveReceipts"]>[number]>();
+  for (const r of [...(remote.passiveReceipts ?? []), ...(local.passiveReceipts ?? [])]) {
+    if (r && typeof r.id === "string") receiptMap.set(r.id, r);
+  }
 
   return {
     version: 2,
     units,
     transactions: Array.from(txMap.values()).sort((a, b) => b.date.localeCompare(a.date)),
     assets: Array.from(assetMap.values()),
+    passiveReceipts: Array.from(receiptMap.values()).sort((a, b) =>
+      b.date.localeCompare(a.date),
+    ),
     taxRatePct: local.taxRatePct ?? remote.taxRatePct ?? 0,
   };
 }

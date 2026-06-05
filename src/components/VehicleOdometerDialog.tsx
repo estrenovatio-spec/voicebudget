@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,7 +40,7 @@ export function VehicleOdometerDialog() {
     setVehicleId(pending.vehicleId);
     const v = vehicles.find((x) => x.id === pending.vehicleId);
     setKm(v?.currentOdometerKm != null ? String(v.currentOdometerKm) : "");
-  }, [open, pending?.transactionId, pending?.vehicleId, vehicles]);
+  }, [open, pending, vehicles]);
 
   const title =
     pending?.kind === "service"
@@ -52,6 +53,14 @@ export function VehicleOdometerDialog() {
     if (!Number.isFinite(n) || n < 0) return;
     submitOdometerForTransaction(pending.transactionId, vehicleId, n);
   };
+
+  const handleTelegramBack = useCallback(() => {
+    if (!open) return false;
+    clearPendingOdometer();
+    return true;
+  }, [open, clearPendingOdometer]);
+
+  useTelegramBackHandler(handleTelegramBack, open);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && clearPendingOdometer()}>

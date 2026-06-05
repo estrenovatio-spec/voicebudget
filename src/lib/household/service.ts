@@ -209,6 +209,13 @@ export async function upsertTelegramUser(user: TelegramWebAppUser) {
       firstName: user.first_name ?? null,
       username: user.username ?? null,
     },
+    select: {
+      id: true,
+      telegramId: true,
+      firstName: true,
+      username: true,
+      googleSheetsOpenLogged: true,
+    },
   });
 }
 

@@ -21,7 +21,7 @@ import {
 import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
-import { t } from "@/lib/i18n";
+import { formatDaysLabel, t } from "@/lib/i18n";
 import {
   MONTHLY_CHAT_MAX_USER_MESSAGES,
   buildChatSummaryForQuestion,
@@ -345,7 +345,9 @@ export function MonthlyFinanceDialog() {
             </p>
             {nextInDays !== null && isFullReport && (
               <p className="text-xs text-muted-foreground">
-                {t(locale, "monthlyNextIn", { days: String(nextInDays) })}
+                {t(locale, "monthlyNextIn", {
+                  daysLabel: formatDaysLabel(nextInDays, locale),
+                })}
               </p>
             )}
           </div>
@@ -469,7 +471,9 @@ export function MonthlyFinanceDialog() {
 
             {(chatLimitHit || userMessageCount >= MONTHLY_CHAT_MAX_USER_MESSAGES) && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                {t(locale, "monthlyChatLimit", { days: String(nextInDays ?? 30) })}
+                {t(locale, "monthlyChatLimit", {
+                  daysLabel: formatDaysLabel(nextInDays ?? 30, locale),
+                })}
               </p>
             )}
           </div>

@@ -2,10 +2,9 @@ export type AppTabId = "family" | "business" | "more";
 
 const TAB_STORAGE_KEY = "vb_app_tab_v1";
 
-/** Preview-only: auto on Vercel preview builds, or NEXT_PUBLIC_APP_BOTTOM_NAV=true. */
+/** Семья + Бизнес + Ещё. Отключить: NEXT_PUBLIC_APP_BOTTOM_NAV=false на Vercel. */
 export function bottomNavEnabled(): boolean {
-  if (process.env.NEXT_PUBLIC_APP_BOTTOM_NAV === "true") return true;
-  return process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
+  return process.env.NEXT_PUBLIC_APP_BOTTOM_NAV !== "false";
 }
 
 export function readStoredAppTab(): AppTabId {

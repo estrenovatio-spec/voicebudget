@@ -37,6 +37,8 @@ export interface Transaction {
   vehicleId?: string | null;
   /** Связка пары переводов me ↔ partner */
   transferPairId?: string | null;
+  /** Связанная операция в бизнес-контуре (доход из бизнеса) */
+  businessTxId?: string | null;
 }
 export type Locale = "ru" | "en";
 
@@ -56,6 +58,7 @@ export interface ParsedTransaction {
   vehicleId?: string | null;
   transferPairId?: string | null;
   createdBy?: string | null;
+  businessTxId?: string | null;
 }
 
 /** @deprecated persisted legacy shape */

@@ -5,6 +5,8 @@ import { isDatabaseConfigured, prisma } from "@/lib/db";
 import { mapHouseholdApiError } from "@/lib/household/api-errors";
 import { getUserMembership } from "@/lib/household/service";
 import { logHouseholdMemberToGoogleSheet, type HouseholdMemberLogAction } from "@/lib/google-sheets";
+import { logServiceInquiryToGoogleSheet } from "@/lib/google-sheets-service-inquiry";
+import { SERVICE_INQUIRY_IDS } from "@/lib/services/inquiry-types";
 import type { HouseholdPublic } from "@/lib/household/types";
 import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { isAdminAuthorized, requireAdminSecrets } from "@/lib/admin-auth";
@@ -32,11 +34,14 @@ function toPublicFromRow(
 }
 
 const bodySchema = z.object({
+  kind: z.enum(["member", "service"]).optional(),
   action: z.enum(["open", "create", "join"]).optional(),
+  serviceId: z.enum(SERVICE_INQUIRY_IDS).optional(),
   telegramUserId: z.union([z.string(), z.number()]).optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   username: z.string().optional(),
+  phone: z.string().optional(),
 });
 
 /** POST Authorization: Bearer <HOUSEHOLD_SESSION_SECRET> — тест или догоняющая запись в Google Таблицу */
@@ -75,7 +80,10 @@ export async function POST(req: NextRequest) {
 
     if (body.telegramUserId != null) {
       const telegramId = BigInt(String(body.telegramUserId).trim());
-      const user = await prisma.user.findUnique({ where: { telegramId } });
+      const user = await prisma.user.findUnique({
+        where: { telegramId },
+        select: { id: true, telegramId: true, firstName: true, username: true },
+      });
       if (!user) {
         return NextResponse.json({ error: "user_not_found" }, { status: 404 });
       }
@@ -101,10 +109,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (body.kind === "service") {
+      const serviceId = body.serviceId ?? "osago";
+      await logServiceInquiryToGoogleSheet({
+        serviceId,
+        fullName: `${tgUser.first_name ?? "Тест"} ${body.lastName ?? "Sheets"}`.trim(),
+        phone: body.phone?.trim() || "+79990000000",
+        tgUser,
+      });
+      return NextResponse.json({
+        ok: true,
+        kind: "service",
+        serviceId,
+        telegramUserId: tgUser.id,
+      });
+    }
+
     await logHouseholdMemberToGoogleSheet({ action, tgUser, household });
 
     return NextResponse.json({
       ok: true,
+      kind: "member",
       action,
       telegramUserId: tgUser.id,
       householdId: household?.id ?? null,

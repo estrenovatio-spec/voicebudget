@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
+import { PreviewHeaderNav } from "@/components/app/PreviewHeaderNav";
 import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
 import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { PartnerTransferDialog } from "@/components/PartnerTransferDialog";
@@ -20,6 +21,8 @@ import {
   partnerTabLabel,
 } from "@/lib/owner-labels";
 import { OPEN_SETTINGS_EVENT } from "@/lib/billing/trial-banner";
+import { bottomNavEnabled, type AppTabId } from "@/lib/app-bottom-nav";
+import { formatMoney } from "@/lib/format-money";
 import { BALANCE_AMOUNTS_HIDDEN_KEY } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
@@ -101,7 +104,13 @@ function writeAmountsHidden(hidden: boolean): void {
   }
 }
 
-export function TMAHeader({ hideBusinessButton = false }: { hideBusinessButton?: boolean }) {
+export function TMAHeader({
+  hideBusinessButton = false,
+  previewNav,
+}: {
+  hideBusinessButton?: boolean;
+  previewNav?: { active: AppTabId; onChange: (tab: AppTabId) => void };
+}) {
   const locale = useStore((s) => s.locale);
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
@@ -152,6 +161,7 @@ export function TMAHeader({ hideBusinessButton = false }: { hideBusinessButton?:
     ? balanceNameLabelWithColon(balanceNameLabelLines(partner))
     : [];
   const partnerLabel = partner ? `${partner}:` : "";
+  const showSettingsGear = !bottomNavEnabled();
 
   return (
     <header className="space-y-2 pb-2 pt-1">
@@ -165,16 +175,18 @@ export function TMAHeader({ hideBusinessButton = false }: { hideBusinessButton?:
           >
             <div className="flex w-full flex-col gap-y-0.5">
               <BalanceRow label={balanceWord} onHideToggle={requestHideToggle}>
-                <BalanceQuickEdit
-                  owner="all"
-                  displayed={balances.all}
-                  partnerDisplayed={hasPartner ? balances.partner : 0}
-                  label={t(locale, "balance")}
-                  className={balanceAmountClass}
-                  amountsHidden={amountsHidden}
-                  onEditDialogOpenChange={handleBalanceEditDialogOpenChange}
-                  onBeforeEditDialogClose={armBalanceToggleSuppress}
-                />
+                {amountsHidden ? (
+                  <span
+                    className={`select-none ${balanceAmountClass}`}
+                    aria-hidden
+                  >
+                    {t(locale, "balanceAmountsHidden")} {t(locale, "currency")}
+                  </span>
+                ) : (
+                  <span className={balanceAmountClass}>
+                    {formatMoney(balances.all, locale)} {t(locale, "currency")}
+                  </span>
+                )}
               </BalanceRow>
 
               {hasPartner ? (
@@ -224,17 +236,23 @@ export function TMAHeader({ hideBusinessButton = false }: { hideBusinessButton?:
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex items-center gap-1.5">
-            {hideBusinessButton ? null : <BusinessModeStub />}
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              aria-label={t(locale, "settings")}
-              onClick={() => requestOpenSettings()}
-            >
-              <Settings className="h-4 w-4" aria-hidden />
-            </Button>
+            {previewNav ? (
+              <PreviewHeaderNav active={previewNav.active} onChange={previewNav.onChange} />
+            ) : hideBusinessButton ? null : (
+              <BusinessModeStub />
+            )}
+            {showSettingsGear ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                aria-label={t(locale, "settings")}
+                onClick={() => requestOpenSettings()}
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+              </Button>
+            ) : null}
           </div>
           <CloudHeaderStatus />
           <LiveRatesBar />

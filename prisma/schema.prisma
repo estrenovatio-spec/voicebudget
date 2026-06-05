@@ -15,6 +15,7 @@ model User {
   username        String?
   trialGrantedAt              DateTime?
   subscriptionReminderSentAt  DateTime?
+  educationPaidAt             DateTime?
   googleSheetsOpenLogged      Boolean   @default(false)
   referralCode                String?   @unique
   referredByUserId            String?
@@ -31,6 +32,7 @@ model User {
   referralReceived     Referral?  @relation("Referred")
   referralActivityDays ReferralActivityDay[]
   aiAnalysisReports    AiAnalysisReport[]
+  businessLedger       UserBusinessLedger?
 }
 
 enum AiAnalysisKind {
@@ -326,4 +328,13 @@ model RecurringTransaction {
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
+}
+
+/** Личные бизнес-данные пользователя (JSON: units, transactions, assets). */
+model UserBusinessLedger {
+  userId    String   @id
+  payload   Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

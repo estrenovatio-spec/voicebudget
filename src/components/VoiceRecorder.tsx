@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Loader2, Mic, Square } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { hasPartnerBudget } from "@/lib/owner-labels";
@@ -15,7 +15,14 @@ import { t, ruPlural, enPlural } from "@/lib/i18n";
 import { inferParseLocale } from "@/lib/locale-infer";
 import { isCloudSyncActive } from "@/lib/cloud/push";
 import { mergeTransactionComment } from "@/lib/transaction-note";
-import { parseVoiceTranscripts } from "@/lib/voice";
+import {
+  canUseVoiceInput,
+  finalizeVoiceCapture,
+  mapVoiceError,
+  parseVoiceTranscripts,
+  startVoiceRecording,
+} from "@/lib/voice";
+import { enrichCategoriesWithAiMemory } from "@/lib/ai-memory";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
@@ -33,9 +40,15 @@ export function VoiceRecorder() {
   const [text, setText] = useState("");
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [voiceAvailable, setVoiceAvailable] = useState(false);
 
-  const onAdd = useCallback(async () => {
-    const value = text.trim();
+  useEffect(() => {
+    setVoiceAvailable(canUseVoiceInput());
+  }, []);
+
+  const processValue = useCallback(async (rawValue: string) => {
+    const value = rawValue.trim();
     if (!value || busy) return;
 
     setBusy(true);
@@ -72,7 +85,8 @@ export function VoiceRecorder() {
       }
 
       const parseLocale = inferParseLocale(value, locale);
-      const parsed = await parseVoiceTranscripts(value, parseLocale, categories, {
+      const personalizedCategories = enrichCategoriesWithAiMemory(categories);
+      const parsed = await parseVoiceTranscripts(value, parseLocale, personalizedCategories, {
         partnerName,
         partnerKeywords,
         myName: userName,
@@ -158,22 +172,75 @@ export function VoiceRecorder() {
     partnerKeywords,
     savingsGoals,
     comment,
-    text,
     toast,
     userName,
   ]);
 
+  const onAdd = useCallback(async () => {
+    await processValue(text);
+  }, [processValue, text]);
+
+  const onVoiceClick = useCallback(async () => {
+    if (busy) return;
+
+    if (!recording) {
+      const started = await startVoiceRecording(locale);
+      if (!started.ok) {
+        toast(t(locale, mapVoiceError(started.error)), "error");
+        return;
+      }
+      setRecording(true);
+      toast(t(locale, "voiceMicLive"), "success");
+      return;
+    }
+
+    setRecording(false);
+    setBusy(true);
+    let result: Awaited<ReturnType<typeof finalizeVoiceCapture>>;
+    try {
+      result = await finalizeVoiceCapture(locale);
+    } finally {
+      setBusy(false);
+    }
+    if (!result.text) {
+      toast(t(locale, mapVoiceError(result.error)), "error");
+      return;
+    }
+    setText(result.text);
+    await processValue(result.text);
+  }, [busy, locale, processValue, recording, toast]);
+
   return (
     <section className="flex flex-col items-center py-2" data-onboarding="voice">
       <div className="w-full max-w-md space-y-1.5">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t(locale, "fallbackPlaceholder")}
-          rows={2}
-          disabled={busy}
-          className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        />
+        <div className="flex items-stretch gap-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={t(locale, "fallbackPlaceholder")}
+            rows={2}
+            disabled={busy}
+            className="flex min-h-[64px] min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          />
+          {voiceAvailable ? (
+            <Button
+              type="button"
+              variant={recording ? "destructive" : "outline"}
+              className="min-h-[64px] w-12 shrink-0 px-0"
+              disabled={busy && !recording}
+              onClick={() => void onVoiceClick()}
+              aria-label={recording ? t(locale, "voiceStopAria") : t(locale, "voiceMicLive")}
+            >
+              {busy && !recording ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : recording ? (
+                <Square className="h-4 w-4" aria-hidden />
+              ) : (
+                <Mic className="h-4 w-4" aria-hidden />
+              )}
+            </Button>
+          ) : null}
+        </div>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}

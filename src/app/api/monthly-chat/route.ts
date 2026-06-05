@@ -8,6 +8,7 @@ import {
   reportPeriodDays,
   type MonthlySummary,
 } from "@/lib/monthly-analysis";
+import type { AiCoachingContext } from "@/lib/ai-coaching-context";
 import { createLlmChatCompletion, getLlmClient, isLlmConfigured } from "@/lib/llm";
 import type { Locale } from "@/types";
 
@@ -39,12 +40,20 @@ const messageSchema = z.object({
   content: z.string().min(1).max(2000),
 });
 
+const coachingSchema = z
+  .object({
+    savingsGoals: z.array(z.unknown()),
+    categoryBudgets: z.array(z.unknown()),
+  })
+  .passthrough();
+
 const bodySchema = z.object({
   locale: z.enum(["ru", "en"]),
   summary: summarySchema,
   reportTips: z.array(z.string().min(1)).min(1).max(10),
   messages: z.array(messageSchema).max(MONTHLY_CHAT_MAX_USER_MESSAGES * 2),
   question: z.string().min(1).max(1000),
+  coaching: coachingSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -55,7 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { locale, summary, reportTips, messages, question } = parsed.data;
+    const { locale, summary, reportTips, messages, question, coaching } = parsed.data;
     const monthly = summary as MonthlySummary;
 
     if (monthly.monthTransactionCount < MONTHLY_MIN_TRANSACTIONS) {
@@ -87,6 +96,7 @@ export async function POST(request: NextRequest) {
       reportTips,
       locale as Locale,
       extendedPeriod,
+      coaching as AiCoachingContext | undefined,
     );
     const history = messages.map((m) => ({
       role: m.role as "user" | "assistant",

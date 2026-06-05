@@ -10,6 +10,7 @@ import {
   getReferralWalletAvailableRub,
 } from "@/lib/referrals/wallet";
 import { referralWalletEnabled } from "@/lib/referrals/wallet-config";
+import { grantEducationAccess } from "@/lib/payments/education";
 import { activateSubscription } from "@/lib/payments/subscription";
 import type { YookassaNotification, YookassaPaymentObject } from "@/lib/payments/types";
 
@@ -50,6 +51,47 @@ export type YookassaCheckoutResult = {
   amountDueRub?: number;
 };
 
+export async function createRedirectYookassaPayment(opts: {
+  userId: string;
+  amountRub: number;
+  description: string;
+  returnUrl: string;
+  metadata: Record<string, string>;
+}): Promise<YookassaCheckoutResult> {
+  const chargeRub = Math.max(1, Math.round(opts.amountRub * 100) / 100);
+
+  const payment = await yookassaFetch<YookassaPaymentObject>("/payments", {
+    method: "POST",
+    idempotenceKey: randomUUID(),
+    body: JSON.stringify({
+      amount: { value: chargeRub.toFixed(2), currency: "RUB" },
+      capture: true,
+      confirmation: { type: "redirect", return_url: opts.returnUrl },
+      description: opts.description,
+      metadata: opts.metadata,
+    }),
+  });
+
+  await prisma.payment.create({
+    data: {
+      userId: opts.userId,
+      yookassaPaymentId: payment.id,
+      amount: chargeRub,
+      currency: "RUB",
+      status: payment.status,
+    },
+  });
+
+  const confirmationUrl = payment.confirmation?.confirmation_url;
+  if (!confirmationUrl) throw new Error("yookassa_no_confirmation_url");
+
+  return {
+    paymentId: payment.id,
+    confirmationUrl,
+    amountDueRub: chargeRub,
+  };
+}
+
 export async function createYookassaCheckout(
   userId: string,
   opts?: { useReferralWallet?: boolean },
@@ -72,39 +114,20 @@ export async function createYookassaCheckout(
   }
 
   const chargeRub = Math.max(1, Math.round((amount - walletApply) * 100) / 100);
-  const metadata: Record<string, string> = { userId };
+  const metadata: Record<string, string> = { userId, product: "subscription" };
   if (walletApply > 0) metadata.referralWalletRub = walletApply.toFixed(2);
 
-  const payment = await yookassaFetch<YookassaPaymentObject>("/payments", {
-    method: "POST",
-    idempotenceKey: randomUUID(),
-    body: JSON.stringify({
-      amount: { value: chargeRub.toFixed(2), currency: "RUB" },
-      capture: true,
-      confirmation: { type: "redirect", return_url: returnUrl },
-      description: `VoiceBudget — облако и бот, ${process.env.YOOKASSA_SUBSCRIPTION_DAYS ?? 30} дн.`,
-      metadata,
-    }),
+  const result = await createRedirectYookassaPayment({
+    userId,
+    amountRub: chargeRub,
+    description: `VoiceBudget — облако и бот, ${process.env.YOOKASSA_SUBSCRIPTION_DAYS ?? 30} дн.`,
+    returnUrl,
+    metadata,
   });
-
-  await prisma.payment.create({
-    data: {
-      userId,
-      yookassaPaymentId: payment.id,
-      amount: chargeRub,
-      currency: "RUB",
-      status: payment.status,
-    },
-  });
-
-  const confirmationUrl = payment.confirmation?.confirmation_url;
-  if (!confirmationUrl) throw new Error("yookassa_no_confirmation_url");
 
   return {
-    paymentId: payment.id,
-    confirmationUrl,
+    ...result,
     walletUsedRub: walletApply > 0 ? walletApply : undefined,
-    amountDueRub: chargeRub,
   };
 }
 
@@ -147,6 +170,11 @@ export async function handleYookassaNotification(body: YookassaNotification): Pr
     });
 
     if (!existing || existing.status !== "succeeded") {
+      const product = verified.metadata?.product ?? "subscription";
+      if (product === "education") {
+        await grantEducationAccess(userId);
+        return;
+      }
       const walletMeta = verified.metadata?.referralWalletRub;
       const walletRub = walletMeta ? Number.parseFloat(String(walletMeta)) : 0;
       if (walletRub > 0) {

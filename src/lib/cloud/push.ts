@@ -117,6 +117,9 @@ export async function cloudPushTransactionDelete(id: string): Promise<void> {
   if (!t) return;
   try {
     await apiDeleteTransaction(t, id);
+    useCloudStore.getState().removeFromLastSyncedRemoteTxIds(id);
+    useCloudStore.getState().setLastWriteError(null);
+    await pullCloudAfterWrite();
   } catch {
     /* ignore */
   }

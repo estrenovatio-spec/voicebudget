@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,10 +16,9 @@ import { useComputedBalance, useStore } from "@/store/useStore";
 import type { BudgetOwner } from "@/types";
 
 type BalanceQuickEditProps = {
-  owner: BudgetOwner | "all";
+  owner: BudgetOwner;
   displayed: number;
   label: string;
-  partnerDisplayed?: number;
   className?: string;
   amountsHidden?: boolean;
   /** Сообщает родителю об открытии/закрытии — чтобы не переключать скрытие баланса кликом «сквозь» диалог */
@@ -35,7 +35,6 @@ export function BalanceQuickEdit({
   owner,
   displayed,
   label,
-  partnerDisplayed = 0,
   className = "",
   amountsHidden = false,
   onEditDialogOpenChange,
@@ -69,21 +68,22 @@ export function BalanceQuickEdit({
     const value = Math.round(n);
     if (owner === "me") {
       setActualCash("me", value);
-    } else if (owner === "partner") {
-      setActualCash("partner", value);
     } else {
-      // общий баланс → подгоняем «я», партнёр не трогаем
-      setActualCash("me", value - partnerDisplayed);
+      setActualCash("partner", value);
     }
     closeDialog();
   };
 
-  const computedHint =
-    owner === "me"
-      ? computedMe
-      : owner === "partner"
-        ? computedPartner
-        : computedMe + computedPartner;
+  const computedHint = owner === "me" ? computedMe : computedPartner;
+
+  const handleTelegramBack = useCallback(() => {
+    if (!open) return false;
+    setOpen(false);
+    onEditDialogOpenChange?.(false);
+    return true;
+  }, [open, onEditDialogOpenChange]);
+
+  useTelegramBackHandler(handleTelegramBack, open);
 
   if (amountsHidden) {
     return (

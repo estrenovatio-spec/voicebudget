@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await prisma.user.findUnique({
       where: { telegramId: BigInt(allowed) },
+      select: { id: true },
     });
     if (!user) {
       return NextResponse.json({ error: "user_not_found" }, { status: 404 });

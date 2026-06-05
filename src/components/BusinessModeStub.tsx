@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Briefcase } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +19,14 @@ import { useStore } from "@/store/useStore";
 export function BusinessModeStub() {
   const locale = useStore((s) => s.locale);
   const [open, setOpen] = useState(false);
+
+  const handleTelegramBack = useCallback(() => {
+    if (!open) return false;
+    setOpen(false);
+    return true;
+  }, [open]);
+
+  useTelegramBackHandler(handleTelegramBack, open);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

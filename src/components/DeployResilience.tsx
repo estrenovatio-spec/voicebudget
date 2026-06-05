@@ -15,7 +15,9 @@ export function DeployResilience() {
         typeof reason === "string" ? reason : (reason?.message ?? String(reason ?? ""));
 
       if (
-        !/Failed to fetch dynamically imported module|Loading chunk [\d]+ failed/i.test(message)
+        !/Failed to fetch dynamically imported module|Loading chunk|ChunkLoadError|Importing a module script failed/i.test(
+          message,
+        )
       ) {
         return;
       }

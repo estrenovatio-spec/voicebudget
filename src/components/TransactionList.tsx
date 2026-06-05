@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, List, Pencil } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { TransactionEditDialog } from "@/components/TransactionEditDialog";
 import { Button } from "@/components/ui/button";
@@ -293,6 +294,16 @@ export function TransactionList() {
     setHidden(true);
     writeHidden(true);
   }, []);
+
+  const handleTelegramBack = useCallback(() => {
+    if (editing) {
+      setEditing(null);
+      return true;
+    }
+    return false;
+  }, [editing]);
+
+  useTelegramBackHandler(handleTelegramBack, editing !== null);
 
   const rowProps = {
     locale,

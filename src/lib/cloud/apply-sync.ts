@@ -59,6 +59,11 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   }
 
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
+  for (const tx of local.transactions) {
+    if (previouslySynced.has(tx.id) && !remoteTxIds.has(tx.id)) {
+      useCloudStore.getState().markTransactionDeleted(tx.id);
+    }
+  }
   const prunedDeletedTx = (cloud.deletedTransactionIds ?? []).filter((id) =>
     remoteTxIds.has(id),
   );

@@ -120,54 +120,6 @@ function AccessBannerInner({
             {date ? ` · ${t(locale, "accessBannerUntil", { date })}` : null}
           </p>
         ) : null}
-        {summary.referralDaysForFriends > 0 ? (
-          <p className="mt-1 text-[11px] font-medium opacity-95">
-            {t(locale, "accessBannerFriendBonus", {
-              days: String(summary.referrerBonusPerFriend),
-              count: String(summary.friendsInvited),
-            })}
-          </p>
-        ) : null}
-        {summary.referralDaysFromInvite > 0 ? (
-          <p className="mt-0.5 text-[11px] opacity-95">
-            {t(locale, "accessBannerJoinedBonus", {
-              days: String(summary.referralDaysFromInvite),
-            })}
-          </p>
-        ) : null}
-        {summary.referralPending ? (
-          <p className="mt-1 text-[11px] font-medium text-amber-950 dark:text-amber-100">
-            {"waitsForSubscriptionPayment" in summary.referralPending &&
-            summary.referralPending.waitsForSubscriptionPayment
-              ? t(locale, "accessBannerReferralPendingReferredPay", {
-                  days: String(summary.referralPending.bonusDays),
-                })
-              : "waitsForFriendSubscriptionPayment" in summary.referralPending &&
-                  summary.referralPending.waitsForFriendSubscriptionPayment
-                ? t(locale, "accessBannerReferralPendingReferrerPay", {
-                    days: String(summary.referralPending.bonusDays),
-                  })
-                : "daysRequired" in summary.referralPending
-                  ? summary.referralPending.role === "referred"
-                    ? t(locale, "accessBannerReferralPendingReferred", {
-                        left: String(
-                          Math.max(
-                            0,
-                            summary.referralPending.daysRequired -
-                              summary.referralPending.daysRecorded,
-                          ),
-                        ),
-                        required: String(summary.referralPending.daysRequired),
-                        days: String(summary.referralPending.bonusDays),
-                      })
-                    : t(locale, "accessBannerReferralPendingReferrer", {
-                        recorded: String(summary.referralPending.daysRecorded),
-                        required: String(summary.referralPending.daysRequired),
-                        days: String(summary.referralPending.bonusDays),
-                      })
-                  : null}
-          </p>
-        ) : null}
       </span>
       <span
         role="button"

@@ -4,13 +4,17 @@ import { requireSession } from "@/lib/api/household-auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { deleteCloudCategoryBudget } from "@/lib/household/service";
 
-export async function DELETE(_req: NextRequest, { params }: { params: { categoryId: string } }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ categoryId: string }> },
+) {
   if (!isDatabaseConfigured()) return dbUnavailable();
   const session = requireSession(_req);
   if (!session) return unauthorized();
+  const { categoryId } = await params;
 
   try {
-    await deleteCloudCategoryBudget(session.userId, session.householdId, params.categoryId);
+    await deleteCloudCategoryBudget(session.userId, session.householdId, categoryId);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (!(e instanceof Error)) throw e;

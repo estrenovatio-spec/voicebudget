@@ -2,11 +2,11 @@
 
 import { CalendarDays, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
 import { getCategoryLabel } from "@/lib/categories";
-import { t } from "@/lib/i18n";
+import { formatDaysLabel, t } from "@/lib/i18n";
+import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import {
   getCachedWeeklyAnalysis,
   setCachedWeeklyAnalysis,
@@ -34,6 +34,8 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
   const trackingStartedAt = useStore((s) => s.trackingStartedAt);
   const transactions = useTransactions();
   const categories = useCategories();
+  const savingsGoals = useStore((s) => s.savingsGoals);
+  const categoryBudgets = useStore((s) => s.categoryBudgets);
 
   const [items, setItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,8 +56,31 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
     [summary, trackingStartedAt, transactions],
   );
 
+  const coaching = useMemo(
+    () =>
+      buildAiCoachingContext(
+        transactions,
+        savingsGoals,
+        categoryBudgets,
+        (id) => getCategoryLabel(id, categories, locale),
+        summary.periodStart,
+        summary.periodEnd,
+        categories,
+        locale,
+      ),
+    [
+      transactions,
+      savingsGoals,
+      categoryBudgets,
+      categories,
+      locale,
+      summary.periodStart,
+      summary.periodEnd,
+    ],
+  );
+
   const loadAnalysis = useCallback(
-    async (force = false) => {
+    async () => {
       if (!gate.ready) {
         setItems(getWeeklyWaitingMessages(gate, locale, summary));
         setNextInDays(null);
@@ -64,16 +89,14 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
         return;
       }
 
-      if (!force) {
-        const cached = getCachedWeeklyAnalysis();
-        if (cached) {
-          setItems(cached.items);
-          setIsFullAnalysis(true);
-          setNextInDays(
-            daysUntilNext(WEEKLY_ANALYSIS_TTL_MS - (Date.now() - cached.generatedAt)),
-          );
-          return;
-        }
+      const cached = getCachedWeeklyAnalysis();
+      if (cached) {
+        setItems(cached.items);
+        setIsFullAnalysis(true);
+        setNextInDays(
+          daysUntilNext(WEEKLY_ANALYSIS_TTL_MS - (Date.now() - cached.generatedAt)),
+        );
+        return;
       }
 
       setLoading(true);
@@ -82,7 +105,7 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
         const res = await fetch("/api/weekly-analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locale, summary }),
+          body: JSON.stringify({ locale, summary, coaching }),
         });
 
         const json = (await res.json()) as {
@@ -132,12 +155,12 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
         setLoading(false);
       }
     },
-    [gate, locale, summary],
+    [coaching, gate, locale, summary],
   );
 
   useEffect(() => {
     if (!active) return;
-    void loadAnalysis(false);
+    void loadAnalysis();
   }, [active, loadAnalysis]);
 
   return (
@@ -152,22 +175,10 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
               })
             : t(locale, "weeklySubtitleWaiting")}
         </p>
-        {gate.ready && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs"
-            disabled={loading}
-            onClick={() => void loadAnalysis(true)}
-          >
-            {t(locale, "weeklyRefresh")}
-          </Button>
-        )}
       </div>
       {nextInDays !== null && isFullAnalysis && (
         <p className="text-xs text-muted-foreground">
-          {t(locale, "weeklyNextIn", { days: String(nextInDays) })}
+          {t(locale, "weeklyNextIn", { daysLabel: formatDaysLabel(nextInDays, locale) })}
         </p>
       )}
       {loading && items.length === 0 ? (

@@ -20,11 +20,12 @@ const patchSchema = z.object({
   note: z.string().max(120).optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
   const session = requireSession(req);
   if (!session) return unauthorized();
+  const { id } = await params;
 
   let body: z.infer<typeof patchSchema>;
   try {
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   try {
-    await updateCloudTransaction(session.userId, session.householdId, params.id, body);
+    await updateCloudTransaction(session.userId, session.householdId, id, body);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (!(e instanceof Error)) throw e;
@@ -45,14 +46,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
   const session = requireSession(req);
   if (!session) return unauthorized();
+  const { id } = await params;
 
   try {
-    await deleteCloudTransaction(session.userId, session.householdId, params.id);
+    await deleteCloudTransaction(session.userId, session.householdId, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (!(e instanceof Error)) throw e;

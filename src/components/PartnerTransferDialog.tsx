@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowLeft, ArrowLeftRight, ArrowRight, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -80,6 +81,15 @@ export function PartnerTransferDialog({
   const [direction, setDirection] = useState<"to_partner" | "from_partner">("to_partner");
   const [done, setDone] = useState(false);
   const [lastDoneAmount, setLastDoneAmount] = useState(0);
+
+  const handleTelegramBack = useCallback(() => {
+    if (!open) return false;
+    setOpen(false);
+    setDone(false);
+    return true;
+  }, [open]);
+
+  useTelegramBackHandler(handleTelegramBack, open);
 
   if (!hasPartnerBudget(partnerName, partnerKeywords)) return null;
 

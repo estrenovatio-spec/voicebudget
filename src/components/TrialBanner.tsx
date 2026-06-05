@@ -17,6 +17,7 @@ import {
   fetchAndApplyDevSubscription,
   isBillingDevFallbackEnabled,
 } from "@/lib/billing/dev-subscription";
+import { subscriptionTrialUiEnabled } from "@/lib/payments/config";
 import { runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { getTelegramInitData } from "@/lib/cloud/telegram";
 import { waitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
@@ -60,6 +61,7 @@ function HintStrip({ children }: { children: ReactNode }) {
  * Trial strip above header. Always visible in Telegram until resolved (trial / error / loading).
  */
 export function TrialBanner() {
+  const trialUiEnabled = subscriptionTrialUiEnabled();
   const locale = useStore((s) => s.locale);
   const subscription = useCloudStore((s) => s.subscription);
   const accessSummary = useCloudStore((s) => s.accessSummary);
@@ -229,6 +231,8 @@ export function TrialBanner() {
     snoozeBanner();
     requestOpenSettings();
   }, [snoozeBanner]);
+
+  if (!trialUiEnabled) return null;
 
   if (!tmaReady) return null;
 

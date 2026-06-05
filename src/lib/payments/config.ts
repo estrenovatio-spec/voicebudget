@@ -12,6 +12,11 @@ export function subscriptionBillingTestMode(): boolean {
   return envTruthy("SUBSCRIPTION_BILLING_TEST", "SUBSCRIPTION_BILLING_TEST_PREVIEW");
 }
 
+/** Плашка trial и подсказки биллинга — только в тестовом режиме, не на проде до ЮKassa. */
+export function subscriptionTrialUiEnabled(): boolean {
+  return subscriptionBillingTestMode();
+}
+
 function isSubscriptionFreePeriod(): boolean {
   const raw = process.env.SUBSCRIPTION_FREE_UNTIL?.trim();
   if (!raw) return false;

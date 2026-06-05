@@ -1,7 +1,8 @@
 "use client";
 
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { AppSettingsDiagnostics } from "@/components/AppSettingsDiagnostics";
 import { CategoryManager } from "@/components/CategoryManager";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
@@ -97,6 +98,19 @@ export function SettingsDialogNav({
     const timer = window.setTimeout(() => setConfirmClear(false), 6000);
     return () => window.clearTimeout(timer);
   }, [confirmClear]);
+
+  const handleTelegramBack = useCallback(() => {
+    if (!open) return false;
+    if (screen !== "menu") {
+      setScreen("menu");
+      setConfirmClear(false);
+      return true;
+    }
+    onOpenChange(false);
+    return true;
+  }, [open, screen, onOpenChange]);
+
+  useTelegramBackHandler(handleTelegramBack, open);
 
   const flashSaved = (which: "my" | "partner" | "keywords") => {
     setSavedFlash(which);

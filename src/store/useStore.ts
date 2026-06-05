@@ -14,6 +14,7 @@ import {
   sanitizeCategories,
   slugifyCategoryId,
 } from "@/lib/categories";
+import { bottomNavEnabled } from "@/lib/app-bottom-nav";
 import { detectType } from "@/lib/ai";
 import { getTrackingStartDate } from "@/lib/budget-analytics";
 import {
@@ -79,6 +80,13 @@ import { appendSkippedDate } from "@/lib/planning/recurring-skipped";
 import { recurringToParsedTransaction } from "@/lib/planning/recurring-run";
 import { useCloudStore } from "@/store/useCloudStore";
 import { resolveTransactionAmount } from "@/lib/parse-amount";
+import {
+  recordAiCorrectionLearning,
+  recordAiInputLearning,
+} from "@/lib/ai-memory";
+import {
+  clearCachedMonthlyAnalysis,
+} from "@/lib/storage";
 import type {
   BudgetOwner,
   HouseholdFilter,
@@ -163,7 +171,7 @@ interface StoreState {
     data: ParsedTransaction,
     transcript?: string,
     opts?: { skipCloudPush?: boolean },
-  ) => void;
+  ) => string;
   updateTransaction: (
     id: string,
     patch: {
@@ -179,7 +187,7 @@ interface StoreState {
       note?: string;
     },
   ) => void;
-  deleteTransaction: (id: string) => void;
+  deleteTransaction: (id: string, opts?: { skipBusinessLink?: boolean }) => void;
   addVehicle: (name?: string) => void;
   removeVehicleById: (vehicleId: string) => void;
   saveVehicleGarage: (vehicles: Vehicle[], vehiclePrefs?: VehicleGaragePrefs) => void;
@@ -509,11 +517,14 @@ export const useStore = create<StoreState>()(
               ? { odometerKm: Math.max(0, Math.round(data.odometerKm)) }
               : {}),
             ...(data.transferPairId ? { transferPairId: data.transferPairId } : {}),
+            ...(data.businessTxId ? { businessTxId: data.businessTxId } : {}),
           };
           let savingsGoals = state.savingsGoals;
           if (created.goalId && created.goalAmount) {
             savingsGoals = applyGoalDelta(savingsGoals, created.goalId, created.goalAmount);
           }
+          recordAiInputLearning(transcript, created, transcript ? "voice" : "text");
+          clearCachedMonthlyAnalysis();
           return {
             trackingStartedAt: state.trackingStartedAt ?? new Date().toISOString(),
             reminderLastShownDate: new Date().toISOString().slice(0, 10),
@@ -530,6 +541,7 @@ export const useStore = create<StoreState>()(
           }
           applyVehicleAfterTransaction(get, set, created);
         }
+        return newId;
       },
       addVehicle: (name) => {
         const { vehicles, vehiclePrefs } = get();
@@ -741,6 +753,8 @@ export const useStore = create<StoreState>()(
         });
         const after = get().transactions.find((t) => t.id === id);
         if (after) {
+          recordAiCorrectionLearning({ before: prev, after });
+          clearCachedMonthlyAnalysis();
           const goalIds = new Set<string>();
           if (prev?.goalId) goalIds.add(prev.goalId);
           if (after.goalId) goalIds.add(after.goalId);
@@ -762,8 +776,17 @@ export const useStore = create<StoreState>()(
           }
         }
       },
-      deleteTransaction: (id) => {
+      deleteTransaction: (id, opts) => {
         const tx = get().transactions.find((t) => t.id === id);
+        if (!opts?.skipBusinessLink && bottomNavEnabled()) {
+          void import("@/store/useBusinessStore").then(({ useBusinessStore }) => {
+            const biz = useBusinessStore.getState();
+            if (tx?.businessTxId) {
+              biz.removeTransaction(tx.businessTxId, { skipFamilyLink: true });
+            }
+            biz.removePassiveReceiptByFamilyTxId(id);
+          });
+        }
         const pairId = tx?.transferPairId;
         const idsToDelete = pairId
           ? get()
@@ -790,6 +813,7 @@ export const useStore = create<StoreState>()(
         if (goalAfterDelete) void cloudPushGoal(goalAfterDelete);
         for (const delId of idsToDelete) {
           useCloudStore.getState().markTransactionDeleted(delId);
+          useCloudStore.getState().removeFromLastSyncedRemoteTxIds(delId);
           void cloudPushTransactionDelete(delId);
         }
       },
@@ -1398,11 +1422,23 @@ function useViewerTransactionsForOwnerStats(): Transaction[] {
   return useMemo(() => viewerTxs.filter(countsInBalance), [viewerTxs]);
 }
 
+function computedOwnerBalanceFromTxs(
+  viewerTxs: Transaction[],
+  owner: "me" | "partner",
+): number {
+  return calcBalance(viewerTxs.filter((tx) => tx.owner === owner && countsInBalance(tx)));
+}
+
 export function useComputedBalance(owner: "me" | "partner" | "all" = "all"): number {
   const viewerTxs = useViewerMappedTransactions(false);
   return useMemo(() => {
-    if (owner === "all") return calcBalance(viewerTxs.filter(countsInHouseholdTotal));
-    return calcBalance(viewerTxs.filter((tx) => tx.owner === owner && countsInBalance(tx)));
+    if (owner === "all") {
+      return (
+        computedOwnerBalanceFromTxs(viewerTxs, "me") +
+        computedOwnerBalanceFromTxs(viewerTxs, "partner")
+      );
+    }
+    return computedOwnerBalanceFromTxs(viewerTxs, owner);
   }, [viewerTxs, owner]);
 }
 
@@ -1414,15 +1450,11 @@ export const useBalance = (ownerFilter?: HouseholdFilter) => {
   const viewerTxs = useViewerMappedTransactions(false);
 
   return useMemo(() => {
-    const txs =
-      filter === "all" ? viewerTxs : viewerTxs.filter((tx) => tx.owner === filter);
-    const base =
-      filter === "all"
-        ? calcBalance(viewerTxs.filter(countsInHouseholdTotal))
-        : calcBalance(txs.filter(countsInBalance));
-    if (filter === "me") return base + cashOffsetMe;
-    if (filter === "partner") return base + cashOffsetPartner;
-    return base + cashOffsetMe + cashOffsetPartner;
+    const baseMe = computedOwnerBalanceFromTxs(viewerTxs, "me");
+    const basePartner = computedOwnerBalanceFromTxs(viewerTxs, "partner");
+    if (filter === "me") return baseMe + cashOffsetMe;
+    if (filter === "partner") return basePartner + cashOffsetPartner;
+    return baseMe + basePartner + cashOffsetMe + cashOffsetPartner;
   }, [viewerTxs, filter, cashOffsetMe, cashOffsetPartner]);
 };
 
@@ -1432,16 +1464,9 @@ export function useHouseholdBalances() {
   const viewerTxs = useViewerMappedTransactions(false);
 
   return useMemo(() => {
-    const me =
-      calcBalance(viewerTxs.filter((tx) => tx.owner === "me" && countsInBalance(tx))) +
-      cashOffsetMe;
-    const partner =
-      calcBalance(
-        viewerTxs.filter((tx) => tx.owner === "partner" && countsInBalance(tx)),
-      ) + cashOffsetPartner;
-    const all =
-      calcBalance(viewerTxs.filter(countsInHouseholdTotal)) + cashOffsetMe + cashOffsetPartner;
-    return { all, me, partner };
+    const me = computedOwnerBalanceFromTxs(viewerTxs, "me") + cashOffsetMe;
+    const partner = computedOwnerBalanceFromTxs(viewerTxs, "partner") + cashOffsetPartner;
+    return { all: me + partner, me, partner };
   }, [viewerTxs, cashOffsetMe, cashOffsetPartner]);
 }
 

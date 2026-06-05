@@ -15,7 +15,7 @@ echo "→ Node: $(node -v)"
 echo "→ Локальная проверка сборки..."
 npm run build
 echo "→ Preview-деплой (без --prod, клиенты не затронуты)..."
-OUT="$(npx vercel deploy --yes 2>&1)" || {
+OUT="$(NEXT_PUBLIC_APP_BOTTOM_NAV=true npx vercel deploy --yes 2>&1)" || {
   echo "❌ vercel deploy failed. Выполните: npx vercel login"
   exit 1
 }

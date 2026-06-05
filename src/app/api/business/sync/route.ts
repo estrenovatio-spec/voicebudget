@@ -7,7 +7,12 @@ import {
   unauthorized,
 } from "@/lib/api/household-response";
 import { requireSession } from "@/lib/api/household-auth";
-import { fetchUserBusinessPayload, saveUserBusinessPayload } from "@/lib/business/db";
+import {
+  fetchUserBusinessPayload,
+  mergeBusinessPayload,
+  saveUserBusinessPayload,
+} from "@/lib/business/db";
+import type { BusinessCloudPayload } from "@/lib/business/types";
 import { isDatabaseConfigured } from "@/lib/db";
 import { assertActiveSubscription } from "@/lib/payments/subscription";
 
@@ -16,6 +21,8 @@ const payloadSchema = z.object({
   units: z.array(z.any()),
   transactions: z.array(z.any()),
   assets: z.array(z.any()),
+  passiveReceipts: z.array(z.any()).optional(),
+  taxRatePct: z.number().min(0).max(100).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -54,8 +61,27 @@ export async function PUT(req: NextRequest) {
 
   try {
     await assertActiveSubscription(session.userId);
-    await saveUserBusinessPayload(session.userId, parsed.data);
-    return NextResponse.json({ ok: true });
+    const incoming = parsed.data as BusinessCloudPayload;
+    const existing = await fetchUserBusinessPayload(session.userId);
+    let toSave = incoming;
+    if (existing) {
+      toSave = mergeBusinessPayload(incoming, existing);
+      if (incoming.assets.length === 0 && existing.assets.length > 0) {
+        toSave.assets = existing.assets;
+      }
+      if (
+        (incoming.passiveReceipts?.length ?? 0) === 0 &&
+        (existing.passiveReceipts?.length ?? 0) > 0
+      ) {
+        toSave.passiveReceipts = existing.passiveReceipts;
+      }
+    }
+    const saved = await saveUserBusinessPayload(session.userId, toSave);
+    return NextResponse.json({
+      ok: true,
+      cloudSaved: saved,
+      ...(saved ? {} : { reason: "business_cloud_table_missing" }),
+    });
   } catch (e) {
     const guard = mapCloudGuardError(e);
     if (guard) return guard;

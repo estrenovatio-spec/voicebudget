@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { applyLightTheme, syncThemeFromTelegram } from "@/lib/app-theme";
 import { detectAppLocale } from "@/lib/locale-infer";
 import { applyTelegramDefaultUserName, whenStoreHydrated } from "@/lib/telegram-default-names";
+import { runTelegramBack } from "@/lib/telegram-back";
 import { useStore } from "@/store/useStore";
 
 export function TelegramInit() {
@@ -30,9 +31,7 @@ export function TelegramInit() {
     const user = tg.initDataUnsafe?.user;
     setLocale(detectAppLocale(user?.language_code));
 
-    const onBack = () => {
-      window.history.back();
-    };
+    const onBack = () => runTelegramBack();
     if (tg.BackButton) {
       tg.BackButton.show();
       tg.BackButton.onClick(onBack);

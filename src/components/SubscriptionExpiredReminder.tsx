@@ -7,6 +7,7 @@ import {
   markSubscriptionReminderShownToday,
   subscriptionReminderShownToday,
 } from "@/lib/billing/subscription-reminder";
+import { subscriptionTrialUiEnabled } from "@/lib/payments/config";
 import { t } from "@/lib/i18n";
 import { useCloudStore, useSubscriptionRequired } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
@@ -19,6 +20,7 @@ export function SubscriptionExpiredReminder() {
   const subscriptionRequired = useSubscriptionRequired();
   const subscription = useCloudStore((s) => s.subscription);
 
+  if (!subscriptionTrialUiEnabled()) return null;
   if (!subscriptionRequired || !subscription) return null;
   if (subscriptionReminderShownToday()) return null;
 

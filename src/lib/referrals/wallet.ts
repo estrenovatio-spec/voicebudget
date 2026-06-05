@@ -1,6 +1,7 @@
 import { ReferralStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { subscriptionAmountRub } from "@/lib/payments/config";
+import { referralPendingCanDismiss } from "@/lib/referrals/dismiss-pending";
 import {
   referralWalletCommissionPercent,
   referralWalletEnabled,
@@ -15,13 +16,21 @@ export type ReferralWalletPublic = {
   availableRub: number;
   pendingRub: number;
   totalEarnedRub: number;
-  recentEarnings: { label: string; amountRub: number; at: string; status: "paid" | "pending" }[];
+  recentEarnings: {
+    referralId?: string;
+    label: string;
+    amountRub: number;
+    at: string;
+    status: "paid" | "pending";
+    canDismiss?: boolean;
+  }[];
 };
 
 function roundRub(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Math.max(0, Math.ceil(n));
 }
 
+/** Комиссия за оплату друга — целые рубли, округление вверх. */
 export function commissionRubFromSubscription(subscriptionRub: number): number {
   const pct = referralWalletCommissionPercent();
   return roundRub((subscriptionRub * pct) / 100);
@@ -72,6 +81,20 @@ export async function addReferralWalletPending(
   `;
 }
 
+/** Снять ожидание с кошелька (друг убран из списка после месяца без оплаты). */
+export async function removeReferralWalletPending(
+  referrerUserId: string,
+  amountRub: number,
+): Promise<void> {
+  if (!referralWalletEnabled() || amountRub <= 0) return;
+  if (!(await userWalletColumnsExist())) return;
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET "referralWalletPendingRub" = GREATEST(0, COALESCE("referralWalletPendingRub", 0) - ${amountRub})
+    WHERE id = ${referrerUserId}
+  `;
+}
+
 /** pending → available when referral qualified (friend paid activity). */
 export async function settleReferralWalletOnQualify(
   referrerUserId: string,
@@ -105,7 +128,7 @@ async function computedWalletFromReferrals(userId: string): Promise<{
     }),
     prisma.referral.findMany({
       where: { referrerUserId: userId, status: ReferralStatus.pending },
-      select: { createdAt: true, referred: { select: { firstName: true } } },
+      select: { id: true, createdAt: true, referred: { select: { firstName: true } } },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
@@ -119,10 +142,12 @@ async function computedWalletFromReferrals(userId: string): Promise<{
       status: "paid" as const,
     })),
     ...pendingList.map((r) => ({
+      referralId: r.id,
       label: r.referred.firstName?.trim() || "Друг",
       amountRub: perPay,
       at: r.createdAt.toISOString(),
       status: "pending" as const,
+      canDismiss: referralPendingCanDismiss(r.createdAt),
     })),
   ].slice(0, 8);
 

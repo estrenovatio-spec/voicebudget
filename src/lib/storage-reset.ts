@@ -1,4 +1,5 @@
 const STORE_KEY = "voicebudget-store";
+export const BUSINESS_STORE_KEY = "voicebudget-business-preview-v2";
 const CLOUD_KEY = "voicebudget-cloud";
 const WEB_LOGIN_KEY = "voicebudget-tg-web-login";
 const CLOUD_PAUSE_KEY = "voicebudget-cloud-paused";
@@ -47,6 +48,7 @@ export function clearAppStorage(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORE_KEY);
+    localStorage.removeItem(BUSINESS_STORE_KEY);
     localStorage.removeItem(RECOMMENDATIONS_KEY);
     localStorage.removeItem(RECOMMENDATIONS_TS_KEY);
     localStorage.removeItem(WEEKLY_KEY);
@@ -72,6 +74,8 @@ export function clearAppStorage(): void {
     localStorage.removeItem(CLOUD_KEY);
     sessionStorage.removeItem(WEB_LOGIN_KEY);
     sessionStorage.removeItem(CLOUD_PAUSE_KEY);
+    sessionStorage.removeItem("vb_app_tab_v1");
+    sessionStorage.removeItem("vb-chunk-reload-once");
   } catch {
     /* ignore */
   }

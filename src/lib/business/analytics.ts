@@ -1,6 +1,7 @@
 import type { BudgetPeriod } from "@/lib/budget-period";
 import { isDateInBudgetPeriod } from "@/lib/budget-period";
 import { roundMoneyUp } from "@/lib/format-money";
+import { unitTaxReserve } from "@/lib/business/tax";
 import type {
   BusinessAsset,
   BusinessAssetType,
@@ -9,7 +10,9 @@ import type {
   BusinessIncomeSource,
   BusinessPeriodStats,
   BusinessSnapshot,
+  BusinessTaxPeriod,
   BusinessTransaction,
+  BusinessUnit,
   BusinessUnitPeriodStats,
 } from "@/lib/business/types";
 
@@ -79,6 +82,55 @@ export function avgMonthlyOperatingExpense(
   if (expenses.length === 0) return 0;
   const total = expenses.reduce((s, tx) => s + roundMoneyUp(tx.amount), 0);
   return roundMoneyUp(total / 3);
+}
+
+export type UnitCardMetrics = {
+  unitId: string;
+  income: number;
+  expense: number;
+  profit: number;
+  profitMarginPct: number;
+  runwayMonths: number;
+  passiveMonthly: number;
+  avgMonthlyExpense: number;
+  cushionBalance: number;
+  cushionTarget: number;
+  canToCushion: number;
+  operatingBalance: number;
+  taxReserve: number;
+  taxRatePct: number;
+  taxPeriod: BusinessTaxPeriod;
+};
+
+/** Сводка выбранного бизнеса: период + KPI по юниту. */
+export function unitCardMetrics(
+  transactions: BusinessTransaction[],
+  assets: BusinessAsset[],
+  unit: BusinessUnit,
+  period: BudgetPeriod,
+  now = new Date(),
+): UnitCardMetrics {
+  const taxRate = unit.taxRatePct ?? 0;
+  const taxPeriod = unit.taxPeriod ?? "quarter";
+  const periodStats = periodOperatingStats(transactions, period, unit.id);
+  const snap = buildBusinessSnapshot(transactions, assets, unit.id, now, taxRate);
+  return {
+    unitId: unit.id,
+    income: periodStats.income,
+    expense: periodStats.expense,
+    profit: periodStats.profit,
+    profitMarginPct: periodStats.profitMarginPct,
+    runwayMonths: snap.runwayMonths,
+    passiveMonthly: snap.passiveIncomeMonthly,
+    avgMonthlyExpense: snap.avgMonthlyExpense,
+    cushionBalance: snap.cushionBalance,
+    cushionTarget: snap.cushionTarget,
+    canToCushion: snap.canToCushion,
+    operatingBalance: snap.operatingBalance,
+    taxReserve: unitTaxReserve(transactions, unit.id, taxRate, taxPeriod, now),
+    taxRatePct: taxRate,
+    taxPeriod,
+  };
 }
 
 export function unitPeriodStats(
@@ -293,8 +345,11 @@ export function buildBusinessSnapshot(
   const monthProfit = roundMoneyUp(monthIncome - monthExpense);
 
   const liquid = Math.max(0, operatingBalance);
-  const canToCushion = roundMoneyUp(Math.min(liquid, cushionGap));
-  const canToFamily = roundMoneyUp(Math.max(0, liquid - canToCushion));
+  const canToCushion =
+    cushionGap > 0
+      ? roundMoneyUp(Math.min(liquid, cushionGap))
+      : roundMoneyUp(liquid);
+  const canToFamily = roundMoneyUp(liquid);
 
   const { totalCapital, annualIncome: assetsAnnualIncome } = assetsSummary(scopedAssets);
   const passiveMonthly = passiveIncomeMonthly(scopedAssets);

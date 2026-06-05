@@ -16,6 +16,10 @@ import { ReferralWalletCard } from "@/components/ReferralWalletCard";
 import type { ReferralProfilePublic } from "@/lib/referrals/service";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
+import { cn } from "@/lib/utils";
+
+const referralShareBtnClass =
+  "h-auto min-h-10 w-full shrink-0 whitespace-normal border-2 border-emerald-600/35 bg-gradient-to-br from-emerald-500/15 to-primary/10 px-3 py-2 text-center text-sm font-medium leading-snug text-emerald-950 shadow-none hover:from-emerald-500/25 hover:to-primary/15 dark:text-emerald-50";
 
 type ReferralPanelState = Partial<ReferralProfilePublic> & {
   ok?: boolean;
@@ -283,12 +287,6 @@ export function ReferralPanel() {
   const bonusDays = profile.referrerBonusDays ?? profile.referredBonusDays ?? 14;
   const walletPercent = String(profile.wallet?.commissionPercent ?? 10);
   const activityRequired = profile.activityDaysRequired ?? 0;
-  const pending = profile.pending;
-  const pendingUsesActivityGate =
-    pending &&
-    "daysRequired" in pending &&
-    typeof pending.daysRequired === "number" &&
-    pending.daysRequired > 0;
   const showApply = !profile.invitedByCode;
 
   return (
@@ -303,69 +301,6 @@ export function ReferralPanel() {
           {t(locale, "referralActivityRule", { required: String(activityRequired) })}
         </p>
       ) : null}
-      {pending ? (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
-          {"waitsForSubscriptionPayment" in pending && pending.waitsForSubscriptionPayment
-            ? walletMode
-              ? t(locale, "referralPendingReferredWalletPay", { percent: walletPercent })
-              : t(locale, "referralPendingReferredPay", { days: String(pending.bonusDays) })
-            : "waitsForFriendSubscriptionPayment" in pending &&
-                pending.waitsForFriendSubscriptionPayment
-              ? walletMode
-                ? t(locale, "referralPendingReferrerWalletPay", { percent: walletPercent })
-                : t(locale, "referralPendingReferrerPay", { days: String(pending.bonusDays) })
-              : pendingUsesActivityGate
-                ? walletMode
-                  ? pending.role === "referred"
-                    ? t(locale, "referralPendingReferredWallet", {
-                        left: String(
-                          Math.max(
-                            0,
-                            (pending as { daysRequired: number; daysRecorded: number })
-                              .daysRequired -
-                              (pending as { daysRecorded: number }).daysRecorded,
-                          ),
-                        ),
-                        required: String(
-                          (pending as { daysRequired: number }).daysRequired,
-                        ),
-                      })
-                    : t(locale, "referralPendingReferrerWallet", {
-                        recorded: String(
-                          (pending as { daysRecorded: number }).daysRecorded,
-                        ),
-                        required: String(
-                          (pending as { daysRequired: number }).daysRequired,
-                        ),
-                        percent: walletPercent,
-                      })
-                  : pending.role === "referred"
-                    ? t(locale, "referralPendingReferred", {
-                        days: String(pending.bonusDays),
-                        left: String(
-                          Math.max(
-                            0,
-                            (pending as { daysRequired: number; daysRecorded: number })
-                              .daysRequired -
-                              (pending as { daysRecorded: number }).daysRecorded,
-                          ),
-                        ),
-                        required: String(
-                          (pending as { daysRequired: number }).daysRequired,
-                        ),
-                      })
-                    : t(locale, "referralPendingReferrer", {
-                        recorded: String(
-                          (pending as { daysRecorded: number }).daysRecorded,
-                        ),
-                        required: String(
-                          (pending as { daysRequired: number }).daysRequired,
-                        ),
-                        days: String(pending.bonusDays),
-                      })
-                : null}
-        </p>
-      ) : null}
       {profile.invitedByCode ? (
         <p className="text-xs text-muted-foreground">
           {t(locale, "referralInvitedBy", {
@@ -374,14 +309,22 @@ export function ReferralPanel() {
           })}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={() => void copyLink()} disabled={!displayLink}>
+      <div className="flex min-w-0 flex-col gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn(referralShareBtnClass)}
+          onClick={() => void copyLink()}
+          disabled={!displayLink}
+        >
           {copied ? t(locale, "referralCopied") : t(locale, "referralCopyLink")}
         </Button>
         <Button
           type="button"
           size="sm"
-          variant="secondary"
+          variant="ghost"
+          className={cn(referralShareBtnClass)}
           onClick={shareLink}
           disabled={!displayLink}
         >
@@ -395,7 +338,32 @@ export function ReferralPanel() {
         <p className="font-mono text-sm font-semibold tracking-wider">{profile.code}</p>
       </div>
       {profile.wallet?.enabled ? (
-        <ReferralWalletCard locale={locale} wallet={profile.wallet} />
+        <ReferralWalletCard
+          locale={locale}
+          wallet={profile.wallet}
+          onDismissPending={async (referralId) => {
+            const auth = getCloudAuthBody();
+            if (!auth.initData && !auth.telegramLogin) return false;
+            try {
+              const res = await fetch("/api/referral/dismiss", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...auth, referralId }),
+              });
+              if (!res.ok) {
+                const data = (await res.json().catch(() => ({}))) as { error?: string };
+                if (data.error === "too_early") {
+                  toast(t(locale, "referralWalletDismissEarly"), "error");
+                }
+                return false;
+              }
+              await load();
+              return true;
+            } catch {
+              return false;
+            }
+          }}
+        />
       ) : null}
       {displayLink ? (
         <p className="break-all text-[10px] text-muted-foreground">{displayLink}</p>

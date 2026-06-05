@@ -108,7 +108,17 @@ export function TransactionEditDialog({
     setVehicleId(defaultVid);
     setComment(displayTransactionNote(raw.note, raw.amount) ?? "");
     setConfirmDelete(false);
-  }, [transaction?.id, open]);
+  }, [
+    allTransactions,
+    cloudUserId,
+    lastFuelVehicleId,
+    open,
+    storedMemberIds,
+    token,
+    transaction,
+    vehiclePrefs,
+    vehicles,
+  ]);
 
   if (!transaction) return null;
 

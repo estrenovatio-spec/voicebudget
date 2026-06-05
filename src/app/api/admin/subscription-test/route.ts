@@ -21,15 +21,23 @@ type Action =
   | "referral_try_qualify";
 
 async function findUser(telegramId?: string, username?: string) {
+  const select = {
+    id: true,
+    telegramId: true,
+    username: true,
+    subscriptionReminderSentAt: true,
+  };
   if (telegramId?.trim()) {
     return prisma.user.findUnique({
       where: { telegramId: BigInt(telegramId.trim()) },
+      select,
     });
   }
   if (username?.trim()) {
     const u = username.trim().replace(/^@/, "");
     return prisma.user.findFirst({
       where: { username: { equals: u, mode: "insensitive" } },
+      select,
     });
   }
   return null;

@@ -36,27 +36,29 @@ const summarySchema = z.object({
   periodEnd: z.string(),
 });
 
-const coachingSchema = z.object({
-  savingsGoals: z.array(
-    z.object({
-      name: z.string(),
-      saved: z.number(),
-      target: z.number(),
-      monthlyContribution: z.number(),
-      progressPercent: z.number(),
-      onTrack: z.boolean(),
-    }),
-  ),
-  categoryBudgets: z.array(
-    z.object({
-      category: z.string(),
-      limit: z.number(),
-      spent: z.number(),
-      remaining: z.number(),
-      overLimit: z.boolean(),
-    }),
-  ),
-});
+const coachingSchema = z
+  .object({
+    savingsGoals: z.array(
+      z.object({
+        name: z.string(),
+        saved: z.number(),
+        target: z.number(),
+        monthlyContribution: z.number(),
+        progressPercent: z.number(),
+        onTrack: z.boolean(),
+      }),
+    ),
+    categoryBudgets: z.array(
+      z.object({
+        category: z.string(),
+        limit: z.number(),
+        spent: z.number(),
+        remaining: z.number(),
+        overLimit: z.boolean(),
+      }),
+    ),
+  })
+  .passthrough();
 
 const bodySchema = z.object({
   locale: z.enum(["ru", "en"]),

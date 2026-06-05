@@ -26,7 +26,8 @@ import { FamilyOnboarding } from "@/components/FamilyOnboarding";
 import { detectLocale } from "@/lib/i18n";
 import { clearDismissibleHintKeys } from "@/lib/storage-reset";
 import { useStore } from "@/store/useStore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 
 function FamilyHomeContent({
   previewNav,
@@ -64,10 +65,10 @@ export default function HomePage() {
     if (previewMode) setAppView(readStoredAppTab());
   }, [previewMode]);
 
-  const onAppViewChange = (tab: AppTabId) => {
+  const onAppViewChange = useCallback((tab: AppTabId) => {
     setAppView(tab);
     writeStoredAppTab(tab);
-  };
+  }, []);
 
   useEffect(() => {
     if (window.Telegram?.WebApp) return;
@@ -79,6 +80,14 @@ export default function HomePage() {
   const previewNav = previewMode
     ? { active: appView, onChange: onAppViewChange }
     : undefined;
+
+  const handlePreviewTelegramBack = useCallback(() => {
+    if (!previewMode || appView === "family") return false;
+    onAppViewChange("family");
+    return true;
+  }, [previewMode, appView, onAppViewChange]);
+
+  useTelegramBackHandler(handlePreviewTelegramBack, previewMode && appView !== "family");
 
   const family = <FamilyHomeContent previewNav={previewNav} />;
 
