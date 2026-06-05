@@ -74,6 +74,7 @@ export function avgMonthlyOperatingExpense(
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - 90);
   const scoped = filterUnitTxs(transactions, unitId);
+  const currentMonth = monthKey(now);
   const expenses = scoped.filter(
     (tx) =>
       tx.kind === "operating_expense" &&
@@ -81,7 +82,10 @@ export function avgMonthlyOperatingExpense(
   );
   if (expenses.length === 0) return 0;
   const total = expenses.reduce((s, tx) => s + roundMoneyUp(tx.amount), 0);
-  return roundMoneyUp(total / 3);
+  const currentMonthExpense = expenses
+    .filter((tx) => monthKey(parseDay(tx.date)) === currentMonth)
+    .reduce((s, tx) => s + roundMoneyUp(tx.amount), 0);
+  return Math.max(total / 3, currentMonthExpense);
 }
 
 export type UnitCardMetrics = {

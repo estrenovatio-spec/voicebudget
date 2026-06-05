@@ -267,7 +267,7 @@ export const DICT = {
     bizMonthProfit: "Прибыль",
     bizCushionTitle: "Резерв бизнеса",
     bizCushionHint:
-      "Цель — 3 месяца средних бизнес-расходов. Считается по операциям за последние 90 дней.",
+      "Цель — 3 месяца бизнес-расходов. Берём расходы текущего месяца и среднее за последние 90 дней, чтобы не занижать резерв.",
     bizTarget: "Цель",
     bizCushionTarget: "цель {amount} ₽",
     bizAvgBurn: "≈ {amount} ₽ расходов в месяц",
@@ -1311,7 +1311,7 @@ export const DICT = {
     bizMonthProfit: "Profit",
     bizCushionTitle: "Business reserve",
     bizCushionHint:
-      "Target: 3× average monthly business expenses (last 90 days).",
+      "Target: 3× business expenses. Uses current-month expenses and the last 90-day average so the reserve is not understated.",
     bizTarget: "Target",
     bizCushionTarget: "target {amount}",
     bizAvgBurn: "≈ {amount}/month burn",
