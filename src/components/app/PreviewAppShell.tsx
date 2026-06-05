@@ -29,7 +29,7 @@ export function PreviewAppShell({
 
   return (
     <div className="min-h-0 flex-1">
-      {active === "family" ? familyContent : null}
+      {active === "family" ? <div className="space-y-2">{familyContent}</div> : null}
       {active === "business" ? (
         <>
           <PreviewViewChrome active={active} onChange={changeTab} />
