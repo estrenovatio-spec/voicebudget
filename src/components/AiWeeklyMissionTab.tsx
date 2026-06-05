@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getAiMemoryRules } from "@/lib/ai-memory";
-import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { getCategoryLabel } from "@/lib/categories";
 import { formatMoney } from "@/lib/format-money";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
@@ -19,6 +18,25 @@ type AiMission = {
 };
 
 const MISSION_DONE_KEY = "voicebudget-ai-missions-done-v1";
+
+function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getCurrentWeekPeriod(ref = new Date()): { from: string; to: string } {
+  const start = new Date(ref);
+  const day = start.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() + diffToMonday);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { from: toIsoDate(start), to: toIsoDate(end) };
+}
 
 function readDoneMissions(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -81,12 +99,17 @@ function buildWeeklyMissions(params: {
     add({
       id: `over:${overBudget.category}`,
       tone: "focus",
-      title: isRu ? `Пауза в «${overBudget.category}»` : `Pause ${overBudget.category}`,
+      title: isRu
+        ? `Пауза в «${overBudget.category}»`
+        : `Pause ${overBudget.category}`,
       detail: isRu
         ? "Лимит уже превышен. Миссия: 48 часов без новых трат в этой категории."
         : "Limit is already over. Mission: 48 hours with no new spending there.",
     });
-  } else if (signals?.cashflowRisk === "high" || signals?.cashflowRisk === "medium") {
+  } else if (
+    signals?.cashflowRisk === "high" ||
+    signals?.cashflowRisk === "medium"
+  ) {
     add({
       id: "cashflow-pause",
       tone: "focus",
@@ -101,7 +124,9 @@ function buildWeeklyMissions(params: {
     add({
       id: `habit:${habit.category}`,
       tone: "habit",
-      title: isRu ? `Минус один чек: ${habit.category}` : `One less check: ${habit.category}`,
+      title: isRu
+        ? `Минус один чек: ${habit.category}`
+        : `One less check: ${habit.category}`,
       detail: isRu
         ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Если убрать один такой расход в неделю, уже появится запас.`
         : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
@@ -111,8 +136,14 @@ function buildWeeklyMissions(params: {
   const goal = savingsGoals.find((g) => g.progressPercent < 100);
   if (goal) {
     const remaining = Math.max(0, goal.target - goal.saved);
-    const planned = goal.monthlyContribution > 0 ? Math.ceil(goal.monthlyContribution / 4) : 0;
-    const amount = Math.max(100, Math.min(remaining, planned || Math.ceil(goal.target * 0.02)));
+    const planned =
+      goal.monthlyContribution > 0
+        ? Math.ceil(goal.monthlyContribution / 4)
+        : 0;
+    const amount = Math.max(
+      100,
+      Math.min(remaining, planned || Math.ceil(goal.target * 0.02)),
+    );
     add({
       id: `goal:${goal.name}`,
       tone: "save",
@@ -161,19 +192,25 @@ function buildWeeklyMissions(params: {
 
 export function AiWeeklyMissionTab() {
   const locale = useStore((s) => s.locale);
-  const budgetMonthStartDay = useStore((s) => s.budgetMonthStartDay);
   const savingsGoals = useStore((s) => s.savingsGoals);
   const categoryBudgets = useStore((s) => s.categoryBudgets);
   const transactions = useTransactions();
   const categories = useCategories();
   const [doneMissions, setDoneMissions] = useState(readDoneMissions);
 
-  const period = useMemo(
-    () => getCurrentBudgetPeriod(budgetMonthStartDay),
-    [budgetMonthStartDay],
-  );
+  const period = useMemo(() => getCurrentWeekPeriod(), []);
 
   const learnedRulesCount = getAiMemoryRules().length;
+  const weekTransactionsCount = useMemo(
+    () =>
+      transactions.filter(
+        (tx) =>
+          tx.confirmed !== false &&
+          tx.date >= period.from &&
+          tx.date <= period.to,
+      ).length,
+    [period.from, period.to, transactions],
+  );
   const ctx = useMemo(
     () =>
       buildAiCoachingContext(
@@ -206,7 +243,7 @@ export function AiWeeklyMissionTab() {
     categoryBudgets: ctx.categoryBudgets,
     savingsGoals: ctx.savingsGoals,
     learnedRulesCount,
-    transactionsCount: transactions.length,
+    transactionsCount: weekTransactionsCount,
   });
 
   const toggleMission = (id: string) => {
@@ -228,8 +265,8 @@ export function AiWeeklyMissionTab() {
         </div>
         <p className="text-sm leading-snug text-muted-foreground">
           {locale === "ru"
-            ? "Одна неделя - один понятный финансовый шаг. ИИ выбирает его по вашим операциям, лимитам, целям и памяти."
-            : "One week, one clear money move. AI chooses it from your entries, limits, goals, and memory."}
+            ? "Одна неделя - один понятный финансовый шаг. Советник выбирает его по вашим операциям, лимитам, целям и памяти."
+            : "One week, one clear money move. The advisor chooses it from your entries, limits, goals, and memory."}
         </p>
       </div>
 
@@ -252,14 +289,24 @@ export function AiWeeklyMissionTab() {
                 aria-label={done ? "Вернуть миссию" : "Отметить миссию"}
               >
                 {done ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
+                  <CheckCircle2
+                    className="h-4 w-4 text-emerald-600"
+                    aria-hidden
+                  />
                 ) : (
-                  <Circle className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <Circle
+                    className="h-4 w-4 text-muted-foreground"
+                    aria-hidden
+                  />
                 )}
               </Button>
               <div className="min-w-0 text-sm leading-snug">
-                <p className={`font-medium ${done ? "line-through" : ""}`}>{mission.title}</p>
-                <p className="text-xs text-muted-foreground">{mission.detail}</p>
+                <p className={`font-medium ${done ? "line-through" : ""}`}>
+                  {mission.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {mission.detail}
+                </p>
               </div>
             </li>
           );
