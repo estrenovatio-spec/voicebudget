@@ -3,6 +3,7 @@
 import {
   ArrowDownToLine,
   BriefcaseBusiness,
+  ChevronDown,
   Pencil,
   Plus,
   Trash2,
@@ -470,10 +471,14 @@ function BusinessAdvisor({
   metrics,
   safeWithdraw,
   locale,
+  open,
+  onToggle,
 }: {
   metrics: UnitCardMetrics;
   safeWithdraw: number;
   locale: "ru" | "en";
+  open: boolean;
+  onToggle: () => void;
 }) {
   const reserveMonths =
     metrics.avgMonthlyExpense > 0
@@ -504,22 +509,44 @@ function BusinessAdvisor({
 
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
-      <p className="font-semibold text-foreground">
-        {t(locale, "bizAdvisorTitle")}
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        {main}
-      </p>
-      <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted-foreground">
-        <p>
-          {t(locale, "bizAdvisorSafeWithdraw", {
-            amount: formatMoney(safeWithdraw, locale),
-          })}
-        </p>
-        <p>
-          {t(locale, "bizAdvisorReserve", { months: String(reserveMonths) })}
-        </p>
-      </div>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left"
+        onClick={onToggle}
+      >
+        <span className="font-semibold text-foreground">
+          {t(locale, "bizAdvisorTitle")}
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
+          {t(locale, open ? "transactionsHide" : "transactionsShow")}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              open && "rotate-180",
+            )}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {open ? (
+        <>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {main}
+          </p>
+          <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p>
+              {t(locale, "bizAdvisorSafeWithdraw", {
+                amount: formatMoney(safeWithdraw, locale),
+              })}
+            </p>
+            <p>
+              {t(locale, "bizAdvisorReserve", {
+                months: String(reserveMonths),
+              })}
+            </p>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -642,6 +669,8 @@ export function BusinessTab() {
     useState<BusinessTaxPeriod>("quarter");
   const [businessSection, setBusinessSection] =
     useState<BusinessSection>("operations");
+  const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
+  const [businessPeriodOpen, setBusinessPeriodOpen] = useState(false);
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
@@ -795,18 +824,12 @@ export function BusinessTab() {
             <BriefcaseBusiness className="h-5 w-5 text-primary" aria-hidden />
             {t(locale, "bizTitle")}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t(locale, "bizSubtitle")}
-          </p>
         </div>
       </div>
 
       <div className="space-y-2">
         <div>
           <p className="text-sm font-medium">{t(locale, "bizUnitsTitle")}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {t(locale, "bizUnitsLegend")}
-          </p>
         </div>
         <BusinessUnitTabs
           units={visibleUnits}
@@ -845,6 +868,8 @@ export function BusinessTab() {
             metrics={activeMetrics}
             safeWithdraw={safeWithdraw}
             locale={locale}
+            open={businessAdvisorOpen}
+            onToggle={() => setBusinessAdvisorOpen((v) => !v)}
           />
           <BusinessQuickEntry
             locale={locale}
@@ -903,14 +928,39 @@ export function BusinessTab() {
 
             {businessSection === "operations" ? (
               <div className="space-y-3">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    {t(locale, "bizPeriodSection")}: {periodLabel}
-                  </p>
-                  <StatisticsPeriodControls />
-                  <p className="text-[11px] text-muted-foreground">
-                    {t(locale, "bizPeriodHint", { period: periodLabel })}
-                  </p>
+                <div className="rounded-lg border border-border/80 bg-card px-3 py-2">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 text-left"
+                    onClick={() => setBusinessPeriodOpen((v) => !v)}
+                  >
+                    <span className="text-sm font-medium">
+                      {t(locale, "bizPeriodSection")}: {periodLabel}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                      {t(
+                        locale,
+                        businessPeriodOpen
+                          ? "transactionsHide"
+                          : "transactionsShow",
+                      )}
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform",
+                          businessPeriodOpen && "rotate-180",
+                        )}
+                        aria-hidden
+                      />
+                    </span>
+                  </button>
+                  {businessPeriodOpen ? (
+                    <div className="mt-2 space-y-2">
+                      <StatisticsPeriodControls />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizPeriodHint", { period: periodLabel })}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
                 {recentTxs.length > 0 ? (
                   <div className="space-y-1.5">

@@ -349,18 +349,18 @@ export const DICT = {
     bizCanWithdraw: "Можно вывести",
     bizAdvisorTitle: "ИИ заметил",
     bizAdvisorSafeWithdraw:
-      "Можно вывести безопасно: {amount} ₽, если оставить налог и резерв.",
-    bizAdvisorReserve: "Резерв бизнеса закрыт на {months} мес из 3.",
+      "Безопасно к выводу: {amount} ₽ — после резерва бизнеса и налога.",
+    bizAdvisorReserve: "Резерв закрывает {months} мес расходов из цели 3 мес.",
     bizAdvisorNoRevenue:
-      "Расходы уже есть, а выручки за период пока нет. Проверьте, что вложения ведут к продажам.",
+      "За период уже есть расходы, но нет выручки. Проверьте, какие траты прямо ведут к продажам, а какие можно поставить на паузу.",
     bizAdvisorLoss:
-      "Расходы выше выручки за период. Разберите крупные траты и отделите обязательное от того, что можно поставить на паузу.",
+      "Расходы выше выручки. Сначала отделите обязательные платежи от роста, затем проверьте окупаемость рекламы, закупок и подрядчиков.",
     bizAdvisorExpenseRatio:
-      "Расходы съедают {pct}% выручки. Проверьте окупаемость рекламы, закупок и подрядчиков.",
+      "Расходы забирают {pct}% выручки. Это зона контроля маржи: проверьте цену, средний чек и окупаемость каналов продаж.",
     bizAdvisorProfit:
-      "Бизнес в плюсе. Следующий шаг — отделить налог, резерв и сумму, которую можно забрать себе.",
+      "Бизнес в плюсе. Дальше действуйте как собственник: сначала налог и резерв, затем только безопасная сумма к выводу.",
     bizAdvisorEmpty:
-      "Запишите первый доход или расход — тогда ИИ начнёт видеть маржу, резерв и безопасную сумму к выводу.",
+      "Запишите первый доход или расход. После нескольких операций ИИ начнёт видеть маржу, денежный разрыв, резерв и безопасный вывод.",
     bizQuickEntryTitle: "Быстрый ввод",
     bizQuickEntryHint:
       "Например: «получил 15000 за консультацию» или «потратил 3000 на рекламу».",
@@ -1393,18 +1393,18 @@ export const DICT = {
     bizCanWithdraw: "Can withdraw",
     bizAdvisorTitle: "AI noticed",
     bizAdvisorSafeWithdraw:
-      "Safe to withdraw: {amount}, after tax and reserve.",
-    bizAdvisorReserve: "Business reserve covers {months} mo of 3.",
+      "Safe to withdraw: {amount}, after business reserve and tax.",
+    bizAdvisorReserve: "Reserve covers {months} mo of the 3 mo target.",
     bizAdvisorNoRevenue:
-      "Expenses have started, but there is no revenue in this period yet. Check that spending leads to sales.",
+      "Expenses have started, but there is no revenue this period. Check which costs directly lead to sales and which can pause.",
     bizAdvisorLoss:
-      "Expenses are higher than revenue this period. Review big costs and separate must-haves from pauseable spending.",
+      "Expenses are higher than revenue. Separate fixed costs from growth spending, then check ROI for ads, supplies, and contractors.",
     bizAdvisorExpenseRatio:
-      "Expenses consume {pct}% of revenue. Check ROI for ads, supplies, and contractors.",
+      "Expenses take {pct}% of revenue. This is margin-control territory: check price, average order value, and channel ROI.",
     bizAdvisorProfit:
-      "The business is profitable. Next step: separate tax, reserve, and the amount you can pay yourself.",
+      "The business is profitable. Act like an owner: tax and reserve first, then only the safe withdrawal amount.",
     bizAdvisorEmpty:
-      "Add the first income or expense, and AI will start tracking margin, reserve, and safe withdrawal.",
+      "Add the first income or expense. After several operations, AI will see margin, cash gap, reserve, and safe withdrawal.",
     bizQuickEntryTitle: "Quick entry",
     bizQuickEntryHint:
       "For example: “received 15000 for consulting” or “spent 3000 on ads”.",
