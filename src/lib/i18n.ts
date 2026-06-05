@@ -28,7 +28,8 @@ export const DICT = {
     helpTitle: "Помощь — Бюджет",
     helpCheatsheetTitle: "Шпаргалка",
     helpCheatsheetExample: "Пример",
-    helpCheatsheetFooter: "Не нашли ответ — спросите ИИ ниже, он знает интерфейс приложения.",
+    helpCheatsheetFooter:
+      "Не нашли ответ — спросите ИИ ниже, он знает интерфейс приложения.",
     helpChatTitle: "Спросите ИИ",
     helpChatHint:
       "Спросите своими словами — ИИ поймёт и подскажет по шагам. Про приложение и про ваши траты.",
@@ -39,19 +40,22 @@ export const DICT = {
     helpChatEmpty:
       "Напишите как удобно — коротко и простыми словами. ИИ разберётся и ответит по шагам.",
     helpChatSourceCloud: "Ответ по данным из облачной базы.",
-    helpChatSourceLocal: "Ответ по данным на этом устройстве (облако не подключено).",
+    helpChatSourceLocal:
+      "Ответ по данным на этом устройстве (облако не подключено).",
     clearData: "Очистить данные",
     clearDataConfirmAgain: "Точно? Нажмите ещё раз",
     clearConfirm:
       "Удалить все данные на этом устройстве? (операции, настройки, вход в облако). С сервера в облаке не удалится — снова появятся после «Скачать с облака».",
     resetApp: "Сбросить кэш и перезагрузить",
-    resetAppHint: "Если страница не открывается или зависает — полный сброс данных в браузере",
+    resetAppHint:
+      "Если страница не открывается или зависает — полный сброс данных в браузере",
     updateApp: "Обновить приложение",
     updateAppHint:
       "Если цели или версия не меняются: нажмите здесь, затем полностью закройте Mini App и откройте снова из чата с ботом. Данные не удалятся.",
     settingsBuildServer: "Сервер: {tag}",
     settingsBuildLocal: "телефон: {tag}",
-    settingsBuildOutdated: "Версия на телефоне устарела — нажмите «Обновить приложение» выше.",
+    settingsBuildOutdated:
+      "Версия на телефоне устарела — нажмите «Обновить приложение» выше.",
     settingsCloudAccount: "Ваш аккаунт в облаке: {id}",
     settingsBalanceSwapHint:
       "Если в вашей колонке баланса чужие суммы — обновите приложение и подождите синхронизацию (~30 с).",
@@ -84,13 +88,16 @@ export const DICT = {
     appTabLearn: "Обучение",
     appTabMore: "Ещё",
     educationFreeBadge: "Бесплатно",
-    educationFreeNote: "Обучение бесплатное — все уроки и материалы без оплаты подписки.",
+    educationFreeNote:
+      "Обучение бесплатное — все уроки и материалы без оплаты подписки.",
     educationPaywallTitle: "Курс финансовой грамотности",
-    educationPaywallHint: "18 видео-уроков. После оплаты откроются все материалы — доступ сохраняется в облаке.",
+    educationPaywallHint:
+      "18 видео-уроков. После оплаты откроются все материалы — доступ сохраняется в облаке.",
     educationPayButton: "Оплатить и открыть уроки",
     educationPayLoading: "Создаём ссылку на оплату…",
     educationPaidNote: "Оплачено — все уроки доступны на этом аккаунте.",
-    educationLockedHint: "Обучение скоро откроется. Оставьте заявку выше — пригласим вас первым.",
+    educationLockedHint:
+      "Обучение скоро откроется. Оставьте заявку выше — пригласим вас первым.",
     educationPaymentsOff: "Оплата временно недоступна на сервере.",
     educationRefreshAccess: "Обновить статус оплаты",
     moreEducation: "Обучение",
@@ -113,11 +120,13 @@ export const DICT = {
     projectsEditPlan: "План проекта",
     projectsEditPlanHint: "Меняет ориентир на карточке, не прошлые переводы.",
     projectsUtilitiesPh: "ЖКХ в этом месяце, ₽",
-    projectsUtilitiesHint: "Сколько нужно заплатить — вычитается из плана. Запись попадает в журнал и в облако.",
+    projectsUtilitiesHint:
+      "Сколько нужно заплатить — вычитается из плана. Запись попадает в журнал и в облако.",
     projectsUtilitiesHistoryTitle: "Журнал ЖКХ",
     projectsUtilitiesAvg: "среднее {amount}",
     projectsUtilitiesMonthField: "Месяц",
-    projectsRentalBanner: "ЖКХ в {month}: {utilities} · чистыми {net}/{perMonth}",
+    projectsRentalBanner:
+      "ЖКХ в {month}: {utilities} · чистыми {net}/{perMonth}",
     projectsAssetUtilities: "ЖКХ: {amount}",
     projectsAssetNetAfterUtilities: "Чистыми: {amount}/{perMonth}",
     projectsAssetPlanGross: "План: {amount}/{perMonth}",
@@ -125,7 +134,8 @@ export const DICT = {
     educationSubtitle: "Видео-уроки и запись на финансовую диагностику",
     educationAttribution: "От моего коллеги Артура Бикбулатова",
     educationVideosTitle: "Видео-уроки",
-    educationVideosEmpty: "Список уроков пока пуст. Обновите приложение или задайте EDUCATION_VIDEOS_JSON на сервере.",
+    educationVideosEmpty:
+      "Список уроков пока пуст. Обновите приложение или задайте EDUCATION_VIDEOS_JSON на сервере.",
     educationOpenVideo: "Смотреть",
     educationLoading: "Загружаем уроки…",
     educationDiagnosticsTitle: "Диагностика",
@@ -138,13 +148,15 @@ export const DICT = {
     educationWaitlistDesc:
       "Сейчас в работе большой образовательный блок: понятные уроки, практические задания, разборы привычек и путь от хаоса в деньгах к капиталу. Оставьте заявку — напишем, как только появится доступ.",
     educationWaitlistFormTitle: "Получить приглашение первым",
-    educationWaitlistFormHint: "Оставьте имя и телефон — сообщим, когда обучение откроется.",
+    educationWaitlistFormHint:
+      "Оставьте имя и телефон — сообщим, когда обучение откроется.",
     moreTitle: "Ещё",
     moreSubtitle: "Страхование, услуги, настройки, отчёты и обучение",
     moreReports: "Отчёты",
     moreReportsHint: "Excel/PDF за период и история AI-разборов",
     moreReportsExportSection: "Экспорт операций",
-    moreReportsExportHint: "Выберите период — скачайте таблицу (Excel) или PDF для печати.",
+    moreReportsExportHint:
+      "Выберите период — скачайте таблицу (Excel) или PDF для печати.",
     moreReportsFrom: "С",
     moreReportsTo: "По",
     moreReportsCount: "Записей за период: {count}",
@@ -152,8 +164,10 @@ export const DICT = {
     moreReportsPdf: "PDF",
     moreReportsExportTitle: "VoiceBudget — операции",
     moreReportsAiSection: "AI-отчёты",
-    moreReportsCloudRequired: "Подключите облако — тогда история отчётов сохранится на сервере.",
-    moreReportsDbMigrate: "Выполните в Supabase prisma/ai-reports.sql, затем Redeploy.",
+    moreReportsCloudRequired:
+      "Подключите облако — тогда история отчётов сохранится на сервере.",
+    moreReportsDbMigrate:
+      "Выполните в Supabase prisma/ai-reports.sql, затем Redeploy.",
     moreReportsHistoryTitle: "Сохранённые отчёты",
     moreReportsHistoryLoading: "Загружаем историю…",
     moreReportsHistoryEmpty: "Пока нет сохранённых отчётов — сформируйте ниже.",
@@ -178,20 +192,24 @@ export const DICT = {
     moreFreeDiagnostics: "Диагностика с финансовым советником",
     moreFreeDiagnosticsHint: "Бесплатно — разбор вашей ситуации",
     moreSgAdvisorTitle: "Стать финансовым советником",
-    moreSgAdvisorHint: "Компания SG Capital — оставьте имя и телефон, мы свяжемся с вами",
+    moreSgAdvisorHint:
+      "Компания SG Capital — оставьте имя и телефон, мы свяжемся с вами",
     moreSgAdvisorCta: "Узнать подробности",
-    moreSgAdvisorFormHint: "Заявка на сотрудничество с SG Capital как финансовый советник",
+    moreSgAdvisorFormHint:
+      "Заявка на сотрудничество с SG Capital как финансовый советник",
     moreFortuneWheel: "Колесо финансовой фортуны",
     moreFortuneWheelHint: "От Просто Бюджет — подарки и бонусы",
     moreServiceTopic: "Тема обращения",
     moreServiceFormSending: "Отправляем…",
     moreServiceFormFail: "Не удалось отправить — попробуйте позже",
-    moreServiceFormTelegramOnly: "Откройте приложение из Telegram, чтобы отправить заявку",
+    moreServiceFormTelegramOnly:
+      "Откройте приложение из Telegram, чтобы отправить заявку",
     projectsHistoryYear: "{year}",
     projectsHistoryMonthSummary: "{count} × {total}",
     moreOsago: "Оформить ОСАГО",
     moreOsagoHint: "Скидка до 30%",
-    moreOsagoFormHint: "Заполните анкету — рассмотрим предложение и свяжемся с вами",
+    moreOsagoFormHint:
+      "Заполните анкету — рассмотрим предложение и свяжемся с вами",
     moreTick: "От клеща",
     moreTickHint: "Защита от укуса клеща",
     moreMortgage: "Ипотека",
@@ -208,20 +226,25 @@ export const DICT = {
     moreServiceFormRequired: "Укажите имя и телефон",
     moreServiceOpenForm: "Заполнить анкету",
     businessTabTitle: "Бизнес и семья",
-    businessTabSubtitle: "Общая картина денег: семейный бюджет и ваши бизнес-цели в одном месте.",
+    businessTabSubtitle:
+      "Общая картина денег: семейный бюджет и ваши бизнес-цели в одном месте.",
     businessFamilyPulse: "Семейный баланс",
     businessYou: "Вы",
     businessPartner: "Партнёр",
     businessBridgeTitle: "Связь семья ↔ бизнес",
     businessBridgeHint:
       "Семейная вкладка — бытовые траты и доходы вдвоём. Бизнес — отдельный взгляд на те же цифры: что уходит на дело, что возвращается в семью.",
-    businessBridgePoint1: "Зарплата и подработки отмечайте доходом — они видны и в семье, и здесь.",
-    businessBridgePoint2: "Крупные бизнес-расходы ведите с понятной категорией — проще смотреть отчёт за период.",
-    businessBridgePoint3: "Копилки и лимиты настраиваются в «Семье» — ИИ-отчёт их учитывает и хвалит прогресс.",
+    businessBridgePoint1:
+      "Зарплата и подработки отмечайте доходом — они видны и в семье, и здесь.",
+    businessBridgePoint2:
+      "Крупные бизнес-расходы ведите с понятной категорией — проще смотреть отчёт за период.",
+    businessBridgePoint3:
+      "Копилки и лимиты настраиваются в «Семье» — ИИ-отчёт их учитывает и хвалит прогресс.",
     businessPeriodSplit: "Доходы и расходы за период",
     businessGoalsTitle: "Копилки семьи",
     businessGoalsCount: "целей: {count}",
-    businessComingInvest: "Отдельный учёт инвестиций и проектов — в следующих версиях.",
+    businessComingInvest:
+      "Отдельный учёт инвестиций и проектов — в следующих версиях.",
     businessModeButton: "Биз",
     businessModeAria: "Бизнес-режим",
     businessModeTitle: "Бизнес — в разработке",
@@ -229,26 +252,31 @@ export const DICT = {
       "Отдельный контур для ИП и личных финансов предпринимателя. Семейный бюджет с партнёром останется как сейчас.",
     businessModeBullet1: "Вкладки «Семья» и «Бизнес», перевод себе между ними",
     businessModeBullet2: "Проекты: затраты и доход (аренда, инвестиции)",
-    businessModeBullet3: "Облако — резервная копия, без общего доступа к бизнесу с партнёром",
+    businessModeBullet3:
+      "Облако — резервная копия, без общего доступа к бизнесу с партнёром",
     businessModePreview: "Превью экрана «Капитал»",
     businessModeOk: "Понятно",
     bizPreviewBadge: "Превью · отдельно от семьи",
     bizTitle: "Бизнес",
-    bizSubtitle: "Доходы и расходы бизнеса — не смешиваются с семейным бюджетом.",
+    bizSubtitle:
+      "Доходы и расходы бизнеса — не смешиваются с семейным бюджетом.",
     bizPulse: "Деньги в бизнесе",
     bizOperatingBalance: "На счёте бизнеса",
     bizMonthIncome: "Доход за месяц",
     bizMonthExpense: "Расход за месяц",
     bizMonthProfit: "Прибыль",
     bizCushionTitle: "Резерв бизнеса",
-    bizCushionHint: "Цель — 3 месяца средних бизнес-расходов. Считается по операциям за последние 90 дней.",
+    bizCushionHint:
+      "Цель — 3 месяца средних бизнес-расходов. Считается по операциям за последние 90 дней.",
+    bizTarget: "Цель",
     bizCushionTarget: "цель {amount} ₽",
     bizAvgBurn: "≈ {amount} ₽ расходов в месяц",
     bizToCushion: "В резерв",
     bizToFamily: "Себе в семью",
     bizAssetsTitle: "Проекты и активы",
     bizAssetAdd: "Добавить",
-    bizAssetsEmpty: "Добавьте квартиру, инвестицию, долгий проект или клиента — здесь будет видно, сколько это приносит.",
+    bizAssetsEmpty:
+      "Добавьте квартиру, инвестицию, долгий проект или клиента — здесь будет видно, сколько это приносит.",
     bizAssetInvestment: "Инвестиции",
     bizAssetRental: "Недвижимость",
     bizAssetFreelance: "Фриланс",
@@ -295,9 +323,12 @@ export const DICT = {
     bizProjectsSectionHint:
       "Следите за тем, что приносит деньги отдельно от текущих бизнес-операций.",
     bizProjectsHowTitle: "Как пользоваться",
-    bizProjectsHow1: "Добавьте источник денег: квартиру, инвестицию, долгий проект, клиента или подработку.",
-    bizProjectsHow2: "Укажите стоимость/капитал и сколько он приносит чистыми в месяц.",
-    bizProjectsHow3: "Когда деньги реально пришли — нажмите «Зачислить», и сумма появится доходом в семейном бюджете.",
+    bizProjectsHow1:
+      "Добавьте источник денег: квартиру, инвестицию, долгий проект, клиента или подработку.",
+    bizProjectsHow2:
+      "Укажите стоимость/капитал и сколько он приносит чистыми в месяц.",
+    bizProjectsHow3:
+      "Когда деньги реально пришли — нажмите «Зачислить», и сумма появится доходом в семейном бюджете.",
     bizProjectsTotal: "Пассив по всем проектам: {amount}/мес",
     bizProjectsForUnit: "Бизнес «{name}»",
     bizAssetToAccount: "В семью",
@@ -313,7 +344,35 @@ export const DICT = {
     bizIncomeSources: "Откуда доход за период",
     bizPeriodSection: "Период",
     bizPeriodHint: "Цифры выбранного бизнеса считаются за период: {period}.",
-    bizFamilyLinkHint: "«В семью» — создаёт доход в семейном бюджете (вкладка Семья).",
+    bizKpiRevenue: "Выручка",
+    bizKpiExpenses: "Расходы",
+    bizCanWithdraw: "Можно вывести",
+    bizAdvisorTitle: "ИИ заметил",
+    bizAdvisorSafeWithdraw:
+      "Можно вывести безопасно: {amount} ₽, если оставить налог и резерв.",
+    bizAdvisorReserve: "Резерв бизнеса закрыт на {months} мес из 3.",
+    bizAdvisorNoRevenue:
+      "Расходы уже есть, а выручки за период пока нет. Проверьте, что вложения ведут к продажам.",
+    bizAdvisorLoss:
+      "Расходы выше выручки за период. Разберите крупные траты и отделите обязательное от того, что можно поставить на паузу.",
+    bizAdvisorExpenseRatio:
+      "Расходы съедают {pct}% выручки. Проверьте окупаемость рекламы, закупок и подрядчиков.",
+    bizAdvisorProfit:
+      "Бизнес в плюсе. Следующий шаг — отделить налог, резерв и сумму, которую можно забрать себе.",
+    bizAdvisorEmpty:
+      "Запишите первый доход или расход — тогда ИИ начнёт видеть маржу, резерв и безопасную сумму к выводу.",
+    bizQuickEntryTitle: "Быстрый ввод",
+    bizQuickEntryHint:
+      "Например: «получил 15000 за консультацию» или «потратил 3000 на рекламу».",
+    bizSectionOperations: "Операции",
+    bizSectionReserve: "Резерв",
+    bizSectionTax: "Налог",
+    bizSectionProjects: "Проекты",
+    bizNoRecentTx: "Пока нет операций по этому бизнесу.",
+    bizTaxSetup: "Настроить налог",
+    bizTaxCurrent: "{rate}% · {period}",
+    bizFamilyLinkHint:
+      "«В семью» — создаёт доход в семейном бюджете (вкладка Семья).",
     bizCloudOk: "В облаке",
     bizVoiceHint:
       "«+50 000» или «доход 100 000» — в доход; «−5000» или «расход» — в расход. Сначала выберите нужный бизнес вкладкой.",
@@ -338,12 +397,14 @@ export const DICT = {
     bizUnitTaxSettings: "Налог для этого бизнеса",
     bizTaxActiveHint: "Для «{name}», период: {period}. Меняется в ✎",
     bizVoicePlaceholder: "+50000 доход или −3000 расход…",
-    bizVoiceTryManual: "Не понял сумму — «+5000», «доход 10000» или «расход 5000»",
+    bizVoiceTryManual:
+      "Не понял сумму — «+5000», «доход 10000» или «расход 5000»",
     bizVoiceIncomeOk: "Доход +{amount} ₽ записан",
     bizVoiceExpenseOk: "Расход −{amount} ₽ записан",
     bizVoiceCushionOk: "В резерв бизнеса: {amount} ₽",
     bizVoiceFamilyOk: "В семью: {amount} ₽",
-    bizVoiceFamilyFail: "Недостаточно денег на счёте бизнеса для перевода в семью",
+    bizVoiceFamilyFail:
+      "Недостаточно денег на счёте бизнеса для перевода в семью",
     bizAssetNameRequired: "Укажите название проекта или актива",
     bizAssetSaved: "Проект сохранён",
     bizVoiceUnitOk: "«{name}»: {amount} ₽",
@@ -363,7 +424,8 @@ export const DICT = {
     bizCushionGap: "ещё {amount} ₽ до резерва",
     bizCushionFull: "цель достигнута",
     bizTaxTitle: "Резерв на налоги",
-    bizTaxHint: "Выберите ставку — покажем, сколько отложить с дохода текущего месяца.",
+    bizTaxHint:
+      "Выберите ставку — покажем, сколько отложить с дохода текущего месяца.",
     bizTaxOff: "Выкл",
     bizTaxReserve: "Рекомендуемый резерв",
     bizTaxFromIncome: "{rate}% от дохода {income} ₽ за месяц",
@@ -371,25 +433,32 @@ export const DICT = {
     bizWeightedYield: "средняя доходность {pct}% годовых",
     bizTypeSummary: "{capital} ₽ · +{monthly}/мес · {yield}% год",
     bizExpenseBreakdown: "Куда ушли расходы за период",
-    bizAssetDialogHint: "Добавьте источник денег и плановый чистый доход. Для недвижимости можно отдельно указать ЖКХ, для фриланса — часы, чтобы увидеть ставку в час.",
+    bizAssetDialogHint:
+      "Добавьте источник денег и плановый чистый доход. Для недвижимости можно отдельно указать ЖКХ, для фриланса — часы, чтобы увидеть ставку в час.",
     bizPerHour: "ч",
     bizHourlyTitle: "Стоимость часа",
-    bizHourlyHint: "Сколько вы хотите получать за час работы. Для фриланса — сравним с фактом по проектам.",
+    bizHourlyHint:
+      "Сколько вы хотите получать за час работы. Для фриланса — сравним с фактом по проектам.",
     bizHourlyPh: "Целевая ставка, ₽/ч",
     bizHourlyImplied: "Фактически за месяц: ~{amount} ₽/ч (прибыль ÷ 160 ч)",
     bizHourlyBelowTarget: "ниже цели на {pct}%",
     bizHourlyOnTarget: "на уровне или выше цели",
     bizAssetHoursPh: "Сколько часов в месяц занимает",
     onboardVoiceTitle: "Сюда пишите траты",
-    onboardVoiceBody: "«500 на обед», «зарплата 80000» — текстом или голосом в Telegram. Это главное действие каждый день.",
+    onboardVoiceBody:
+      "«500 на обед», «зарплата 80000» — текстом или голосом в Telegram. Это главное действие каждый день.",
     onboardTxTitle: "Все ваши операции",
-    onboardTxBody: "Список расходов и доходов. Можно править, удалять, фильтровать по типу.",
+    onboardTxBody:
+      "Список расходов и доходов. Можно править, удалять, фильтровать по типу.",
     onboardPlanningTitle: "Цели и планы",
-    onboardPlanningBody: "Копилки, лимиты по категориям, подушка безопасности и регулярные платежи — откройте, когда захотите настроить.",
+    onboardPlanningBody:
+      "Копилки, лимиты по категориям, подушка безопасности и регулярные платежи — откройте, когда захотите настроить.",
     onboardChartTitle: "Статистика",
-    onboardChartBody: "Диаграммы доходов и расходов за период — удобно смотреть, куда уходят деньги.",
+    onboardChartBody:
+      "Диаграммы доходов и расходов за период — удобно смотреть, куда уходят деньги.",
     onboardTipsTitle: "ИИ-советы",
-    onboardTipsBody: "Самое интересное: персональный разбор бюджета, советы и мини-подсказки от ИИ.",
+    onboardTipsBody:
+      "Самое интересное: персональный разбор бюджета, советы и мини-подсказки от ИИ.",
     onboardNext: "Дальше",
     onboardSkip: "Пропустить",
     onboardDone: "Понятно",
@@ -424,10 +493,12 @@ export const DICT = {
     vehicleAddAnother: "Добавить ещё машину",
     vehicleCarNumber: "Машина {n}",
     vehicleFuelPer100: "≈ {value} ₽ / 100 км",
-    vehicleFuelPer100Unknown: "Нужны две заправки с пробегом — покажем расход на 100 км",
+    vehicleFuelPer100Unknown:
+      "Нужны две заправки с пробегом — покажем расход на 100 км",
     vehicleGarageModeLabel: "Кто на чём ездит",
     vehicleGarageModeBoth: "Оба ездят на всех машинах",
-    vehicleGarageModeSplit: "У каждого своя основная (в операции можно сменить)",
+    vehicleGarageModeSplit:
+      "У каждого своя основная (в операции можно сменить)",
     vehicleDefaultVehicle: "Моя основная машина",
     vehicleRarelyPartner: "Редко езжу на машине партнёра",
     vehicleToAlertsAll: "Напоминания о ТО — для всех машин, обоим супругам.",
@@ -458,14 +529,15 @@ export const DICT = {
     voiceListening: "Говорите… как замолчите — запись остановится",
     voiceTapToStop: "Говорите… нажмите красную кнопку, когда закончите",
     voiceStopAria: "Остановить запись",
-    voiceRecorderFailed: "Микрофон не записывает — закройте и откройте приложение снова",
-    voiceSttFailed: "Не удалось распознать речь — скажите ещё раз или введите текст и «Добавить»",
+    voiceRecorderFailed:
+      "Микрофон не записывает — закройте и откройте приложение снова",
+    voiceSttFailed:
+      "Не удалось распознать речь — скажите ещё раз или введите текст и «Добавить»",
     voiceRetrySpeech: "Сервер молчит — слушаю ещё раз в телефоне…",
     voiceMicLive: "Микрофон включён — говорите",
     voiceNoSpeech:
       "Не расслышали. Подождите 2–3 сек, говорите чётко «потратил 500 на обед», стоп — или введите текст ниже",
-    voiceHintTelegram:
-      "Голосом — отправьте голосовое боту @{bot} в Telegram",
+    voiceHintTelegram: "Голосом — отправьте голосовое боту @{bot} в Telegram",
     voiceRecordingTelegram: "Запись… говорите, затем красный квадрат",
     voiceNativeButton: "Записать системным диктофоном",
     voicePickAudioButton: "Выбрать аудиофайл с телефона",
@@ -477,15 +549,20 @@ export const DICT = {
     voiceLinkCopied: "Ссылка скопирована — вставьте в Chrome",
     voiceLinkCopyFailed: "Не удалось скопировать — выделите ссылку ниже",
     voiceLivePreview: "Слышу:",
-    voiceTimeout: "Не дождались микрофона или сервера — попробуйте ещё раз или введите текст",
-    voiceMicTimeout: "Микрофон не ответил — разрешите доступ и попробуйте снова",
+    voiceTimeout:
+      "Не дождались микрофона или сервера — попробуйте ещё раз или введите текст",
+    voiceMicTimeout:
+      "Микрофон не ответил — разрешите доступ и попробуйте снова",
     voiceTryManual:
       "Не расслышали. Скажите ещё раз или введите: «потратил 500 на обед» и нажмите Добавить",
-    voiceTranscribeFailed: "Не распознали речь — повторите короче или введите текст",
-    voiceInsecure: "Голос работает только по HTTPS — откройте сайт через https://",
+    voiceTranscribeFailed:
+      "Не распознали речь — повторите короче или введите текст",
+    voiceInsecure:
+      "Голос работает только по HTTPS — откройте сайт через https://",
     voiceTranscribing: "Распознаю речь…",
     voiceTooShort: "Слишком коротко — скажите фразу целиком",
-    voiceSttUnavailable: "Сервер распознавания недоступен — введите текст вручную",
+    voiceSttUnavailable:
+      "Сервер распознавания недоступен — введите текст вручную",
     voiceProcessing: "ИИ слушает и разбирает…",
     voiceSuccess: "Операция добавлена",
     voiceSuccessMany: "Добавлено {count} {word}",
@@ -544,11 +621,13 @@ export const DICT = {
     partnerKeywordsSave: "Сохранить ключевые слова",
     ownerChipColorMy: "Цвет моего значка",
     ownerChipColorPartner: "Цвет значка партнёра",
-    ownerChipColorHint: "Кружок с буквой на вкладке «Все» в операциях. Меняется сразу при выборе.",
+    ownerChipColorHint:
+      "Кружок с буквой на вкладке «Все» в операциях. Меняется сразу при выборе.",
     partnerSave: "Сохранить имя партнёра",
     settingsSaved: "Сохранено",
     cloudTitle: "Облако и семья",
-    cloudHint: "Один бюджет на телефоне и в браузере — через ваш аккаунт Telegram.",
+    cloudHint:
+      "Один бюджет на телефоне и в браузере — через ваш аккаунт Telegram.",
     cloudWebLoginTitle: "Войти через Telegram",
     cloudWebLoginHint:
       "Тот же аккаунт, что в Mini App: операции с телефона и с сайта будут в одном облаке.",
@@ -562,12 +641,15 @@ export const DICT = {
     cloudHintNewHousehold: "Только если облака ещё нет ни на одном устройстве.",
     cloudSolo: "Веду один",
     cloudShared: "Вдвоём",
-    cloudSoloHint: "Один ведёт бюджет за двоих — укажите имя партнёра для меток в операциях.",
-    cloudSharedHint: "Создайте семью и отправьте код второму человеку в Telegram.",
+    cloudSoloHint:
+      "Один ведёт бюджет за двоих — укажите имя партнёра для меток в операциях.",
+    cloudSharedHint:
+      "Создайте семью и отправьте код второму человеку в Telegram.",
     cloudCreate: "Создать облачный бюджет",
     cloudJoinTitle: "Уже есть семья?",
     cloudJoinPlaceholder: "Код семьи (6 букв)",
-    cloudJoinHint: "Только для партнёра в общем бюджете. Ссылка «пригласить друга» сюда не вставляется.",
+    cloudJoinHint:
+      "Только для партнёра в общем бюджете. Ссылка «пригласить друга» сюда не вставляется.",
     cloudErrReferralNotHousehold:
       "Это ссылка для бонуса «пригласить друга» — пусть друг откроет её в Telegram. Сюда — только код семьи из блока «Код для партнёра».",
     cloudJoin: "Присоединиться",
@@ -602,7 +684,8 @@ export const DICT = {
     cloudSyncPushEmpty: "Нет операций для отправки",
     cloudProtectedNotice:
       "Семейное облако нельзя удалить из приложения — только очистить данные на этом телефоне. На сервере бюджет семьи сохраняется.",
-    cloudErrLeaveForbidden: "Выход из семейного облака отключён — данные семьи защищены.",
+    cloudErrLeaveForbidden:
+      "Выход из семейного облака отключён — данные семьи защищены.",
     cloudDisconnect: "Приостановить синхронизацию на этом телефоне",
     cloudDisconnectConfirm:
       "Отключить автосинхронизацию? Данные на сервере останутся, но телефон перестанет их подгружать сам. Можно снова подключить позже.",
@@ -611,19 +694,24 @@ export const DICT = {
     cloudPausedHint:
       "С телефона данные с сервера не подтягиваются. Если всё «возвращалось» после удаления Telegram — это было облако, не кэш.",
     cloudResume: "Снова включить облако",
-    cloudNotConfigured: "Сервер без БД — облако недоступно. Добавьте DATABASE_URL на Vercel.",
+    cloudNotConfigured:
+      "Сервер без БД — облако недоступно. Добавьте DATABASE_URL на Vercel.",
     cloudTelegramOnly: "Облако работает в Telegram Mini App.",
-    cloudErrDatabase: "Облако не настроено: на сервере не задана база данных (DATABASE_URL).",
+    cloudErrDatabase:
+      "Облако не настроено: на сервере не задана база данных (DATABASE_URL).",
     cloudErrDbUnavailable:
       "База недоступна. На Vercel для Supabase укажите Transaction pooler (:6543), не direct :5432. Затем npm run db:push с Direct URL.",
-    cloudErrTelegram: "Откройте приложение из Telegram, чтобы создать общий бюджет.",
+    cloudErrTelegram:
+      "Откройте приложение из Telegram, чтобы создать общий бюджет.",
     cloudErrTelegramAuth:
       "Не удалось подтвердить Telegram-сессию. Проверьте TELEGRAM_BOT_TOKEN на Vercel и откройте Mini App заново.",
     cloudErrAlreadyInHousehold:
       "Вы уже в семейном облаке. Чтобы сменить семью — напишите в поддержку; самостоятельный выход отключён.",
     cloudErrInviteCode: "Код приглашения неверный или семья не найдена.",
-    cloudErrUnauthorized: "Нет доступа к облаку. Откройте приложение из Telegram заново.",
-    cloudErrGeneric: "Не удалось выполнить действие в облаке. Попробуйте ещё раз.",
+    cloudErrUnauthorized:
+      "Нет доступа к облаку. Откройте приложение из Telegram заново.",
+    cloudErrGeneric:
+      "Не удалось выполнить действие в облаке. Попробуйте ещё раз.",
     householdAll: "Общий",
     householdFilterLabel: "Показать операции",
     entryOwnerLabel: "Записать операцию на",
@@ -634,7 +722,8 @@ export const DICT = {
     chartTabIncome: "Доходы",
     chartPeriod: "Период: {period}",
     budgetMonthStart: "Начало месяца",
-    budgetMonthStartHint: "День зарплаты: лимиты и статистика считаются с этой даты. 1 = календарный месяц.",
+    budgetMonthStartHint:
+      "День зарплаты: лимиты и статистика считаются с этой даты. 1 = календарный месяц.",
     budgetMonthStartDay: "День",
     chartTitleMe: "Я",
     chartTitlePartner: "Партнёр",
@@ -656,7 +745,8 @@ export const DICT = {
     weeklyNextIn: "Следующий ИИ-разбор через {daysLabel}",
     weeklyRefresh: "Обновить",
     weeklyLoading: "Анализируем неделю…",
-    weeklyFallback: "Краткий разбор без ИИ — полный анализ при следующей попытке.",
+    weeklyFallback:
+      "Краткий разбор без ИИ — полный анализ при следующей попытке.",
     weeklyNeedMore: "Добавьте ещё {count} операций за неделю для разбора.",
     weeklySubtitleWaiting: "Разбор раз в неделю — когда накопится история",
     weeklyNoRush: "Это не оценка, а подсказка когда данных достаточно.",
@@ -666,7 +756,8 @@ export const DICT = {
     monthlyPeriod: "Период: {from} — {to}",
     monthlyNextIn: "Следующий разбор через {daysLabel}",
     monthlyLoading: "Готовим месячный отчёт…",
-    monthlyFallback: "Краткий отчёт без ИИ — полный разбор при следующей попытке.",
+    monthlyFallback:
+      "Краткий отчёт без ИИ — полный разбор при следующей попытке.",
     monthlySubtitleWaiting: "Нужно 30 дней учёта с первого входа и 5+ операций",
     monthlyNoRush: "Когда данных достаточно, откроется окно с отчётом и чатом.",
     monthlyOpenDialog: "Открыть разбор и задать вопрос",
@@ -676,15 +767,20 @@ export const DICT = {
       "Например: как менялись расходы за полгода? На что тратил больше всего?",
     monthlyChatSend: "Спросить",
     monthlyChatThinking: "Думаю…",
-    monthlyChatLimit: "Лимит вопросов на этот месяц исчерпан. Новый разбор — через {daysLabel}.",
-    monthlyChatEmpty: "Прочитайте отчёт и задайте вопрос — ответ будет по вашим данным.",
+    monthlyChatLimit:
+      "Лимит вопросов на этот месяц исчерпан. Новый разбор — через {daysLabel}.",
+    monthlyChatEmpty:
+      "Прочитайте отчёт и задайте вопрос — ответ будет по вашим данным.",
     monthlyReportSection: "Отчёт за 30 дней",
     refreshRecommendations: "Обновить",
-    recHighExpenses: "Сократите необязательные траты — расходы превышают 70% дохода",
-    recCategoryBudget: "Рассмотрите бюджет на категорию «{category}» — более 40% расходов",
+    recHighExpenses:
+      "Сократите необязательные траты — расходы превышают 70% дохода",
+    recCategoryBudget:
+      "Рассмотрите бюджет на категорию «{category}» — более 40% расходов",
     recHealthy: "Финансы в норме. Продолжайте отслеживать траты",
     recProgress: "До ИИ-анализа: {current} / {total} дней ведения бюджета",
-    recLocked: "Персональные ИИ-советы откроются через {days} дн. — продолжайте фиксировать траты",
+    recLocked:
+      "Персональные ИИ-советы откроются через {days} дн. — продолжайте фиксировать траты",
     recLoading: "Генерируем ИИ-рекомендации…",
     recPreliminary: "Предварительные советы (полный ИИ-анализ через месяц)",
     recAiPowered: "ИИ-анализ расходов и оптимизация",
@@ -701,7 +797,8 @@ export const DICT = {
     paywallSubscribe: "Оплатить",
     paywallLoading: "Создаём платёж…",
     paywallRefresh: "Я оплатил — обновить",
-    paywallHouseholdPaused: "Облако приостановлено до оплаты. Локальные данные на устройстве сохраняются.",
+    paywallHouseholdPaused:
+      "Облако приостановлено до оплаты. Локальные данные на устройстве сохраняются.",
     paywallActiveUntil: "Подписка активна до {date}",
     paywallPromoTitle: "Промокод",
     paywallPromoPlaceholder: "Например: найм дерьмо",
@@ -712,7 +809,8 @@ export const DICT = {
     paywallPromoExpired: "Срок действия промокода истёк",
     paywallPromoExhausted: "Промокод исчерпан",
     paywallPromoFailed: "Не удалось применить промокод",
-    paywallTrialHint: "Новым пользователям — {days} дн. бесплатно (суммируется с промокодом)",
+    paywallTrialHint:
+      "Новым пользователям — {days} дн. бесплатно (суммируется с промокодом)",
     referralTitle: "Пригласить друга",
     referralSettingsHint: "Ссылка, кошелёк %, приглашённые друзья",
     referralDesc:
@@ -722,18 +820,22 @@ export const DICT = {
     referralFriendOpensLink:
       "Другу достаточно нажать на вашу ссылку в Telegram. Реферальный код сюда не вводят — не в «Облако» и не в «Семья»: там другие коды (облако и партнёр по бюджету).",
     referralBonusHint: "После оплаты подписки другом — вам обоим +{days} дн.",
-    referralBonusHintWallet: "{percent}% с оплаты подписки друга на ваш реферальный счёт.",
+    referralBonusHintWallet:
+      "{percent}% с оплаты подписки друга на ваш реферальный счёт.",
     referralPendingReferrerWalletPay:
       "Друг подключён по ссылке — {percent}% на счёт после его оплаты подписки.",
     referralPendingReferredWalletPay:
       "Вы по приглашению — пригласивший получит {percent}% на счёт после вашей оплаты подписки.",
-    referralPendingReferrerPay: "Друг подключён — бонус +{days} дн. после его оплаты подписки.",
-    referralPendingReferredPay: "Вы по приглашению — ваш бонус +{days} дн. после оплаты подписки.",
+    referralPendingReferrerPay:
+      "Друг подключён — бонус +{days} дн. после его оплаты подписки.",
+    referralPendingReferredPay:
+      "Вы по приглашению — ваш бонус +{days} дн. после оплаты подписки.",
     referralPendingReferrerWallet:
       "Друг учитывает бюджет: {recorded}/{required} дней. Затем начислим {percent}% с подписки.",
     referralPendingReferredWallet:
       "Записывайте траты ещё {left} из {required} дней — затем пригласивший получит бонус на счёт.",
-    referralShareWallet: "Попробуй «Просто Бюджет» — удобный семейный бюджет в Telegram",
+    referralShareWallet:
+      "Попробуй «Просто Бюджет» — удобный семейный бюджет в Telegram",
     referralPendingReferred:
       "Ваш бонус +{days} дн.: записывайте траты или доходы ещё {left} из {required} дней учёта.",
     referralPendingReferrer:
@@ -757,7 +859,8 @@ export const DICT = {
     referralCopyFailed: "Не удалось скопировать",
     referralShare: "Отправить в Telegram",
     referralShareDays: "Попробуй «Просто Бюджет» — семейный бюджет в Telegram",
-    referralActivityRule: "Бонус после {required} разных дней с хотя бы одной записью (доход или расход).",
+    referralActivityRule:
+      "Бонус после {required} разных дней с хотя бы одной записью (доход или расход).",
     referralApplyTitle: "Уже есть ссылка приглашения?",
     referralApplyPlaceholder: "Вставьте ссылку или код ref_…",
     referralApplySubmit: "Привязать приглашение",
@@ -780,17 +883,22 @@ export const DICT = {
     referralWalletDismissEarly: "Можно убрать через месяц без оплаты",
     referralWalletStatusPaid: "· начислено",
     referralWalletWithdraw: "Вывести на карту",
-    referralWalletWithdrawHint: "Минимум 500 ₽. Выплаты подключаем после теста.",
+    referralWalletWithdrawHint:
+      "Минимум 500 ₽. Выплаты подключаем после теста.",
     referralWalletWithdrawSoon: "Вывод скоро — сейчас режим просмотра",
     referralWalletApplyAtRenewal: "Использовать при продлении",
     referralWalletApplyAtRenewalHint:
       "При оплате подписки в настройках → облако спишется доступный баланс, остаток — картой.",
-    referralWalletApplyHint: "Откройте настройки → Облако. Если на кошельке есть доступные рубли, там появится кнопка оплаты/продления с кошелька.",
+    referralWalletApplyHint:
+      "Откройте настройки → Облако. Если на кошельке есть доступные рубли, там появится кнопка оплаты/продления с кошелька.",
     referralWalletPaySubscribe: "Оплатить с кошелька",
-    referralWalletPayFull: "С кошелька спишется {amount} ₽ — подписка без карты.",
+    referralWalletPayFull:
+      "С кошелька спишется {amount} ₽ — подписка без карты.",
     referralWalletPayPartial: "С кошелька {wallet} ₽, картой ещё {card} ₽.",
-    referralWalletPaidSuccess: "Подписка продлена — списано {amount} ₽ с реферального кошелька.",
-    referralWalletPartialRedirect: "С кошелька учтено {wallet} ₽ — доплатите картой в ЮKassa.",
+    referralWalletPaidSuccess:
+      "Подписка продлена — списано {amount} ₽ с реферального кошелька.",
+    referralWalletPartialRedirect:
+      "С кошелька учтено {wallet} ₽ — доплатите картой в ЮKassa.",
     referralWalletPayFailed: "Не удалось оплатить с кошелька",
     accessBannerTitle: "Бесплатный доступ · {days}",
     accessBannerDaysLeft: "осталось {days} дн.",
@@ -798,7 +906,8 @@ export const DICT = {
     accessBannerTrialPart: "{days} дн. trial",
     accessBannerReferralPart: "{days} дн. реферал",
     accessBannerUntil: "до {date}",
-    accessBannerFriendBonus: "+{days} дн. за каждого приглашённого друга ({count})",
+    accessBannerFriendBonus:
+      "+{days} дн. за каждого приглашённого друга ({count})",
     accessBannerJoinedBonus: "+{days} дн. — вы пришли по приглашению",
     accessBannerReferralPendingReferredPay:
       "По приглашению — бонус +{days} дн. после вашей оплаты подписки",
@@ -862,7 +971,8 @@ export const DICT = {
     categoryDeleteConfirm:
       "Удалить «{name}»? Операции с этой категорией перейдут в «{fallback}».",
     categoryDeleteYes: "Да, удалить",
-    categoryDeleteBlocked: "Категорию «Прочее» удалить нельзя — нужна хотя бы одна на тип",
+    categoryDeleteBlocked:
+      "Категорию «Прочее» удалить нельзя — нужна хотя бы одна на тип",
     aiFallbackNotice: "AI недоступен — использован простой парсер",
     greeting: "Привет, {name}!",
     currency: "₽",
@@ -891,7 +1001,8 @@ export const DICT = {
     planningGoalMonthlyOnAccount: "Просто копить (без дохода): ~{amount}/мес",
     planningGoalMonthlyIfInvested: "Если инвестировать: ~{amount}/мес",
     planningEmergencyTitle: "Подушка безопасности",
-    planningEmergencyHint: "Цель считается из средних расходов за 3 месяца × выбранный срок",
+    planningEmergencyHint:
+      "Цель считается из средних расходов за 3 месяца × выбранный срок",
     planningEmergencyEnable: "Включить подушку",
     planningEmergencyMonths3: "3 месяца",
     planningEmergencyMonths6: "6 месяцев",
@@ -964,7 +1075,8 @@ export const DICT = {
     helpTitle: "Help — Budget",
     helpCheatsheetTitle: "Quick reference",
     helpCheatsheetExample: "Example",
-    helpCheatsheetFooter: "Didn't find an answer — ask AI below; it knows the app.",
+    helpCheatsheetFooter:
+      "Didn't find an answer — ask AI below; it knows the app.",
     helpChatTitle: "Ask AI",
     helpChatHint:
       "Ask in your own words — AI will guide you step by step. App help and your spending.",
@@ -975,19 +1087,22 @@ export const DICT = {
     helpChatEmpty:
       "Write casually — short and simple. AI will figure out what you need.",
     helpChatSourceCloud: "Answer based on cloud database.",
-    helpChatSourceLocal: "Answer based on data on this device (cloud not connected).",
+    helpChatSourceLocal:
+      "Answer based on data on this device (cloud not connected).",
     clearData: "Clear data",
     clearDataConfirmAgain: "Are you sure? Tap again",
     clearConfirm:
       "Delete all data on this device? (transactions, settings, cloud login). Cloud server data stays — it returns after “Download from cloud”.",
     resetApp: "Reset cache and reload",
-    resetAppHint: "If the page won't load or freezes — full browser data reset for this app",
+    resetAppHint:
+      "If the page won't load or freezes — full browser data reset for this app",
     updateApp: "Update app",
     updateAppHint:
       "If goals or version look stale: tap here, fully close the Mini App, then open again from the bot chat. Your data stays.",
     settingsBuildServer: "Server: {tag}",
     settingsBuildLocal: "phone: {tag}",
-    settingsBuildOutdated: "This phone has an old build — tap Update app above.",
+    settingsBuildOutdated:
+      "This phone has an old build — tap Update app above.",
     settingsCloudAccount: "Your cloud account: {id}",
     settingsBalanceSwapHint:
       "If balance columns show the wrong person’s totals, update the app and wait for sync (~30 s).",
@@ -1020,19 +1135,23 @@ export const DICT = {
     appTabLearn: "Learn",
     appTabMore: "More",
     educationFreeBadge: "Free",
-    educationFreeNote: "Education is free — all lessons without a subscription.",
+    educationFreeNote:
+      "Education is free — all lessons without a subscription.",
     educationPaywallTitle: "Financial literacy course",
-    educationPaywallHint: "18 video lessons. After payment all materials unlock — access saved to your cloud account.",
+    educationPaywallHint:
+      "18 video lessons. After payment all materials unlock — access saved to your cloud account.",
     educationPayButton: "Pay and unlock lessons",
     educationPayLoading: "Creating payment link…",
     educationPaidNote: "Paid — all lessons are available on this account.",
-    educationLockedHint: "Education will open soon. Leave a request above and we will invite you first.",
+    educationLockedHint:
+      "Education will open soon. Leave a request above and we will invite you first.",
     educationPaymentsOff: "Payments are not configured on the server yet.",
     educationRefreshAccess: "Refresh payment status",
     moreEducation: "Education",
     moreEducationHint: "18 lessons · 5,000 ₽ instead of 40,000",
     moreProjects: "Projects",
-    moreProjectsHint: "Real estate, freelance, investments — plan and transfer to family",
+    moreProjectsHint:
+      "Real estate, freelance, investments — plan and transfer to family",
     projectsExplain:
       "Add a money source and expected income. When money arrives, tap “Credit” and it will appear as household income.",
     projectsTotalReceived: "Total transferred to family: {amount}",
@@ -1040,7 +1159,8 @@ export const DICT = {
     projectsReceivedTotal: "To family total: {amount}",
     projectsToFamily: "Credit",
     projectsTransferTitle: "Credit income to household budget",
-    projectsTransferHint: "Use this only when money has actually arrived. The amount will appear as household income.",
+    projectsTransferHint:
+      "Use this only when money has actually arrived. The amount will appear as household income.",
     projectsTransferPlan: "Expected income: {amount}",
     projectsTransferConfirm: "Credit to family",
     projectsTransferOk: "{amount} credited to family budget",
@@ -1048,11 +1168,13 @@ export const DICT = {
     projectsEditPlan: "Project plan",
     projectsEditPlanHint: "Updates the card guide, not past transfers.",
     projectsUtilitiesPh: "Utilities this month, ₽",
-    projectsUtilitiesHint: "Amount to pay — subtracted from plan. Saved to journal and cloud.",
+    projectsUtilitiesHint:
+      "Amount to pay — subtracted from plan. Saved to journal and cloud.",
     projectsUtilitiesHistoryTitle: "Utilities journal",
     projectsUtilitiesAvg: "avg {amount}",
     projectsUtilitiesMonthField: "Month",
-    projectsRentalBanner: "Utilities in {month}: {utilities} · net {net}/{perMonth}",
+    projectsRentalBanner:
+      "Utilities in {month}: {utilities} · net {net}/{perMonth}",
     projectsAssetUtilities: "Utilities: {amount}",
     projectsAssetNetAfterUtilities: "Net: {amount}/{perMonth}",
     projectsAssetPlanGross: "Plan: {amount}/{perMonth}",
@@ -1060,11 +1182,13 @@ export const DICT = {
     educationSubtitle: "Video lessons and financial diagnostics booking",
     educationAttribution: "From my colleague Arthur Bikbulatov",
     educationVideosTitle: "Video lessons",
-    educationVideosEmpty: "No lessons yet. Update the app or set EDUCATION_VIDEOS_JSON on the server.",
+    educationVideosEmpty:
+      "No lessons yet. Update the app or set EDUCATION_VIDEOS_JSON on the server.",
     educationOpenVideo: "Watch",
     educationLoading: "Loading lessons…",
     educationDiagnosticsTitle: "Diagnostics",
-    educationDiagnosticsDesc: "Questionnaire for your financial review (opens in browser).",
+    educationDiagnosticsDesc:
+      "Questionnaire for your financial review (opens in browser).",
     educationOpenForm: "Open form",
     educationFormMissing:
       "Diagnostics form link is unavailable. Update the app or contact support.",
@@ -1072,13 +1196,15 @@ export const DICT = {
     educationWaitlistDesc:
       "A major education block is in progress: clear lessons, practical tasks, habit reviews, and a path from money chaos to capital. Leave a request and we will message you when access opens.",
     educationWaitlistFormTitle: "Get early access",
-    educationWaitlistFormHint: "Leave your name and phone — we will notify you when education opens.",
+    educationWaitlistFormHint:
+      "Leave your name and phone — we will notify you when education opens.",
     moreTitle: "More",
     moreSubtitle: "Insurance, services, settings, reports and education",
     moreReports: "Reports",
     moreReportsHint: "Excel/PDF export and AI report history",
     moreReportsExportSection: "Export transactions",
-    moreReportsExportHint: "Pick a period — download spreadsheet (Excel) or PDF.",
+    moreReportsExportHint:
+      "Pick a period — download spreadsheet (Excel) or PDF.",
     moreReportsFrom: "From",
     moreReportsTo: "To",
     moreReportsCount: "Entries in period: {count}",
@@ -1086,8 +1212,10 @@ export const DICT = {
     moreReportsPdf: "PDF",
     moreReportsExportTitle: "VoiceBudget — transactions",
     moreReportsAiSection: "AI reports",
-    moreReportsCloudRequired: "Connect cloud to save report history on the server.",
-    moreReportsDbMigrate: "Run prisma/ai-reports.sql in Supabase, then redeploy.",
+    moreReportsCloudRequired:
+      "Connect cloud to save report history on the server.",
+    moreReportsDbMigrate:
+      "Run prisma/ai-reports.sql in Supabase, then redeploy.",
     moreReportsHistoryTitle: "Saved reports",
     moreReportsHistoryLoading: "Loading history…",
     moreReportsHistoryEmpty: "No saved reports yet — generate one below.",
@@ -1112,9 +1240,11 @@ export const DICT = {
     moreFreeDiagnostics: "Financial advisor diagnostics",
     moreFreeDiagnosticsHint: "Free — review your situation",
     moreSgAdvisorTitle: "Become a financial advisor",
-    moreSgAdvisorHint: "SG Capital — leave your name and phone and we will contact you",
+    moreSgAdvisorHint:
+      "SG Capital — leave your name and phone and we will contact you",
     moreSgAdvisorCta: "Learn more",
-    moreSgAdvisorFormHint: "Application to join SG Capital as a financial advisor",
+    moreSgAdvisorFormHint:
+      "Application to join SG Capital as a financial advisor",
     moreFortuneWheel: "Wheel of financial fortune",
     moreFortuneWheelHint: "From Simple Budget — gifts and bonuses",
     moreServiceTopic: "Topic",
@@ -1142,7 +1272,8 @@ export const DICT = {
     moreServiceFormRequired: "Enter name and phone",
     moreServiceOpenForm: "Open form",
     businessTabTitle: "Business & family",
-    businessTabSubtitle: "One view of money: household budget and business goals together.",
+    businessTabSubtitle:
+      "One view of money: household budget and business goals together.",
     businessFamilyPulse: "Household balance",
     businessYou: "You",
     businessPartner: "Partner",
@@ -1151,7 +1282,8 @@ export const DICT = {
       "Family tab is daily shared spending. Business is the same data with a focus on work income and costs.",
     businessBridgePoint1: "Mark salary and side income — visible in both tabs.",
     businessBridgePoint2: "Tag business expenses clearly for period reports.",
-    businessBridgePoint3: "Savings and limits live in Family — AI reports praise progress.",
+    businessBridgePoint3:
+      "Savings and limits live in Family — AI reports praise progress.",
     businessPeriodSplit: "Income & expenses this period",
     businessGoalsTitle: "Family savings goals",
     businessGoalsCount: "goals: {count}",
@@ -1163,26 +1295,31 @@ export const DICT = {
       "A separate area for self-employed and personal entrepreneur finances. Family budget with your partner stays as it is.",
     businessModeBullet1: "Family and Business tabs, transfers between them",
     businessModeBullet2: "Projects: spend vs return (rent, investments)",
-    businessModeBullet3: "Cloud as backup only — business not shared with partner",
+    businessModeBullet3:
+      "Cloud as backup only — business not shared with partner",
     businessModePreview: "Preview Capital screen",
     businessModeOk: "Got it",
     bizPreviewBadge: "Preview · separate from family",
     bizTitle: "Business",
-    bizSubtitle: "Business income and expenses — not mixed with household budget.",
+    bizSubtitle:
+      "Business income and expenses — not mixed with household budget.",
     bizPulse: "Business cash",
     bizOperatingBalance: "On business account",
     bizMonthIncome: "Income this month",
     bizMonthExpense: "Expense this month",
     bizMonthProfit: "Profit",
     bizCushionTitle: "Business reserve",
-    bizCushionHint: "Target: 3× average monthly business expenses (last 90 days).",
+    bizCushionHint:
+      "Target: 3× average monthly business expenses (last 90 days).",
+    bizTarget: "Target",
     bizCushionTarget: "target {amount}",
     bizAvgBurn: "≈ {amount}/month burn",
     bizToCushion: "To reserve",
     bizToFamily: "To family",
     bizAssetsTitle: "Projects & assets",
     bizAssetAdd: "Add",
-    bizAssetsEmpty: "Add a flat, investment, long project, or client to see how much it brings in.",
+    bizAssetsEmpty:
+      "Add a flat, investment, long project, or client to see how much it brings in.",
     bizAssetInvestment: "Investments",
     bizAssetRental: "Real estate",
     bizAssetFreelance: "Freelance",
@@ -1198,7 +1335,8 @@ export const DICT = {
     bizTxEditTitle: "Edit transaction",
     bizTxEditOk: "Transaction saved",
     bizTxDeleted: "Transaction deleted",
-    bizTxEditTypeLocked: "Type can only be changed for regular income and expense",
+    bizTxEditTypeLocked:
+      "Type can only be changed for regular income and expense",
     bizTxCushion: "To business reserve",
     bizTxFamily: "To family",
     bizSave: "Save",
@@ -1207,7 +1345,8 @@ export const DICT = {
     bizUnitsTitle: "My businesses",
     bizUnitEdit: "Business name",
     bizUnitDelete: "Delete business",
-    bizUnitDeleteHint: "This business's transactions and projects will be removed.",
+    bizUnitDeleteHint:
+      "This business's transactions and projects will be removed.",
     bizUnitDeleteLast: "Cannot delete the last business",
     bizUnitDeleteConfirm:
       "Delete this business? Projects: {assets}, transactions: {txs} will be removed.",
@@ -1229,9 +1368,11 @@ export const DICT = {
     bizProjectsSectionHint:
       "Track things that bring money separately from daily business operations.",
     bizProjectsHowTitle: "How it works",
-    bizProjectsHow1: "Add a money source: flat, investment, long project, client, or side work.",
+    bizProjectsHow1:
+      "Add a money source: flat, investment, long project, client, or side work.",
     bizProjectsHow2: "Enter its value/capital and expected net monthly income.",
-    bizProjectsHow3: "When money actually arrives, tap “Credit” and it will appear as household income.",
+    bizProjectsHow3:
+      "When money actually arrives, tap “Credit” and it will appear as household income.",
     bizProjectsTotal: "Passive from all projects: {amount}/mo",
     bizProjectsForUnit: "Business «{name}»",
     bizAssetToAccount: "To family",
@@ -1247,7 +1388,35 @@ export const DICT = {
     bizIncomeSources: "Income sources this period",
     bizPeriodSection: "Period",
     bizPeriodHint: "Business tile numbers use period: {period}.",
-    bizFamilyLinkHint: "«To family» creates income in household budget (Family tab).",
+    bizKpiRevenue: "Revenue",
+    bizKpiExpenses: "Expenses",
+    bizCanWithdraw: "Can withdraw",
+    bizAdvisorTitle: "AI noticed",
+    bizAdvisorSafeWithdraw:
+      "Safe to withdraw: {amount}, after tax and reserve.",
+    bizAdvisorReserve: "Business reserve covers {months} mo of 3.",
+    bizAdvisorNoRevenue:
+      "Expenses have started, but there is no revenue in this period yet. Check that spending leads to sales.",
+    bizAdvisorLoss:
+      "Expenses are higher than revenue this period. Review big costs and separate must-haves from pauseable spending.",
+    bizAdvisorExpenseRatio:
+      "Expenses consume {pct}% of revenue. Check ROI for ads, supplies, and contractors.",
+    bizAdvisorProfit:
+      "The business is profitable. Next step: separate tax, reserve, and the amount you can pay yourself.",
+    bizAdvisorEmpty:
+      "Add the first income or expense, and AI will start tracking margin, reserve, and safe withdrawal.",
+    bizQuickEntryTitle: "Quick entry",
+    bizQuickEntryHint:
+      "For example: “received 15000 for consulting” or “spent 3000 on ads”.",
+    bizSectionOperations: "Operations",
+    bizSectionReserve: "Reserve",
+    bizSectionTax: "Tax",
+    bizSectionProjects: "Projects",
+    bizNoRecentTx: "No operations for this business yet.",
+    bizTaxSetup: "Set tax",
+    bizTaxCurrent: "{rate}% · {period}",
+    bizFamilyLinkHint:
+      "«To family» creates income in household budget (Family tab).",
     bizCloudOk: "Cloud saved",
     bizVoiceHint:
       "«+5000» or «income 10000» → income; «−500» or «expense» → expense. Each business shows its own tiles.",
@@ -1272,12 +1441,14 @@ export const DICT = {
     bizUnitTaxSettings: "Tax for this business",
     bizTaxActiveHint: "For «{name}», period: {period}. Edit via ✎",
     bizVoicePlaceholder: "+5000 income or −300 expense…",
-    bizVoiceTryManual: "Could not parse — try «+500», «income 1000» or «expense 500»",
+    bizVoiceTryManual:
+      "Could not parse — try «+500», «income 1000» or «expense 500»",
     bizVoiceIncomeOk: "Income +{amount} recorded",
     bizVoiceExpenseOk: "Expense −{amount} recorded",
     bizVoiceCushionOk: "To business reserve: {amount}",
     bizVoiceFamilyOk: "To family: {amount}",
-    bizVoiceFamilyFail: "Not enough on the business account to transfer to family",
+    bizVoiceFamilyFail:
+      "Not enough on the business account to transfer to family",
     bizAssetNameRequired: "Enter project or asset name",
     bizAssetSaved: "Project saved",
     bizVoiceUnitOk: "«{name}»: {amount}",
@@ -1297,7 +1468,8 @@ export const DICT = {
     bizCushionGap: "{amount} to reserve target",
     bizCushionFull: "target reached",
     bizTaxTitle: "Tax reserve",
-    bizTaxHint: "Pick a rate — we show how much to set aside from this month's income.",
+    bizTaxHint:
+      "Pick a rate — we show how much to set aside from this month's income.",
     bizTaxOff: "Off",
     bizTaxReserve: "Suggested reserve",
     bizTaxFromIncome: "{rate}% of {income} monthly income",
@@ -1305,25 +1477,31 @@ export const DICT = {
     bizWeightedYield: "weighted yield {pct}% p.a.",
     bizTypeSummary: "{capital} · +{monthly}/mo · {yield}% p.a.",
     bizExpenseBreakdown: "Where expenses went this period",
-    bizAssetDialogHint: "Add a money source and expected net income. For real estate, add utilities separately; for freelance, add hours to see hourly rate.",
+    bizAssetDialogHint:
+      "Add a money source and expected net income. For real estate, add utilities separately; for freelance, add hours to see hourly rate.",
     bizPerHour: "h",
     bizHourlyTitle: "Hourly rate",
-    bizHourlyHint: "What you want to earn per hour. For freelance — we compare with project reality.",
+    bizHourlyHint:
+      "What you want to earn per hour. For freelance — we compare with project reality.",
     bizHourlyPh: "Target rate per hour",
     bizHourlyImplied: "Actual this month: ~{amount}/h (profit ÷ 160 h)",
     bizHourlyBelowTarget: "{pct}% below target",
     bizHourlyOnTarget: "at or above target",
     bizAssetHoursPh: "Hours per month",
     onboardVoiceTitle: "Log spending here",
-    onboardVoiceBody: "«500 lunch», «salary 8000» — type or use voice in Telegram. This is your daily habit.",
+    onboardVoiceBody:
+      "«500 lunch», «salary 8000» — type or use voice in Telegram. This is your daily habit.",
     onboardTxTitle: "All transactions",
     onboardTxBody: "Income and expenses list. Edit, delete, filter by type.",
     onboardPlanningTitle: "Goals & plans",
-    onboardPlanningBody: "Savings jars, category limits, emergency fund, recurring — open when you want to set up.",
+    onboardPlanningBody:
+      "Savings jars, category limits, emergency fund, recurring — open when you want to set up.",
     onboardChartTitle: "Statistics",
-    onboardChartBody: "Charts for income and expenses by period — see where money goes.",
+    onboardChartBody:
+      "Charts for income and expenses by period — see where money goes.",
     onboardTipsTitle: "AI advice",
-    onboardTipsBody: "The fun part: personal budget analysis, tips, and AI mini-insights.",
+    onboardTipsBody:
+      "The fun part: personal budget analysis, tips, and AI mini-insights.",
     onboardNext: "Next",
     onboardSkip: "Skip",
     onboardDone: "Got it",
@@ -1358,10 +1536,12 @@ export const DICT = {
     vehicleAddAnother: "Add another car",
     vehicleCarNumber: "Car {n}",
     vehicleFuelPer100: "≈ {value} ₽ / 100 km",
-    vehicleFuelPer100Unknown: "Log two fuel entries with odometer to see ₽/100 km",
+    vehicleFuelPer100Unknown:
+      "Log two fuel entries with odometer to see ₽/100 km",
     vehicleGarageModeLabel: "Who drives what",
     vehicleGarageModeBoth: "Everyone drives all cars",
-    vehicleGarageModeSplit: "Each has a default car (change per entry if needed)",
+    vehicleGarageModeSplit:
+      "Each has a default car (change per entry if needed)",
     vehicleDefaultVehicle: "My default car",
     vehicleRarelyPartner: "I rarely drive my partner’s car",
     vehicleToAlertsAll: "Service reminders cover all cars for both of you.",
@@ -1393,13 +1573,13 @@ export const DICT = {
     voiceTapToStop: "Speak… tap the red button when done",
     voiceStopAria: "Stop recording",
     voiceRecorderFailed: "Mic not recording — close and reopen the app",
-    voiceSttFailed: "Could not recognize speech — try again or type and tap Add",
+    voiceSttFailed:
+      "Could not recognize speech — try again or type and tap Add",
     voiceRetrySpeech: "Server silent — listening again on device…",
     voiceMicLive: "Mic is on — speak now",
     voiceNoSpeech:
       "Didn't catch that. Wait 2–3 sec, say clearly e.g. «spent 500 on lunch», stop — or type below",
-    voiceHintTelegram:
-      "Voice: send a voice message to @{bot} in Telegram",
+    voiceHintTelegram: "Voice: send a voice message to @{bot} in Telegram",
     voiceRecordingTelegram: "Recording… speak, then tap the red square",
     voiceNativeButton: "Record with system voice memo",
     voicePickAudioButton: "Pick audio file from phone",
@@ -1415,7 +1595,8 @@ export const DICT = {
     voiceMicTimeout: "Microphone did not respond — allow access and try again",
     voiceTryManual:
       "Could not hear you. Try again or type: «spent 500 on lunch» and tap Add",
-    voiceTranscribeFailed: "Could not transcribe — speak shorter or type manually",
+    voiceTranscribeFailed:
+      "Could not transcribe — speak shorter or type manually",
     voiceInsecure: "Voice input requires HTTPS",
     voiceTranscribing: "Transcribing…",
     voiceTooShort: "Too short — say the full phrase",
@@ -1478,13 +1659,15 @@ export const DICT = {
     partnerKeywordsSave: "Save keywords",
     ownerChipColorMy: "My badge color",
     ownerChipColorPartner: "Partner badge color",
-    ownerChipColorHint: "Letter circle on the “All” tab in transactions. Updates when you pick a color.",
+    ownerChipColorHint:
+      "Letter circle on the “All” tab in transactions. Updates when you pick a color.",
     partnerSave: "Save partner’s name",
     settingsSaved: "Saved",
     cloudTitle: "Cloud & household",
     cloudHint: "One budget on phone and browser — same Telegram account.",
     cloudWebLoginTitle: "Log in with Telegram",
-    cloudWebLoginHint: "Same account as in the Mini App — phone and web stay in sync.",
+    cloudWebLoginHint:
+      "Same account as in the Mini App — phone and web stay in sync.",
     cloudWebAttachTitle: "Connect browser to cloud",
     cloudWebAttachHint:
       "Household already exists on your phone — no invite code needed. Tap below (unlimited devices).",
@@ -1492,15 +1675,19 @@ export const DICT = {
     cloudWebAttachLoading: "Connecting…",
     cloudWebCreateAnyway: "Create a new household (usually not needed)",
     cloudWebBackToAttach: "← Back: connect existing household",
-    cloudHintNewHousehold: "Only if you have no cloud budget on any device yet.",
+    cloudHintNewHousehold:
+      "Only if you have no cloud budget on any device yet.",
     cloudSolo: "Solo tracking",
     cloudShared: "Two phones",
-    cloudSoloHint: "One person tracks for two — set partner name for transaction labels.",
-    cloudSharedHint: "Create a household and send the invite code to your partner.",
+    cloudSoloHint:
+      "One person tracks for two — set partner name for transaction labels.",
+    cloudSharedHint:
+      "Create a household and send the invite code to your partner.",
     cloudCreate: "Create cloud budget",
     cloudJoinTitle: "Already have a code?",
     cloudJoinPlaceholder: "Family code (6 letters)",
-    cloudJoinHint: "For budget partner only. Friend referral link does not go here.",
+    cloudJoinHint:
+      "For budget partner only. Friend referral link does not go here.",
     cloudErrReferralNotHousehold:
       "That is a friend-referral link — open it in Telegram. Use the partner family code from «Invite code» above.",
     cloudJoin: "Join",
@@ -1522,7 +1709,8 @@ export const DICT = {
     cloudSyncPull: "Download from cloud",
     cloudSyncPullHint: "Cloud wins — replaces the list on this device",
     cloudSyncPush: "Upload to cloud",
-    cloudSyncPushHint: "This device wins — merges your operations into the cloud",
+    cloudSyncPushHint:
+      "This device wins — merges your operations into the cloud",
     cloudSyncPullConfirm:
       "Replace operations on this device with cloud data? Local-only entries will disappear from this screen.",
     cloudSyncPushConfirm:
@@ -1535,7 +1723,8 @@ export const DICT = {
     cloudSyncPushEmpty: "No operations to upload",
     cloudProtectedNotice:
       "Family cloud cannot be deleted from the app — only clear data on this device. Server copy stays.",
-    cloudErrLeaveForbidden: "Leaving household cloud is disabled to protect family data.",
+    cloudErrLeaveForbidden:
+      "Leaving household cloud is disabled to protect family data.",
     cloudDisconnect: "Pause sync on this device",
     cloudDisconnectConfirm:
       "Stop auto-sync? Server data stays, but this phone won't load it automatically. You can reconnect later.",
@@ -1546,10 +1735,12 @@ export const DICT = {
     cloudResume: "Reconnect cloud",
     cloudNotConfigured: "No database on server — add DATABASE_URL on Vercel.",
     cloudTelegramOnly: "Cloud works in the Telegram Mini App only.",
-    cloudErrDatabase: "Cloud is not configured: DATABASE_URL is missing on server.",
+    cloudErrDatabase:
+      "Cloud is not configured: DATABASE_URL is missing on server.",
     cloudErrDbUnavailable:
       "Database is unreachable or tables are missing. Check DATABASE_URL on Vercel and run prisma db push.",
-    cloudErrTelegram: "Open the app from Telegram to create a household budget.",
+    cloudErrTelegram:
+      "Open the app from Telegram to create a household budget.",
     cloudErrTelegramAuth:
       "Telegram session check failed. Check TELEGRAM_BOT_TOKEN on Vercel and reopen the Mini App.",
     cloudErrAlreadyInHousehold:
@@ -1567,7 +1758,8 @@ export const DICT = {
     chartTabIncome: "Income",
     chartPeriod: "Period: {period}",
     budgetMonthStart: "Month starts on",
-    budgetMonthStartHint: "Payday: limits and stats use this start day. 1 = calendar month.",
+    budgetMonthStartHint:
+      "Payday: limits and stats use this start day. 1 = calendar month.",
     budgetMonthStartDay: "Day",
     chartTitleMe: "Me",
     chartTitlePartner: "Partner",
@@ -1600,20 +1792,26 @@ export const DICT = {
     monthlyNextIn: "Next review in {daysLabel}",
     monthlyLoading: "Preparing monthly report…",
     monthlyFallback: "Basic report without AI — full review on next run.",
-    monthlySubtitleWaiting: "Report from first visit — 5+ entries; refreshes every 30 days",
-    monthlyNoRush: "When there is enough data, a report and chat window will open.",
+    monthlySubtitleWaiting:
+      "Report from first visit — 5+ entries; refreshes every 30 days",
+    monthlyNoRush:
+      "When there is enough data, a report and chat window will open.",
     monthlyOpenDialog: "Open review and ask a question",
     monthlyChatHint:
       "Ask about your numbers. For trends try: «last 6 months», «how spending changed by month», «since I started».",
     monthlyChatPlaceholder: "e.g. How did my spending change over 6 months?",
     monthlyChatSend: "Ask",
     monthlyChatThinking: "Thinking…",
-    monthlyChatLimit: "Question limit for this month reached. New review in {daysLabel}.",
-    monthlyChatEmpty: "Read the report and ask a question — answers use your data.",
+    monthlyChatLimit:
+      "Question limit for this month reached. New review in {daysLabel}.",
+    monthlyChatEmpty:
+      "Read the report and ask a question — answers use your data.",
     monthlyReportSection: "30-day report",
     refreshRecommendations: "Refresh",
-    recHighExpenses: "Cut non-essential spending — expenses exceed 70% of income",
-    recCategoryBudget: "Consider a budget for «{category}» — over 40% of expenses",
+    recHighExpenses:
+      "Cut non-essential spending — expenses exceed 70% of income",
+    recCategoryBudget:
+      "Consider a budget for «{category}» — over 40% of expenses",
     recHealthy: "Finances look healthy. Keep tracking",
     recProgress: "Until AI analysis: {current} / {total} days of tracking",
     recLocked: "Personal AI tips unlock in {days} days — keep logging expenses",
@@ -1633,7 +1831,8 @@ export const DICT = {
     paywallSubscribe: "Subscribe",
     paywallLoading: "Creating payment…",
     paywallRefresh: "I paid — refresh",
-    paywallHouseholdPaused: "Cloud paused until payment. Local data on this device is kept.",
+    paywallHouseholdPaused:
+      "Cloud paused until payment. Local data on this device is kept.",
     paywallActiveUntil: "Active until {date}",
     paywallPromoTitle: "Promo code",
     paywallPromoPlaceholder: "Enter code",
@@ -1644,7 +1843,8 @@ export const DICT = {
     paywallPromoExpired: "This promo code has expired",
     paywallPromoExhausted: "This promo code is fully used",
     paywallPromoFailed: "Could not apply promo code",
-    paywallTrialHint: "New users get {days} days free (stacks with promo codes)",
+    paywallTrialHint:
+      "New users get {days} days free (stacks with promo codes)",
     referralTitle: "Invite a friend",
     referralSettingsHint: "Link, wallet %, invited friends",
     referralDesc:
@@ -1653,15 +1853,18 @@ export const DICT = {
       "After your friend pays for subscription you both get +{days} days access.",
     referralFriendOpensLink:
       "Your friend only needs to tap your link in Telegram. Do not enter the referral code in Cloud or Family — those screens use different codes (cloud sync and budget partner).",
-    referralBonusHint: "After your friend pays for subscription — +{days} days for both of you.",
+    referralBonusHint:
+      "After your friend pays for subscription — +{days} days for both of you.",
     referralBonusHintWallet:
       "{percent}% of friend's subscription payment to your referral wallet.",
     referralPendingReferrerWalletPay:
       "Friend linked — {percent}% to wallet after they pay for subscription.",
     referralPendingReferredWalletPay:
       "You joined via invite — referrer gets {percent}% after you pay for subscription.",
-    referralPendingReferrerPay: "Friend linked — +{days} days after they pay for subscription.",
-    referralPendingReferredPay: "You joined via invite — +{days} days after you pay for subscription.",
+    referralPendingReferrerPay:
+      "Friend linked — +{days} days after they pay for subscription.",
+    referralPendingReferredPay:
+      "You joined via invite — +{days} days after you pay for subscription.",
     referralPendingReferrerWallet:
       "Friend tracking: {recorded}/{required} days. Then {percent}% of subscription credited.",
     referralPendingReferredWallet:
@@ -1690,7 +1893,8 @@ export const DICT = {
     referralCopyFailed: "Could not copy",
     referralShare: "Share in Telegram",
     referralShareDays: "Try Simple Budget — family budget in Telegram",
-    referralActivityRule: "Bonus after {required} distinct days with at least one entry (income or expense).",
+    referralActivityRule:
+      "Bonus after {required} distinct days with at least one entry (income or expense).",
     referralApplyTitle: "Already have an invite link?",
     referralApplyPlaceholder: "Paste link or ref_… code",
     referralApplySubmit: "Apply invite",
@@ -1718,12 +1922,15 @@ export const DICT = {
     referralWalletApplyAtRenewal: "Use when renewing",
     referralWalletApplyAtRenewalHint:
       "Pay in Settings → Cloud — available balance is applied, the rest by card.",
-    referralWalletApplyHint: "Open Settings → Cloud. If wallet balance is available, the wallet payment/renewal button appears there.",
+    referralWalletApplyHint:
+      "Open Settings → Cloud. If wallet balance is available, the wallet payment/renewal button appears there.",
     referralWalletPaySubscribe: "Pay with wallet",
     referralWalletPayFull: "{amount} ₽ from wallet — no card needed.",
     referralWalletPayPartial: "{wallet} ₽ from wallet, {card} ₽ by card.",
-    referralWalletPaidSuccess: "Subscription renewed — {amount} ₽ debited from referral wallet.",
-    referralWalletPartialRedirect: "{wallet} ₽ from wallet applied — complete payment by card.",
+    referralWalletPaidSuccess:
+      "Subscription renewed — {amount} ₽ debited from referral wallet.",
+    referralWalletPartialRedirect:
+      "{wallet} ₽ from wallet applied — complete payment by card.",
     referralWalletPayFailed: "Could not pay with wallet",
     accessBannerTitle: "Free access · {days}",
     accessBannerDaysLeft: "{days} days left",
@@ -1795,7 +2002,8 @@ export const DICT = {
     categoryDeleteConfirm:
       "Delete «{name}»? Transactions will move to «{fallback}».",
     categoryDeleteYes: "Yes, delete",
-    categoryDeleteBlocked: "Cannot delete Other — at least one category per type is required",
+    categoryDeleteBlocked:
+      "Cannot delete Other — at least one category per type is required",
     aiFallbackNotice: "AI unavailable — simple parser used",
     greeting: "Hi, {name}!",
     currency: "$",
@@ -1824,7 +2032,8 @@ export const DICT = {
     planningGoalMonthlyOnAccount: "Save only (no growth): ~{amount}/mo",
     planningGoalMonthlyIfInvested: "If invested: ~{amount}/mo",
     planningEmergencyTitle: "Emergency fund",
-    planningEmergencyHint: "Target = average monthly spend (3 mo) × chosen months",
+    planningEmergencyHint:
+      "Target = average monthly spend (3 mo) × chosen months",
     planningEmergencyEnable: "Enable emergency fund",
     planningEmergencyMonths3: "3 months",
     planningEmergencyMonths6: "6 months",
@@ -1854,7 +2063,8 @@ export const DICT = {
     planningRecurringHint:
       "Subscription: when due, confirm «Paid» or «Skip». Skips are listed in the card with dates and total due. Pause stops new reminders.",
     recurringPendingTitle: "Confirm recurring expense",
-    recurringPendingHint: "Balance updates only after you confirm. Tap «Skip» if you did not pay.",
+    recurringPendingHint:
+      "Balance updates only after you confirm. Tap «Skip» if you did not pay.",
     recurringPendingBadge: "Awaiting confirmation",
     recurringPendingConfirm: "Paid",
     recurringPendingDismiss: "Skip",
@@ -1898,7 +2108,11 @@ export function formatDaysLabel(count: number, locale: Locale): string {
     : `${count} ${enPlural(count, "day", "days")}`;
 }
 
-export function t(locale: Locale, key: DictKey, vars?: Record<string, string>): string {
+export function t(
+  locale: Locale,
+  key: DictKey,
+  vars?: Record<string, string>,
+): string {
   let text: string = DICT[locale][key] ?? DICT.ru[key] ?? String(key);
   if (vars) {
     Object.entries(vars).forEach(([k, v]) => {
@@ -1910,7 +2124,10 @@ export function t(locale: Locale, key: DictKey, vars?: Record<string, string>): 
 
 export function detectLocale(languageCode?: string): Locale {
   if (!languageCode) {
-    if (typeof navigator !== "undefined" && navigator.language.startsWith("ru")) {
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.language.startsWith("ru")
+    ) {
       return "ru";
     }
     return "en";

@@ -3,7 +3,6 @@
 import {
   ArrowDownToLine,
   BriefcaseBusiness,
-  ChevronDown,
   Pencil,
   Plus,
   Trash2,
@@ -49,6 +48,7 @@ import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStatsPeriod, useStore } from "@/store/useStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
+type BusinessSection = "operations" | "reserve" | "tax" | "projects";
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
@@ -86,7 +86,10 @@ function UnitCard({
   const [quickAmount, setQuickAmount] = useState("");
   const [quickNote, setQuickNote] = useState("");
 
-  const openQuick = (mode: "income" | "expense", e: { stopPropagation: () => void }) => {
+  const openQuick = (
+    mode: "income" | "expense",
+    e: { stopPropagation: () => void },
+  ) => {
     e.stopPropagation();
     onSelect();
     setQuickMode((prev) => (prev === mode ? null : mode));
@@ -100,7 +103,8 @@ function UnitCard({
     const raw = quickAmount.trim();
     let amountRaw = raw;
     if (/^\+\s*(\d|[\d\s.,])/.test(raw)) amountRaw = raw.replace(/^\+\s*/, "");
-    else if (/^[-−–]\s*(\d|[\d\s.,])/.test(raw)) amountRaw = raw.replace(/^[-−–]\s*/, "");
+    else if (/^[-−–]\s*(\d|[\d\s.,])/.test(raw))
+      amountRaw = raw.replace(/^[-−–]\s*/, "");
     const n = parseMoneyAmount(amountRaw);
     if (!n) return;
     onQuickTx(quickMode, n, quickNote.trim());
@@ -217,77 +221,89 @@ function UnitCard({
             </div>
           </div>
         ) : null}
-      <button type="button" onClick={onSelect} className="flex w-full flex-col text-left hover:opacity-95">
-        <p
-          className={`mt-1.5 text-center text-[11px] font-semibold tabular-nums ${
-            metrics.profit >= 0
-              ? "text-emerald-700 dark:text-emerald-400"
-              : "text-red-700 dark:text-red-400"
-          }`}
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex w-full flex-col text-left hover:opacity-95"
         >
-          {t(locale, "bizUnitProfit")} {metrics.profit >= 0 ? "+" : "−"}
-          {formatMoney(Math.abs(metrics.profit), locale)}
-        </p>
-        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] tabular-nums">
-          <div className="min-w-0 space-y-0.5 text-muted-foreground">
-            <p className="font-medium text-foreground">{t(locale, "bizUnitCushion")}</p>
-            <p className="font-semibold text-foreground">
-              {formatMoney(metrics.cushionBalance, locale)}
-            </p>
-            <p className="text-[10px] leading-snug">
-              {t(locale, "bizUnitCushionTargetLine", {
-                amount: formatMoney(metrics.cushionTarget, locale),
-              })}
-            </p>
-            <p className="text-[10px] leading-snug">{t(locale, "bizUnitCushionPeriod")}</p>
+          <p
+            className={`mt-1.5 text-center text-[11px] font-semibold tabular-nums ${
+              metrics.profit >= 0
+                ? "text-emerald-700 dark:text-emerald-400"
+                : "text-red-700 dark:text-red-400"
+            }`}
+          >
+            {t(locale, "bizUnitProfit")} {metrics.profit >= 0 ? "+" : "−"}
+            {formatMoney(Math.abs(metrics.profit), locale)}
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] tabular-nums">
+            <div className="min-w-0 space-y-0.5 text-muted-foreground">
+              <p className="font-medium text-foreground">
+                {t(locale, "bizUnitCushion")}
+              </p>
+              <p className="font-semibold text-foreground">
+                {formatMoney(metrics.cushionBalance, locale)}
+              </p>
+              <p className="text-[10px] leading-snug">
+                {t(locale, "bizUnitCushionTargetLine", {
+                  amount: formatMoney(metrics.cushionTarget, locale),
+                })}
+              </p>
+              <p className="text-[10px] leading-snug">
+                {t(locale, "bizUnitCushionPeriod")}
+              </p>
+            </div>
+            <div className="min-w-0 space-y-0.5 text-right text-muted-foreground">
+              <p className="font-medium text-foreground">
+                {t(locale, "bizOperatingBalance")}
+              </p>
+              <p className="font-semibold text-foreground">
+                {formatMoney(metrics.operatingBalance, locale)}
+              </p>
+              {metrics.operatingBalance > 0 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToFamily();
+                  }}
+                  className="mt-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+                >
+                  {t(locale, "bizUnitToFamily")}{" "}
+                  {formatMoney(metrics.operatingBalance, locale)}
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="min-w-0 space-y-0.5 text-right text-muted-foreground">
-            <p className="font-medium text-foreground">{t(locale, "bizOperatingBalance")}</p>
-            <p className="font-semibold text-foreground">
-              {formatMoney(metrics.operatingBalance, locale)}
+          <div className="mt-2 space-y-0.5 border-t border-border/60 pt-2 text-[10px] tabular-nums text-muted-foreground">
+            <p>
+              {t(locale, "bizUnitMargin")} {metrics.profitMarginPct}%
             </p>
-            {metrics.operatingBalance > 0 ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToFamily();
-                }}
-                className="mt-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary"
-              >
-                {t(locale, "bizUnitToFamily")} {formatMoney(metrics.operatingBalance, locale)}
-              </button>
+            {metrics.taxRatePct > 0 ? (
+              <p className="text-amber-800 dark:text-amber-200">
+                {t(locale, "bizUnitTax", {
+                  amount: formatMoney(metrics.taxReserve, locale),
+                  rate: String(metrics.taxRatePct),
+                  period: taxPeriodLabel(metrics.taxPeriod, locale),
+                })}
+              </p>
             ) : null}
           </div>
-        </div>
-        <div className="mt-2 space-y-0.5 border-t border-border/60 pt-2 text-[10px] tabular-nums text-muted-foreground">
-          <p>
-            {t(locale, "bizUnitMargin")} {metrics.profitMarginPct}%
-          </p>
-          {metrics.taxRatePct > 0 ? (
-            <p className="text-amber-800 dark:text-amber-200">
-              {t(locale, "bizUnitTax", {
-                amount: formatMoney(metrics.taxReserve, locale),
-                rate: String(metrics.taxRatePct),
-                period: taxPeriodLabel(metrics.taxPeriod, locale),
-              })}
-            </p>
+          {metrics.canToCushion > 0 ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToCushion();
+              }}
+              className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-primary/40 bg-primary/10 py-1 text-[10px] font-medium text-primary"
+            >
+              <ArrowDownToLine className="h-3 w-3" aria-hidden />
+              {t(locale, "bizUnitToCushion")}{" "}
+              {formatMoney(metrics.canToCushion, locale)}
+            </button>
           ) : null}
-        </div>
-        {metrics.canToCushion > 0 ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToCushion();
-            }}
-            className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-primary/40 bg-primary/10 py-1 text-[10px] font-medium text-primary"
-          >
-            <ArrowDownToLine className="h-3 w-3" aria-hidden />
-            {t(locale, "bizUnitToCushion")} {formatMoney(metrics.canToCushion, locale)}
-          </button>
-        ) : null}
-      </button>
+        </button>
       </div>
       <Button
         type="button"
@@ -387,6 +403,211 @@ function BusinessUnitTabs({
   );
 }
 
+function safeWithdrawAmount(metrics: UnitCardMetrics): number {
+  const reserveGap = Math.max(
+    0,
+    metrics.cushionTarget - metrics.cushionBalance,
+  );
+  return Math.max(
+    0,
+    Math.floor(metrics.operatingBalance - metrics.taxReserve - reserveGap),
+  );
+}
+
+function BusinessKpis({
+  metrics,
+  safeWithdraw,
+  locale,
+}: {
+  metrics: UnitCardMetrics;
+  safeWithdraw: number;
+  locale: "ru" | "en";
+}) {
+  const items = [
+    {
+      label: t(locale, "bizKpiRevenue"),
+      value: `+${formatMoney(metrics.income, locale)}`,
+      tone: "text-emerald-700 dark:text-emerald-400",
+    },
+    {
+      label: t(locale, "bizKpiExpenses"),
+      value: `−${formatMoney(metrics.expense, locale)}`,
+      tone: "text-red-700 dark:text-red-400",
+    },
+    {
+      label: t(locale, "bizUnitProfit"),
+      value: `${metrics.profit >= 0 ? "+" : "−"}${formatMoney(Math.abs(metrics.profit), locale)}`,
+      tone:
+        metrics.profit >= 0
+          ? "text-emerald-700 dark:text-emerald-400"
+          : "text-red-700 dark:text-red-400",
+    },
+    {
+      label: t(locale, "bizCanWithdraw"),
+      value: formatMoney(safeWithdraw, locale),
+      tone: safeWithdraw > 0 ? "text-primary" : "text-muted-foreground",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-lg border border-border/80 bg-card px-3 py-2"
+        >
+          <p className="text-[11px] text-muted-foreground">{item.label}</p>
+          <p className={cn("mt-0.5 text-lg font-bold tabular-nums", item.tone)}>
+            {item.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BusinessAdvisor({
+  metrics,
+  safeWithdraw,
+  locale,
+}: {
+  metrics: UnitCardMetrics;
+  safeWithdraw: number;
+  locale: "ru" | "en";
+}) {
+  const reserveMonths =
+    metrics.avgMonthlyExpense > 0
+      ? Math.min(
+          99,
+          Math.round(
+            (metrics.cushionBalance / metrics.avgMonthlyExpense) * 10,
+          ) / 10,
+        )
+      : metrics.cushionBalance > 0
+        ? 3
+        : 0;
+  const expenseRatio =
+    metrics.income > 0
+      ? Math.round((metrics.expense / metrics.income) * 100)
+      : 0;
+
+  let main = t(locale, "bizAdvisorProfit");
+  if (metrics.income <= 0 && metrics.expense > 0) {
+    main = t(locale, "bizAdvisorNoRevenue");
+  } else if (metrics.expense > metrics.income && metrics.expense > 0) {
+    main = t(locale, "bizAdvisorLoss");
+  } else if (expenseRatio >= 45) {
+    main = t(locale, "bizAdvisorExpenseRatio", { pct: String(expenseRatio) });
+  } else if (metrics.income === 0 && metrics.expense === 0) {
+    main = t(locale, "bizAdvisorEmpty");
+  }
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+      <p className="font-semibold text-foreground">
+        {t(locale, "bizAdvisorTitle")}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {main}
+      </p>
+      <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p>
+          {t(locale, "bizAdvisorSafeWithdraw", {
+            amount: formatMoney(safeWithdraw, locale),
+          })}
+        </p>
+        <p>
+          {t(locale, "bizAdvisorReserve", { months: String(reserveMonths) })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BusinessQuickEntry({
+  locale,
+  onQuickTx,
+}: {
+  locale: "ru" | "en";
+  onQuickTx: (type: "income" | "expense", amount: number, note: string) => void;
+}) {
+  const [quickMode, setQuickMode] = useState<"income" | "expense" | null>(
+    "income",
+  );
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickNote, setQuickNote] = useState("");
+
+  const submitQuick = () => {
+    if (!quickMode) return;
+    const n = parseMoneyAmount(quickAmount);
+    if (!n) return;
+    onQuickTx(quickMode, n, quickNote.trim());
+    setQuickAmount("");
+    setQuickNote("");
+  };
+
+  return (
+    <div className="rounded-lg border border-border/80 bg-card p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">
+            {t(locale, "bizQuickEntryTitle")}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {t(locale, "bizQuickEntryHint")}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={quickMode === "income" ? "default" : "outline"}
+          className={cn(
+            quickMode === "income" && "bg-emerald-600 hover:bg-emerald-600/90",
+          )}
+          onClick={() => setQuickMode("income")}
+        >
+          + {t(locale, "bizUnitIncome")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={quickMode === "expense" ? "default" : "outline"}
+          className={cn(
+            quickMode === "expense" && "bg-red-600 hover:bg-red-600/90",
+          )}
+          onClick={() => setQuickMode("expense")}
+        >
+          − {t(locale, "bizUnitExpense")}
+        </Button>
+      </div>
+      <div className="mt-2 grid gap-2">
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder={t(locale, "txAmount")}
+          value={quickAmount}
+          onChange={(e) => setQuickAmount(e.target.value)}
+        />
+        <Input
+          placeholder={t(locale, "bizTxNotePh")}
+          value={quickNote}
+          onChange={(e) => setQuickNote(e.target.value)}
+        />
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!quickAmount.trim()}
+          onClick={submitQuick}
+        >
+          {t(locale, "bizQuickTxSave")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function BusinessTab() {
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
@@ -417,9 +638,10 @@ export function BusinessTab() {
   const [editUnitId, setEditUnitId] = useState<string | null>(null);
   const [editUnitName, setEditUnitName] = useState("");
   const [editTaxRate, setEditTaxRate] = useState(0);
-  const [editTaxPeriod, setEditTaxPeriod] = useState<BusinessTaxPeriod>("quarter");
-  const [showExpenses, setShowExpenses] = useState(true);
-  const [periodOpen, setPeriodOpen] = useState(false);
+  const [editTaxPeriod, setEditTaxPeriod] =
+    useState<BusinessTaxPeriod>("quarter");
+  const [businessSection, setBusinessSection] =
+    useState<BusinessSection>("operations");
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
@@ -476,10 +698,13 @@ export function BusinessTab() {
       unitCardMetrics(transactions, [], activeUnit, period)
     );
   }, [activeUnit, unitMetricsMap, transactions, period]);
+  const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
 
   if (!ready) {
     return (
-      <p className="py-10 text-center text-sm text-muted-foreground">{t(locale, "bizLoading")}</p>
+      <p className="py-10 text-center text-sm text-muted-foreground">
+        {t(locale, "bizLoading")}
+      </p>
     );
   }
 
@@ -526,7 +751,9 @@ export function BusinessTab() {
       return;
     }
     const assetCount = assets.filter((a) => a.unitId === editUnitId).length;
-    const txCount = transactions.filter((tx) => tx.unitId === editUnitId).length;
+    const txCount = transactions.filter(
+      (tx) => tx.unitId === editUnitId,
+    ).length;
     if (
       assetCount + txCount > 0 &&
       !window.confirm(
@@ -568,14 +795,18 @@ export function BusinessTab() {
             <BriefcaseBusiness className="h-5 w-5 text-primary" aria-hidden />
             {t(locale, "bizTitle")}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t(locale, "bizSubtitle")}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t(locale, "bizSubtitle")}
+          </p>
         </div>
       </div>
 
       <div className="space-y-2">
         <div>
           <p className="text-sm font-medium">{t(locale, "bizUnitsTitle")}</p>
-          <p className="text-[11px] text-muted-foreground">{t(locale, "bizUnitsLegend")}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t(locale, "bizUnitsLegend")}
+          </p>
         </div>
         <BusinessUnitTabs
           units={visibleUnits}
@@ -587,7 +818,9 @@ export function BusinessTab() {
         />
         {showBusinessHow ? (
           <div className="relative rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 pr-9 text-[11px] leading-relaxed text-muted-foreground">
-            <p className="font-medium text-foreground">{t(locale, "bizHowTitle")}</p>
+            <p className="font-medium text-foreground">
+              {t(locale, "bizHowTitle")}
+            </p>
             <p>{t(locale, "bizHowBody")}</p>
             <button
               type="button"
@@ -599,113 +832,92 @@ export function BusinessTab() {
             </button>
           </div>
         ) : null}
-        {activeUnit && activeMetrics ? (
-          <UnitCard
-            unit={activeUnit}
+      </div>
+
+      {activeUnit && activeMetrics ? (
+        <>
+          <BusinessKpis
             metrics={activeMetrics}
-            selected
+            safeWithdraw={safeWithdraw}
             locale={locale}
-            onSelect={() => setSelectedUnitId(activeUnit.id)}
-            onEdit={() => openEditUnit(activeUnit.id)}
-            onToCushion={() => transferToCushion(activeUnit.id, activeMetrics.canToCushion)}
-            onToFamily={() => transferToFamily(activeUnit.id, activeMetrics.operatingBalance)}
+          />
+          <BusinessAdvisor
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            locale={locale}
+          />
+          <BusinessQuickEntry
+            locale={locale}
             onQuickTx={(type, amount, note) => {
               addOperatingTx(activeUnit.id, type, amount, note);
               toast(
                 type === "income"
-                  ? t(locale, "bizVoiceIncomeOk", { amount: formatMoney(amount, locale) })
-                  : t(locale, "bizVoiceExpenseOk", { amount: formatMoney(amount, locale) }),
+                  ? t(locale, "bizVoiceIncomeOk", {
+                      amount: formatMoney(amount, locale),
+                    })
+                  : t(locale, "bizVoiceExpenseOk", {
+                      amount: formatMoney(amount, locale),
+                    }),
                 "success",
               );
             }}
           />
-        ) : null}
-      </div>
 
-      <BusinessProjectsSection />
+          <div className="space-y-3 border-t border-border/60 pt-3">
+            <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
+              {(
+                [
+                  "operations",
+                  "reserve",
+                  "tax",
+                  "projects",
+                ] as BusinessSection[]
+              ).map((section) => {
+                const labelKey = {
+                  operations: "bizSectionOperations",
+                  reserve: "bizSectionReserve",
+                  tax: "bizSectionTax",
+                  projects: "bizSectionProjects",
+                }[section] as
+                  | "bizSectionOperations"
+                  | "bizSectionReserve"
+                  | "bizSectionTax"
+                  | "bizSectionProjects";
+                return (
+                  <button
+                    key={section}
+                    type="button"
+                    onClick={() => setBusinessSection(section)}
+                    className={cn(
+                      "rounded-md px-1.5 py-2 text-[11px] font-medium transition-colors",
+                      businessSection === section
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {t(locale, labelKey)}
+                  </button>
+                );
+              })}
+            </div>
 
-      <div className="border-t border-border/60 pt-3">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-2 py-1 text-sm font-medium"
-          onClick={() => setPeriodOpen((v) => !v)}
-        >
-          <span>
-            {t(locale, "bizPeriodSection")}: {periodLabel}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${periodOpen ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-        </button>
-        {periodOpen ? (
-          <div className="mt-2 space-y-3">
-            <StatisticsPeriodControls />
-            <p className="text-[11px] text-muted-foreground">
-              {t(locale, "bizPeriodHint", { period: periodLabel })}
-            </p>
-            {activeUnitId ? (
-              <>
-                {incomeSources.length > 0 ? (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">{t(locale, "bizIncomeSources")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-1.5">
-                      {incomeSources.slice(0, 10).map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex items-center justify-between gap-2 text-sm"
-                        >
-                          <span className="min-w-0 truncate">{row.label}</span>
-                          <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                            +{formatMoney(row.amount, locale)}
-                          </span>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ) : null}
-
-                {expenseBreakdown.length > 0 ? (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between"
-                        onClick={() => setShowExpenses((v) => !v)}
-                      >
-                        <CardTitle className="text-base">
-                          {t(locale, "bizExpenseBreakdown")}
-                        </CardTitle>
-                        <ChevronDown
-                          className={`h-4 w-4 text-muted-foreground transition-transform ${showExpenses ? "rotate-180" : ""}`}
-                          aria-hidden
-                        />
-                      </button>
-                    </CardHeader>
-                    {showExpenses ? (
-                      <CardContent className="space-y-1.5">
-                        {expenseBreakdown.slice(0, 12).map((row) => (
-                          <div
-                            key={row.label}
-                            className="flex items-center justify-between gap-2 text-sm"
-                          >
-                            <span className="min-w-0 truncate">{row.label}</span>
-                            <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
-                              −{formatMoney(row.amount, locale)}
-                            </span>
-                          </div>
-                        ))}
-                      </CardContent>
-                    ) : null}
-                  </Card>
-                ) : null}
-
+            {businessSection === "operations" ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {t(locale, "bizPeriodSection")}: {periodLabel}
+                  </p>
+                  <StatisticsPeriodControls />
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(locale, "bizPeriodHint", { period: periodLabel })}
+                  </p>
+                </div>
                 {recentTxs.length > 0 ? (
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium">{t(locale, "bizRecentTx")}</p>
-                    <ul className="space-y-1">
+                    <p className="text-sm font-medium">
+                      {t(locale, "bizRecentTx")}
+                    </p>
+                    <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
                       {recentTxs.map((tx) => (
                         <li
                           key={tx.id}
@@ -751,12 +963,186 @@ export function BusinessTab() {
                       ))}
                     </ul>
                   </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                    {t(locale, "bizNoRecentTx")}
+                  </p>
+                )}
+
+                {incomeSources.length > 0 || expenseBreakdown.length > 0 ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {incomeSources.length > 0 ? (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">
+                            {t(locale, "bizIncomeSources")}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-1.5">
+                          {incomeSources.slice(0, 8).map((row) => (
+                            <div
+                              key={row.label}
+                              className="flex items-center justify-between gap-2 text-sm"
+                            >
+                              <span className="min-w-0 truncate">
+                                {row.label}
+                              </span>
+                              <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                                +{formatMoney(row.amount, locale)}
+                              </span>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                    {expenseBreakdown.length > 0 ? (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">
+                            {t(locale, "bizExpenseBreakdown")}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-1.5">
+                          {expenseBreakdown.slice(0, 8).map((row) => (
+                            <div
+                              key={row.label}
+                              className="flex items-center justify-between gap-2 text-sm"
+                            >
+                              <span className="min-w-0 truncate">
+                                {row.label}
+                              </span>
+                              <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
+                                −{formatMoney(row.amount, locale)}
+                              </span>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                  </div>
                 ) : null}
-              </>
+              </div>
+            ) : null}
+
+            {businessSection === "reserve" ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t(locale, "bizCushionTitle")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    {t(locale, "bizCushionHint")}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizCushionShort")}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.cushionBalance, locale)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizTarget")}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.cushionTarget, locale)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {activeMetrics.cushionBalance >= activeMetrics.cushionTarget
+                      ? t(locale, "bizCushionFull")
+                      : t(locale, "bizCushionGap", {
+                          amount: formatMoney(
+                            activeMetrics.cushionTarget -
+                              activeMetrics.cushionBalance,
+                            locale,
+                          ),
+                        })}
+                  </p>
+                  {activeMetrics.canToCushion > 0 ? (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() =>
+                        transferToCushion(
+                          activeUnit.id,
+                          activeMetrics.canToCushion,
+                        )
+                      }
+                    >
+                      {t(locale, "bizUnitToCushion")}{" "}
+                      {formatMoney(activeMetrics.canToCushion, locale)}
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {businessSection === "tax" ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {t(locale, "bizTaxTitle")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    {t(locale, "bizTaxHint")}
+                  </p>
+                  <div className="rounded-lg bg-muted px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      {t(locale, "bizTaxReserve")}
+                    </p>
+                    <p className="font-bold tabular-nums">
+                      {formatMoney(activeMetrics.taxReserve, locale)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {activeMetrics.taxRatePct > 0
+                        ? t(locale, "bizTaxCurrent", {
+                            rate: String(activeMetrics.taxRatePct),
+                            period: taxPeriodLabel(
+                              activeMetrics.taxPeriod,
+                              locale,
+                            ),
+                          })
+                        : t(locale, "bizTaxOff")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => openEditUnit(activeUnit.id)}
+                  >
+                    {t(locale, "bizTaxSetup")}
+                  </Button>
+                  {safeWithdraw > 0 ? (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() =>
+                        transferToFamily(activeUnit.id, safeWithdraw)
+                      }
+                    >
+                      {t(locale, "bizUnitToFamily")}{" "}
+                      {formatMoney(safeWithdraw, locale)}
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {businessSection === "projects" ? (
+              <BusinessProjectsSection />
             ) : null}
           </div>
-        ) : null}
-      </div>
+        </>
+      ) : null}
 
       <BusinessTxEditDialog
         transaction={editTx}
@@ -802,7 +1188,9 @@ export function BusinessTab() {
             onChange={(e) => setEditUnitName(e.target.value)}
             autoFocus
           />
-          <p className="text-xs font-medium text-muted-foreground">{t(locale, "bizUnitTaxSettings")}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {t(locale, "bizUnitTaxSettings")}
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {[0, 6, 13, 15, 20].map((pct) => (
               <Button
@@ -818,7 +1206,9 @@ export function BusinessTab() {
             ))}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {(["month", "quarter", "halfyear", "year"] as BusinessTaxPeriod[]).map((p) => (
+            {(
+              ["month", "quarter", "halfyear", "year"] as BusinessTaxPeriod[]
+            ).map((p) => (
               <Button
                 key={p}
                 type="button"
@@ -836,7 +1226,9 @@ export function BusinessTab() {
           </Button>
           {visibleUnits.length > 1 && !editUnitIsProjects ? (
             <div className="space-y-1 border-t border-border/60 pt-3">
-              <p className="text-[11px] text-muted-foreground">{t(locale, "bizUnitDeleteHint")}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t(locale, "bizUnitDeleteHint")}
+              </p>
               <Button
                 type="button"
                 variant="destructive"
@@ -854,7 +1246,6 @@ export function BusinessTab() {
           ) : null}
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
