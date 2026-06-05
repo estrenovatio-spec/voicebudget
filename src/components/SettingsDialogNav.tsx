@@ -7,7 +7,6 @@ import { AppSettingsDiagnostics } from "@/components/AppSettingsDiagnostics";
 import { CategoryManager } from "@/components/CategoryManager";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
 import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
-import { ReferralPanel } from "@/components/ReferralPanel";
 import { SettingsMenuRow } from "@/components/SettingsMenuRow";
 import { UpdateAppButton } from "@/components/UpdateAppButton";
 import { OwnerChipColorPicker } from "@/components/OwnerChipColorPicker";
@@ -34,7 +33,6 @@ type SettingsScreen =
   | "categories"
   | "vehicle"
   | "cloud"
-  | "referral"
   | "household"
   | "danger";
 
@@ -49,7 +47,6 @@ const MENU_ITEMS: MenuItem[] = [
   { id: "categories", titleKey: "categoriesTitle", descriptionKey: "categoriesHint" },
   { id: "household", titleKey: "householdTitle", descriptionKey: "householdHint" },
   { id: "cloud", titleKey: "cloudTitle", descriptionKey: "cloudHint" },
-  { id: "referral", titleKey: "referralTitle", descriptionKey: "referralSettingsHint" },
   { id: "vehicle", titleKey: "vehicleGarageTitle", descriptionKey: "vehicleHintMulti" },
   { id: "help", titleKey: "helpTitle" },
   { id: "language", titleKey: "settingsLanguage", descriptionKey: "settingsLanguageHint" },
@@ -188,11 +185,6 @@ export function SettingsDialogNav({
       <div className="space-y-3">
         <HouseholdCloudPanel embedded />
         <UpdateAppButton />
-      </div>
-    ),
-    referral: (
-      <div className="space-y-2">
-        <ReferralPanel />
       </div>
     ),
     household: (
