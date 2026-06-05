@@ -423,7 +423,7 @@ function BusinessTotalBalance({
 }) {
   const rowClass =
     "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2";
-  const labelClass = "min-w-0 truncate text-sm font-semibold text-foreground";
+  const labelClass = "min-w-0 text-sm font-semibold leading-tight text-foreground";
   const amountClass = "shrink-0 text-sm font-semibold tabular-nums";
 
   return (
