@@ -18,8 +18,12 @@ export function PreviewViewChrome({
       <div className="min-w-0 flex-1" aria-hidden />
       <div className="flex shrink-0 flex-col items-end gap-1">
         <PreviewHeaderNav active={active} onChange={onChange} />
-        <CloudHeaderStatus />
-        <LiveRatesBar />
+        {active === "business" ? (
+          <>
+            <CloudHeaderStatus />
+            <LiveRatesBar />
+          </>
+        ) : null}
       </div>
     </div>
   );
