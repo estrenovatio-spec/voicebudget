@@ -1,23 +1,20 @@
 "use client";
 
-import { ExternalLink, Stethoscope } from "lucide-react";
+import { ExternalLink, Sparkles, Stethoscope } from "lucide-react";
+import { MoreServiceForm } from "@/components/app/MoreServiceForm";
 import { Button } from "@/components/ui/button";
 import { useEducationAccess } from "@/hooks/useEducationAccess";
 import { useEducationConfig } from "@/hooks/useEducationConfig";
 import { openExternalAppLink } from "@/lib/education-links";
-import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
 export function EducationTab({ embedded = false }: { embedded?: boolean }) {
   const locale = useStore((s) => s.locale);
   const { videos, diagnosticsFormUrl, loading: videosLoading } = useEducationConfig();
-  const { access, loading: accessLoading, paying, error, pay, refresh, paid } =
-    useEducationAccess();
+  const { loading: accessLoading, refresh, paid } = useEducationAccess();
 
   const loading = accessLoading || videosLoading;
-  const priceRub = access?.priceRub ?? 5000;
-  const listPriceRub = access?.listPriceRub ?? 40000;
 
   return (
     <div className="space-y-4 py-1">
@@ -32,33 +29,21 @@ export function EducationTab({ embedded = false }: { embedded?: boolean }) {
       ) : null}
 
       {!paid ? (
-        <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-card p-4 shadow-sm">
-          <p className="text-sm font-semibold">{t(locale, "educationPaywallTitle")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t(locale, "educationPaywallHint")}</p>
-          <div className="mt-3 flex flex-wrap items-baseline gap-2">
-            <span className="text-lg font-bold tabular-nums text-foreground">
-              {formatMoney(priceRub, locale)} {t(locale, "currency")}
-            </span>
-            <span className="text-sm tabular-nums text-muted-foreground line-through">
-              {formatMoney(listPriceRub, locale)} {t(locale, "currency")}
-            </span>
+        <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-card p-4 shadow-sm">
+          <div className="flex items-start gap-2">
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <div>
+              <p className="text-sm font-semibold">{t(locale, "educationWaitlistTitle")}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {t(locale, "educationWaitlistDesc")}
+              </p>
+            </div>
           </div>
-          {error ? (
-            <p className="mt-2 text-xs text-destructive">{error}</p>
-          ) : null}
-          <Button
-            type="button"
-            className="mt-3 w-full"
-            disabled={paying || loading || !access?.paymentsConfigured}
-            onClick={() => void pay()}
-          >
-            {paying ? t(locale, "educationPayLoading") : t(locale, "educationPayButton")}
-          </Button>
-          {!access?.paymentsConfigured && !loading ? (
-            <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">
-              {t(locale, "educationPaymentsOff")}
-            </p>
-          ) : null}
+          <MoreServiceForm
+            title={t(locale, "educationWaitlistFormTitle")}
+            subtitle={t(locale, "educationWaitlistFormHint")}
+            serviceId="education_waitlist"
+          />
         </div>
       ) : (
         <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-950 dark:text-emerald-100">
@@ -130,9 +115,11 @@ export function EducationTab({ embedded = false }: { embedded?: boolean }) {
         </p>
       )}
 
-      <Button type="button" variant="ghost" size="sm" className="w-full text-xs" onClick={() => void refresh()}>
-        {t(locale, "educationRefreshAccess")}
-      </Button>
+      {paid ? (
+        <Button type="button" variant="ghost" size="sm" className="w-full text-xs" onClick={() => void refresh()}>
+          {t(locale, "educationRefreshAccess")}
+        </Button>
+      ) : null}
     </div>
   );
 }

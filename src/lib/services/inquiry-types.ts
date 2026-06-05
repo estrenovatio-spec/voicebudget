@@ -6,6 +6,7 @@ export const SERVICE_INQUIRY_IDS = [
   "mortgage",
   "travel",
   "sg_advisor",
+  "education_waitlist",
 ] as const;
 
 export type ServiceInquiryId = (typeof SERVICE_INQUIRY_IDS)[number];
@@ -19,6 +20,7 @@ export function serviceInquiryTopicLabel(id: ServiceInquiryId, locale: "ru" | "e
     mortgage: "Ипотека / здоровье / недвижимость",
     travel: "Страхование путешественников",
     sg_advisor: "SG Capital — финансовый советник",
+    education_waitlist: "Обучение — лист ожидания",
   };
   const en: Record<ServiceInquiryId, string> = {
     osago: "OSAGO",
@@ -28,6 +30,7 @@ export function serviceInquiryTopicLabel(id: ServiceInquiryId, locale: "ru" | "e
     mortgage: "Mortgage / health / property",
     travel: "Travel insurance",
     sg_advisor: "SG Capital — financial advisor",
+    education_waitlist: "Education — waitlist",
   };
   return locale === "ru" ? ru[id] : en[id];
 }

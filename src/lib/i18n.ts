@@ -90,7 +90,7 @@ export const DICT = {
     educationPayButton: "Оплатить и открыть уроки",
     educationPayLoading: "Создаём ссылку на оплату…",
     educationPaidNote: "Оплачено — все уроки доступны на этом аккаунте.",
-    educationLockedHint: "Сначала оплатите курс — затем откроются видео.",
+    educationLockedHint: "Обучение скоро откроется. Оставьте заявку выше — пригласим вас первым.",
     educationPaymentsOff: "Оплата временно недоступна на сервере.",
     educationRefreshAccess: "Обновить статус оплаты",
     moreEducation: "Обучение",
@@ -134,6 +134,11 @@ export const DICT = {
     educationOpenForm: "Заполнить анкету",
     educationFormMissing:
       "Ссылка на анкету диагностики временно недоступна. Обновите приложение или напишите в поддержку.",
+    educationWaitlistTitle: "Готовим финансовую систему нового уровня",
+    educationWaitlistDesc:
+      "Сейчас в работе большой образовательный блок: понятные уроки, практические задания, разборы привычек и путь от хаоса в деньгах к капиталу. Оставьте заявку — напишем, как только появится доступ.",
+    educationWaitlistFormTitle: "Получить приглашение первым",
+    educationWaitlistFormHint: "Оставьте имя и телефон — сообщим, когда обучение откроется.",
     moreTitle: "Ещё",
     moreSubtitle: "Страхование, услуги, настройки, отчёты и обучение",
     moreReports: "Отчёты",
@@ -1017,7 +1022,7 @@ export const DICT = {
     educationPayButton: "Pay and unlock lessons",
     educationPayLoading: "Creating payment link…",
     educationPaidNote: "Paid — all lessons are available on this account.",
-    educationLockedHint: "Pay for the course first to unlock videos.",
+    educationLockedHint: "Education will open soon. Leave a request above and we will invite you first.",
     educationPaymentsOff: "Payments are not configured on the server yet.",
     educationRefreshAccess: "Refresh payment status",
     moreEducation: "Education",
@@ -1059,6 +1064,11 @@ export const DICT = {
     educationOpenForm: "Open form",
     educationFormMissing:
       "Diagnostics form link is unavailable. Update the app or contact support.",
+    educationWaitlistTitle: "Building a next-level financial system",
+    educationWaitlistDesc:
+      "A major education block is in progress: clear lessons, practical tasks, habit reviews, and a path from money chaos to capital. Leave a request and we will message you when access opens.",
+    educationWaitlistFormTitle: "Get early access",
+    educationWaitlistFormHint: "Leave your name and phone — we will notify you when education opens.",
     moreTitle: "More",
     moreSubtitle: "Insurance, services, settings, reports and education",
     moreReports: "Reports",
