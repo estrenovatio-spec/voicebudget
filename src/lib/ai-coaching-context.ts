@@ -101,7 +101,7 @@ export function buildAiCoachingContext(
   const elapsedDays = Math.min(periodDays, daysBetween(periodStart, new Date().toISOString().slice(0, 10)));
   const remainingDays = Math.max(1, periodDays - elapsedDays);
   const balance = income - expenses;
-  const safeDailySpend = balance > 0 ? Math.floor(balance / remainingDays) : 0;
+  const safeDailySpend = balance > 0 ? Math.floor(balance / remainingDays) : null;
   const expectedPace = periodDays > 0 ? expenses / periodDays : expenses;
   const actualPace = elapsedDays > 0 ? expenses / elapsedDays : expenses;
   const spendingPace =
@@ -110,7 +110,19 @@ export function buildAiCoachingContext(
       : actualPace < expectedPace * 0.82
         ? "below_normal"
         : "normal";
-  const cashflowRisk = balance < 0 ? "high" : safeDailySpend < 500 ? "medium" : "low";
+  const cashflowRisk = balance < 0 ? "high" : safeDailySpend === null || safeDailySpend < 500 ? "medium" : "low";
+  const nextStep =
+    locale === "ru"
+      ? cashflowRisk === "high"
+        ? "Сначала сверить обязательные платежи до конца периода и отделить их от гибких расходов."
+        : cashflowRisk === "medium"
+          ? "Держать покупки в режиме паузы 24 часа: сначала обязательное, потом комфорт."
+          : "Выбрать одну категорию недели и удержать её без жёстких запретов."
+      : cashflowRisk === "high"
+        ? "First reconcile required payments until the period ends and separate them from flexible spending."
+        : cashflowRisk === "medium"
+          ? "Use a 24-hour pause for purchases: essentials first, comfort second."
+          : "Pick one weekly category to keep steady without harsh restrictions.";
 
   return {
     savingsGoals,
@@ -120,14 +132,7 @@ export function buildAiCoachingContext(
       safeDailySpend,
       spendingPace,
       cashflowRisk,
-      nextStep:
-        locale === "ru"
-          ? cashflowRisk === "high"
-            ? "Сначала найти обязательные платежи и остановить необязательные расходы на 48 часов."
-            : "Выбрать один лимит на ближайшие 7 дней и отслеживать его ежедневно."
-          : cashflowRisk === "high"
-            ? "Find required payments first and pause non-essential spending for 48 hours."
-            : "Pick one limit for the next 7 days and check it daily.",
+      nextStep,
     },
   };
 }

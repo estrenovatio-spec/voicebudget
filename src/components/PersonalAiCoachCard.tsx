@@ -13,6 +13,7 @@ import { getCategoryLabel } from "@/lib/categories";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
+import type { Locale } from "@/types";
 
 const AI_COACH_CARD_HIDDEN_KEY = "voicebudget-ai-coach-card-hidden";
 
@@ -32,6 +33,27 @@ function writeHidden(hidden: boolean): void {
   } catch {
     /* localStorage may be blocked */
   }
+}
+
+function advisorySignalText(
+  signals: ReturnType<typeof buildAiCoachingContext>["smartSignals"],
+  locale: Locale,
+): string | null {
+  if (!signals) return null;
+  const isRu = locale === "ru";
+  if (signals.cashflowRisk === "high") {
+    return isRu
+      ? `Денежный поток напряжён. Сначала сверить обязательные платежи и отделить их от гибких расходов.`
+      : `Cash flow is tight. First reconcile required payments and separate them from flexible spending.`;
+  }
+  if (signals.safeDailySpend === null) {
+    return isRu
+      ? "Запас на свободные траты пока не сформирован. Сначала обязательное, потом комфорт."
+      : "There is no clear free-spending buffer yet. Essentials first, comfort second.";
+  }
+  return isRu
+    ? `Ориентир на свободные траты: около ${signals.safeDailySpend.toLocaleString("ru-RU")} ₽/день. ${signals.nextStep}`
+    : `Flexible-spend guide: about ${signals.safeDailySpend.toLocaleString("en-US")} RUB/day. ${signals.nextStep}`;
 }
 
 export function PersonalAiCoachCard() {
@@ -62,6 +84,7 @@ export function PersonalAiCoachCard() {
   const learnedRules = ctx.personalMemory?.learnedRules ?? [];
   const rulesCount = ctx.personalMemory?.learnedRules.length ?? 0;
   const signals = ctx.smartSignals;
+  const advisoryText = advisorySignalText(signals, locale);
   const title = locale === "ru" ? "ИИ заметил" : "AI noticed";
 
   if (transactions.length < 3 && rulesCount === 0) return null;
@@ -125,9 +148,7 @@ export function PersonalAiCoachCard() {
         ) : null}
         {signals ? (
           <p className="rounded-md bg-secondary/70 p-2.5 leading-snug">
-            {locale === "ru"
-              ? `Безопасный ориентир: около ${signals.safeDailySpend ?? 0} ₽/день. Следующий шаг: ${signals.nextStep}`
-              : `Safe guide: about ${signals.safeDailySpend ?? 0} RUB/day. Next step: ${signals.nextStep}`}
+            {advisoryText}
           </p>
         ) : null}
         {insights.slice(0, 1).map((item) => (

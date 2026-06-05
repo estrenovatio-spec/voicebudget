@@ -49,6 +49,32 @@ function missionToneClass(tone: AiMission["tone"]): string {
   return "border-primary/20 bg-primary/5";
 }
 
+function advisorySignalText(
+  signals: ReturnType<typeof buildAiCoachingContext>["smartSignals"],
+  locale: Locale,
+): string | null {
+  if (!signals) return null;
+  const isRu = locale === "ru";
+  if (signals.cashflowRisk === "high") {
+    return isRu
+      ? `Денежный поток напряжён. Советник бы начал не с запретов, а с ревизии: что точно нужно оплатить до конца периода, а что можно перенести. ${signals.nextStep}`
+      : `Cash flow is tight. Start with a review, not a ban: what must be paid before period end, and what can move. ${signals.nextStep}`;
+  }
+  if (signals.safeDailySpend === null) {
+    return isRu
+      ? `Запас на свободные траты пока не сформирован. Это не повод паниковать: отделите обязательные платежи от гибких расходов и выберите один рычаг на неделю.`
+      : `There is no clear free-spending buffer yet. No panic: separate required payments from flexible spending and choose one lever for the week.`;
+  }
+  if (signals.cashflowRisk === "medium") {
+    return isRu
+      ? `Запас небольшой: ориентир на свободные траты около ${signals.safeDailySpend.toLocaleString("ru-RU")} ₽/день. ${signals.nextStep}`
+      : `Buffer is modest: flexible-spend guide is about ${signals.safeDailySpend.toLocaleString("en-US")} RUB/day. ${signals.nextStep}`;
+  }
+  return isRu
+    ? `Картина спокойная: ориентир на свободные траты около ${signals.safeDailySpend.toLocaleString("ru-RU")} ₽/день. ${signals.nextStep}`
+    : `Picture is steady: flexible-spend guide is about ${signals.safeDailySpend.toLocaleString("en-US")} RUB/day. ${signals.nextStep}`;
+}
+
 function buildWeeklyMissions(params: {
   locale: Locale;
   periodStart: string;
@@ -214,6 +240,7 @@ export function AiMemoryCenter() {
   const habit = ctx.personalMemory?.categoryHabits[0] ?? null;
   const insights = ctx.personalMemory?.insights ?? [];
   const signals = ctx.smartSignals;
+  const advisoryText = advisorySignalText(signals, locale);
   const rules = learnedRules.slice(0, 24);
   const missions = buildWeeklyMissions({
     locale,
@@ -259,9 +286,7 @@ export function AiMemoryCenter() {
           ) : null}
           {signals ? (
             <p className="rounded-md bg-background/70 p-2.5 leading-snug">
-              {locale === "ru"
-                ? `Безопасный ориентир: около ${signals.safeDailySpend ?? 0} ₽/день. ${signals.nextStep}`
-                : `Safe guide: about ${signals.safeDailySpend ?? 0} RUB/day. ${signals.nextStep}`}
+              {advisoryText}
             </p>
           ) : null}
           {insights.slice(0, 2).map((item) => (
