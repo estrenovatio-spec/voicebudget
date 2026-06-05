@@ -469,20 +469,30 @@ async function waitRecorderStart(recorder: MediaRecorder): Promise<void> {
   if (recorder.state === "recording") return;
 
   await new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error("start_timeout")), 5_000);
-    recorder.onstart = () => {
+    let settled = false;
+    let poll: number | null = null;
+    const done = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timer);
-      resolve();
+      if (poll !== null) window.clearInterval(poll);
+      fn();
+    };
+    const timer = window.setTimeout(() => done(() => reject(new Error("start_timeout"))), 5_000);
+    poll = window.setInterval(() => {
+      if (recorder.state === "recording") done(() => resolve());
+    }, 120);
+    recorder.onstart = () => {
+      done(() => resolve());
     };
     recorder.onerror = () => {
-      window.clearTimeout(timer);
-      reject(new Error("record_failed"));
+      done(() => reject(new Error("record_failed")));
     };
     try {
       recorder.start(isMobileUa() ? 500 : 400);
+      if (recorder.state === "recording") done(() => resolve());
     } catch {
-      window.clearTimeout(timer);
-      reject(new Error("record_failed"));
+      done(() => reject(new Error("record_failed")));
     }
   });
 }

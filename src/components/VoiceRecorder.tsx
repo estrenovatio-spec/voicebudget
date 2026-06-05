@@ -26,6 +26,24 @@ import { enrichCategoriesWithAiMemory } from "@/lib/ai-memory";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
+const VOICE_FLOW_TIMEOUT_MS = 32_000;
+
+function withVoiceTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("voice_timeout")), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export function VoiceRecorder() {
   const locale = useStore((s) => s.locale);
   const categories = useStore((s) => s.categories);
@@ -198,7 +216,9 @@ export function VoiceRecorder() {
     setBusy(true);
     let result: Awaited<ReturnType<typeof finalizeVoiceCapture>>;
     try {
-      result = await finalizeVoiceCapture(locale);
+      result = await withVoiceTimeout(finalizeVoiceCapture(locale), VOICE_FLOW_TIMEOUT_MS);
+    } catch {
+      result = { text: "", error: "stt_failed" };
     } finally {
       setBusy(false);
     }

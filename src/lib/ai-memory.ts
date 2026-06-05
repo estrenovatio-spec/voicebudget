@@ -115,6 +115,29 @@ function writeAiMemory(memory: AiUserMemory): void {
   }
 }
 
+export function getAiMemoryRules(): AiMemoryRule[] {
+  return readAiMemory().rules;
+}
+
+export function deleteAiMemoryRule(target: Pick<AiMemoryRule, "phrase" | "categoryId" | "type">): void {
+  const memory = readAiMemory();
+  writeAiMemory({
+    version: 1,
+    rules: memory.rules.filter(
+      (rule) =>
+        !(
+          rule.phrase === target.phrase &&
+          rule.categoryId === target.categoryId &&
+          rule.type === target.type
+        ),
+    ),
+  });
+}
+
+export function clearAiMemoryRules(): void {
+  writeAiMemory({ version: 1, rules: [] });
+}
+
 function rememberRule(rule: Omit<AiMemoryRule, "lastSeenAt">): void {
   const memory = readAiMemory();
   const phrase = normalizeText(rule.phrase);

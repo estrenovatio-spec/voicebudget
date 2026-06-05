@@ -4,7 +4,7 @@ import { cleanTranscript } from "@/lib/transcript-guard";
 
 type TranscribeError = "stt_not_configured" | "stt_failed";
 
-const STT_MS = 45_000;
+const STT_MS = 28_000;
 export const VOICE_BROWSER_URL = "https://voicebudget.vercel.app/";
 
 function extensionForFile(file: File): string {
