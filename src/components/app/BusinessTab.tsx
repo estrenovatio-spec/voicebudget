@@ -408,6 +408,60 @@ function safeWithdrawAmount(metrics: UnitCardMetrics): number {
   return Math.max(0, Math.floor(metrics.operatingBalance - metrics.taxReserve));
 }
 
+function BusinessTotalBalance({
+  income,
+  expense,
+  profit,
+  locale,
+}: {
+  income: number;
+  expense: number;
+  profit: number;
+  locale: "ru" | "en";
+}) {
+  return (
+    <div className="rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+        {t(locale, "bizTotalBalanceTitle")}
+      </p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="min-w-0">
+          <p className="text-[10px] text-muted-foreground">
+            {t(locale, "bizKpiRevenue")}
+          </p>
+          <p className="truncate text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+            +{formatMoney(income, locale)}
+          </p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] text-muted-foreground">
+            {t(locale, "bizKpiExpenses")}
+          </p>
+          <p className="truncate text-sm font-bold tabular-nums text-red-700 dark:text-red-400">
+            -{formatMoney(expense, locale)}
+          </p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] text-muted-foreground">
+            {t(locale, "bizUnitProfit")}
+          </p>
+          <p
+            className={cn(
+              "truncate text-sm font-bold tabular-nums",
+              profit >= 0
+                ? "text-emerald-700 dark:text-emerald-400"
+                : "text-red-700 dark:text-red-400",
+            )}
+          >
+            {profit >= 0 ? "+" : "-"}
+            {formatMoney(Math.abs(profit), locale)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BusinessKpis({
   metrics,
   safeWithdraw,
@@ -739,6 +793,19 @@ export function BusinessTab() {
       unitCardMetrics(transactions, [], activeUnit, period)
     );
   }, [activeUnit, unitMetricsMap, transactions, period]);
+  const totalMetrics = useMemo(() => {
+    return visibleUnits.reduce(
+      (acc, unit) => {
+        const metrics = unitMetricsMap.get(unit.id);
+        if (!metrics) return acc;
+        acc.income += metrics.income;
+        acc.expense += metrics.expense;
+        acc.profit += metrics.profit;
+        return acc;
+      },
+      { income: 0, expense: 0, profit: 0 },
+    );
+  }, [visibleUnits, unitMetricsMap]);
   const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
 
   if (!ready) {
@@ -853,6 +920,13 @@ export function BusinessTab() {
           {t(locale, "bizTitle")}
         </h2>
       </div>
+
+      <BusinessTotalBalance
+        income={totalMetrics.income}
+        expense={totalMetrics.expense}
+        profit={totalMetrics.profit}
+        locale={locale}
+      />
 
       <div className="space-y-2">
         <BusinessUnitTabs

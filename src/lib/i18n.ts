@@ -346,6 +346,7 @@ export const DICT = {
     bizPeriodHint: "Цифры выбранного бизнеса считаются за период: {period}.",
     bizKpiRevenue: "Выручка",
     bizKpiExpenses: "Расходы",
+    bizTotalBalanceTitle: "Все бизнесы за период",
     bizCanWithdraw: "Можно вывести",
     bizAdvisorTitle: "ИИ заметил",
     bizAdvisorSafeWithdraw:
@@ -1397,6 +1398,7 @@ export const DICT = {
     bizPeriodHint: "Business tile numbers use period: {period}.",
     bizKpiRevenue: "Revenue",
     bizKpiExpenses: "Expenses",
+    bizTotalBalanceTitle: "All businesses this period",
     bizCanWithdraw: "Can withdraw",
     bizAdvisorTitle: "AI noticed",
     bizAdvisorSafeWithdraw:
