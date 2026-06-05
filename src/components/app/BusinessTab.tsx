@@ -419,43 +419,46 @@ function BusinessTotalBalance({
   profit: number;
   locale: "ru" | "en";
 }) {
+  const rowClass =
+    "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2";
+  const labelClass = "min-w-0 truncate text-sm font-semibold text-foreground";
+  const amountClass = "shrink-0 text-sm font-semibold tabular-nums";
+
   return (
     <div className="rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm">
-      <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-        {t(locale, "bizTotalBalanceTitle")}
-      </p>
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="min-w-0">
-          <p className="text-[10px] text-muted-foreground">
-            {t(locale, "bizKpiRevenue")}
-          </p>
-          <p className="truncate text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-            +{formatMoney(income, locale)}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] text-muted-foreground">
-            {t(locale, "bizKpiExpenses")}
-          </p>
-          <p className="truncate text-sm font-bold tabular-nums text-red-700 dark:text-red-400">
-            -{formatMoney(expense, locale)}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] text-muted-foreground">
-            {t(locale, "bizUnitProfit")}
-          </p>
-          <p
+      <div className="flex w-full flex-col gap-y-0.5">
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizKpiRevenue")}:</span>
+          <span
             className={cn(
-              "truncate text-sm font-bold tabular-nums",
+              amountClass,
+              "text-emerald-700 dark:text-emerald-400",
+            )}
+          >
+            +{formatMoney(income, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizKpiExpenses")}:</span>
+          <span
+            className={cn(amountClass, "text-red-700 dark:text-red-400")}
+          >
+            −{formatMoney(expense, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizUnitProfit")}:</span>
+          <span
+            className={cn(
+              amountClass,
               profit >= 0
                 ? "text-emerald-700 dark:text-emerald-400"
                 : "text-red-700 dark:text-red-400",
             )}
           >
-            {profit >= 0 ? "+" : "-"}
+            {profit >= 0 ? "+" : "−"}
             {formatMoney(Math.abs(profit), locale)}
-          </p>
+          </span>
         </div>
       </div>
     </div>
