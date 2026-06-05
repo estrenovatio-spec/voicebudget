@@ -3,7 +3,10 @@
 import { useRef, type ReactNode } from "react";
 import { BusinessTab } from "@/components/app/BusinessTab";
 import { MoreTab } from "@/components/app/MoreTab";
-import { PreviewViewChrome } from "@/components/app/PreviewViewChrome";
+import {
+  PreviewViewChrome,
+  PreviewViewControls,
+} from "@/components/app/PreviewViewChrome";
 import { useBusinessCloudSync } from "@/hooks/useBusinessCloudSync";
 import {
   writeStoredAppTab,
@@ -72,10 +75,11 @@ export function PreviewAppShell({
     >
       {active === "family" ? <div className="space-y-2">{familyContent}</div> : null}
       {active === "business" ? (
-        <>
-          <PreviewViewChrome active={active} onChange={changeTab} />
-          <BusinessTab />
-        </>
+        <BusinessTab
+          headerControls={
+            <PreviewViewControls active={active} onChange={changeTab} />
+          }
+        />
       ) : null}
       {active === "more" ? (
         <>

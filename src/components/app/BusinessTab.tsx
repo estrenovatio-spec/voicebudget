@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
 import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
@@ -703,7 +703,7 @@ function BusinessQuickEntry({
   );
 }
 
-export function BusinessTab() {
+export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) {
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
   const periodLabel = formatBudgetPeriodLabel(period, locale);
@@ -917,19 +917,37 @@ export function BusinessTab() {
           {t(locale, "bizPreviewBadge")}
         </span>
       ) : null}
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-bold">
-          <BriefcaseBusiness className="h-5 w-5 text-primary" aria-hidden />
-          {t(locale, "bizTitle")}
-        </h2>
-      </div>
-
-      <BusinessTotalBalance
-        income={totalMetrics.income}
-        expense={totalMetrics.expense}
-        profit={totalMetrics.profit}
-        locale={locale}
-      />
+      {headerControls ? (
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <BusinessTotalBalance
+              income={totalMetrics.income}
+              expense={totalMetrics.expense}
+              profit={totalMetrics.profit}
+              locale={locale}
+            />
+          </div>
+          {headerControls}
+        </div>
+      ) : (
+        <>
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-bold">
+              <BriefcaseBusiness
+                className="h-5 w-5 text-primary"
+                aria-hidden
+              />
+              {t(locale, "bizTitle")}
+            </h2>
+          </div>
+          <BusinessTotalBalance
+            income={totalMetrics.income}
+            expense={totalMetrics.expense}
+            profit={totalMetrics.profit}
+            locale={locale}
+          />
+        </>
+      )}
 
       <div className="space-y-2">
         <BusinessUnitTabs
