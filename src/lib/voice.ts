@@ -23,7 +23,7 @@ import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
-const MOBILE_MIC_IDLE_MS = 120_000;
+const MOBILE_MIC_IDLE_MS = 10 * 60_000;
 const CAPTURE_START_MS = 5_000;
 const CAPTURE_STOP_MS = 18_000;
 
@@ -197,7 +197,7 @@ function stopStream(stream: MediaStream): void {
 }
 
 function releaseMobileStreamAfterIdle(stream: MediaStream): void {
-  if (!isAndroidUa()) {
+  if (!isMobileUa()) {
     stopStream(stream);
     return;
   }
@@ -404,7 +404,7 @@ async function createSpeechSession(locale: Locale): Promise<SpeechSession | null
 
 async function openMicStream(): Promise<MediaStream> {
   clearCachedMobileStreamTimer();
-  if (isAndroidUa() && isLiveStream(cachedMobileStream)) {
+  if (isMobileUa() && isLiveStream(cachedMobileStream)) {
     return cachedMobileStream;
   }
 

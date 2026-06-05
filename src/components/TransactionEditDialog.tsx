@@ -212,14 +212,14 @@ export function TransactionEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,36rem)] max-w-sm overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(var(--tg-viewport-height,100dvh)-1rem)] w-[calc(100vw-1rem)] max-w-sm flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(90dvh,42rem)]">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-10 text-left">
           <DialogTitle>{t(locale, "txEditTitle")}</DialogTitle>
           <p className="text-sm text-muted-foreground">
             {formatTransactionDate(transaction.date, locale)}
           </p>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 [-webkit-overflow-scrolling:touch]">
           <div className="space-y-1.5">
             <span className="text-sm font-medium">{t(locale, "txType")}</span>
             <div className="flex gap-2">
