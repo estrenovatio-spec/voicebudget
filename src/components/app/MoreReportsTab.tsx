@@ -2,7 +2,6 @@
 
 import { FileSpreadsheet, FileText, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AiAnalysisTab } from "@/components/AiAnalysisTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -255,9 +254,6 @@ export function MoreReportsTab() {
         <Button type="button" size="sm" variant="ghost" onClick={() => void loadHistory()}>
           {t(locale, "moreReportsRefreshHistory")}
         </Button>
-
-        <p className="text-xs font-medium">{t(locale, "moreReportsGenerate")}</p>
-        <AiAnalysisTab active reportsOnly />
       </section>
     </div>
   );

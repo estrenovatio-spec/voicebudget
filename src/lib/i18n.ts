@@ -153,7 +153,7 @@ export const DICT = {
     moreTitle: "Ещё",
     moreSubtitle: "Страхование, услуги, настройки и отчёты",
     moreReports: "Отчёты",
-    moreReportsHint: "Excel/PDF за период и история AI-разборов",
+    moreReportsHint: "Excel/PDF за период и история финразборов",
     moreReportsExportSection: "Экспорт операций",
     moreReportsExportHint:
       "Выберите период — Excel включает семью, бизнес и проекты; PDF подходит для печати операций.",
@@ -163,7 +163,7 @@ export const DICT = {
     moreReportsExcel: "Таблица Excel",
     moreReportsPdf: "PDF",
     moreReportsExportTitle: "Просто Бюджет — операции",
-    moreReportsAiSection: "AI-отчёты",
+    moreReportsAiSection: "Финансовые отчёты",
     moreReportsCloudRequired:
       "Подключите облако — тогда история отчётов сохранится на сервере.",
     moreReportsDbMigrate:
@@ -173,7 +173,7 @@ export const DICT = {
     moreReportsHistoryEmpty: "Пока нет сохранённых отчётов.",
     moreReportsRefreshHistory: "Обновить историю",
     moreReportsGenerate: "Сформировать новый отчёт",
-    moreReportsFallback: "без AI",
+    moreReportsFallback: "базовый",
     moreSettings: "Настройки",
     moreSettingsHint: "Язык, облако, категории, имена",
     moreReferralTitle: "Пригласить друга",
@@ -1209,7 +1209,7 @@ export const DICT = {
     moreTitle: "More",
     moreSubtitle: "Insurance, services, settings and reports",
     moreReports: "Reports",
-    moreReportsHint: "Excel/PDF export and AI report history",
+    moreReportsHint: "Excel/PDF export and financial report history",
     moreReportsExportSection: "Export transactions",
     moreReportsExportHint:
       "Pick a period — Excel includes Family, Business, and Projects; PDF is for printable entries.",
@@ -1219,7 +1219,7 @@ export const DICT = {
     moreReportsExcel: "Excel table",
     moreReportsPdf: "PDF",
     moreReportsExportTitle: "Просто Бюджет — transactions",
-    moreReportsAiSection: "AI reports",
+    moreReportsAiSection: "Financial reports",
     moreReportsCloudRequired:
       "Connect cloud to save report history on the server.",
     moreReportsDbMigrate:
@@ -1229,7 +1229,7 @@ export const DICT = {
     moreReportsHistoryEmpty: "No saved reports yet.",
     moreReportsRefreshHistory: "Refresh history",
     moreReportsGenerate: "Generate new report",
-    moreReportsFallback: "no AI",
+    moreReportsFallback: "basic",
     moreSettings: "Settings",
     moreSettingsHint: "Language, cloud, categories, names",
     moreReferralTitle: "Invite a friend",
