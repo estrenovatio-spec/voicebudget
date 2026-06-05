@@ -61,7 +61,7 @@ function BalanceRow({
           onHideToggle?.();
         }}
         className={`min-w-0 rounded-md px-0.5 text-sm font-semibold text-foreground hover:bg-muted/40 ${
-          multiline ? "text-left leading-snug" : "truncate text-center"
+          multiline ? "text-left leading-snug" : "truncate text-left"
         }`}
       >
         {lines ? (
