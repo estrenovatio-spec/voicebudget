@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
 import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
+import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -836,6 +837,7 @@ export function BusinessTab() {
             {t(locale, "bizTitle")}
           </h2>
         </div>
+        <LiveRatesBar />
       </div>
 
       <div className="space-y-2">
