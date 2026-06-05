@@ -35,7 +35,11 @@ type MoreScreen =
   | "iszh_nszh"
   | "sg_advisor";
 
-const INSURANCE_FORM_SCREENS = new Set<MoreScreen>(["osago", "insurance_other", "iszh_nszh"]);
+const INSURANCE_FORM_SCREENS = new Set<MoreScreen>([
+  "osago",
+  "insurance_other",
+  "iszh_nszh",
+]);
 
 export function MoreTab() {
   const locale = useStore((s) => s.locale);
@@ -46,7 +50,7 @@ export function MoreTab() {
 
   const handleTelegramBack = useCallback(() => {
     if (screen === "main") return false;
-    if (screen === "sg_advisor") {
+    if (screen === "education" || screen === "sg_advisor") {
       setScreen("extra_services");
       return true;
     }
@@ -83,7 +87,7 @@ export function MoreTab() {
         <MoreSubheader
           locale={locale}
           title={t(locale, "moreEducation")}
-          onBack={() => setScreen("main")}
+          onBack={() => setScreen("extra_services")}
         />
         <EducationTab embedded />
       </div>
@@ -134,7 +138,9 @@ export function MoreTab() {
             <Briefcase className="h-4 w-4 text-primary" aria-hidden />
             {t(locale, "moreSgAdvisorTitle")}
           </h3>
-          <p className="text-xs text-muted-foreground">{t(locale, "moreSgAdvisorHint")}</p>
+          <p className="text-xs text-muted-foreground">
+            {t(locale, "moreSgAdvisorHint")}
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -145,14 +151,26 @@ export function MoreTab() {
           </Button>
         </div>
 
+        <SettingsMenuRow
+          title={t(locale, "moreEducation")}
+          description={t(locale, "moreEducationHint")}
+          onClick={() => setScreen("education")}
+        />
+
         <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold">
             <Stethoscope className="h-4 w-4 text-primary" aria-hidden />
             {t(locale, "moreFreeDiagnostics")}
           </h3>
-          <p className="text-xs text-muted-foreground">{t(locale, "moreFreeDiagnosticsHint")}</p>
+          <p className="text-xs text-muted-foreground">
+            {t(locale, "moreFreeDiagnosticsHint")}
+          </p>
           {diagnosticsFormUrl ? (
-            <Button type="button" className="w-full" onClick={() => openExternalAppLink(diagnosticsFormUrl)}>
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => openExternalAppLink(diagnosticsFormUrl)}
+            >
               {t(locale, "educationOpenForm")}
             </Button>
           ) : (
@@ -247,7 +265,9 @@ export function MoreTab() {
     <div className="space-y-5 py-1">
       <div>
         <h2 className="text-lg font-bold">{t(locale, "moreTitle")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{t(locale, "moreSubtitle")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t(locale, "moreSubtitle")}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -275,11 +295,6 @@ export function MoreTab() {
           title={t(locale, "moreReports")}
           description={t(locale, "moreReportsHint")}
           onClick={() => setScreen("reports")}
-        />
-        <SettingsMenuRow
-          title={t(locale, "moreEducation")}
-          description={t(locale, "moreEducationHint")}
-          onClick={() => setScreen("education")}
         />
       </div>
 
@@ -320,7 +335,10 @@ function MoreHubPlaque({
         </h3>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-muted-foreground"
+        aria-hidden
+      />
     </button>
   );
 }

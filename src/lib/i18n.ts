@@ -101,7 +101,7 @@ export const DICT = {
     educationPaymentsOff: "Оплата временно недоступна на сервере.",
     educationRefreshAccess: "Обновить статус оплаты",
     moreEducation: "Обучение",
-    moreEducationHint: "18 уроков · 5 000 ₽ вместо 40 000",
+    moreEducationHint: "Заявка на доступ к финансовым урокам",
     moreProjects: "Проекты",
     moreProjectsHint: "Недвижимость, инвестиции, клиенты и долгие проекты",
     projectsExplain:
@@ -151,7 +151,7 @@ export const DICT = {
     educationWaitlistFormHint:
       "Оставьте имя и телефон — сообщим, когда обучение откроется.",
     moreTitle: "Ещё",
-    moreSubtitle: "Страхование, услуги, настройки, отчёты и обучение",
+    moreSubtitle: "Страхование, услуги, настройки и отчёты",
     moreReports: "Отчёты",
     moreReportsHint: "Excel/PDF за период и история AI-разборов",
     moreReportsExportSection: "Экспорт операций",
@@ -1148,7 +1148,7 @@ export const DICT = {
     educationPaymentsOff: "Payments are not configured on the server yet.",
     educationRefreshAccess: "Refresh payment status",
     moreEducation: "Education",
-    moreEducationHint: "18 lessons · 5,000 ₽ instead of 40,000",
+    moreEducationHint: "Request access to financial lessons",
     moreProjects: "Projects",
     moreProjectsHint:
       "Real estate, freelance, investments — plan and transfer to family",
@@ -1199,7 +1199,7 @@ export const DICT = {
     educationWaitlistFormHint:
       "Leave your name and phone — we will notify you when education opens.",
     moreTitle: "More",
-    moreSubtitle: "Insurance, services, settings, reports and education",
+    moreSubtitle: "Insurance, services, settings and reports",
     moreReports: "Reports",
     moreReportsHint: "Excel/PDF export and AI report history",
     moreReportsExportSection: "Export transactions",
