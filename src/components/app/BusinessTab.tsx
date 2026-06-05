@@ -848,13 +848,11 @@ export function BusinessTab() {
           {t(locale, "bizPreviewBadge")}
         </span>
       ) : null}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="flex items-center gap-2 text-lg font-bold">
-            <BriefcaseBusiness className="h-5 w-5 text-primary" aria-hidden />
-            {t(locale, "bizTitle")}
-          </h2>
-        </div>
+      <div className="space-y-1">
+        <h2 className="flex items-center gap-2 text-lg font-bold">
+          <BriefcaseBusiness className="h-5 w-5 text-primary" aria-hidden />
+          {t(locale, "bizTitle")}
+        </h2>
         <LiveRatesBar />
       </div>
 
