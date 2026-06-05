@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { AiMemoryCenter } from "@/components/AiMemoryCenter";
+import { AiWeeklyMissionTab } from "@/components/AiWeeklyMissionTab";
 import { MonthlyAnalysisTab } from "@/components/MonthlyAnalysisTab";
 import { WeeklyAnalysisTab } from "@/components/WeeklyAnalysisTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
-type AiSubTab = "memory" | "weekly" | "monthly";
+type AiSubTab = "memory" | "mission" | "weekly" | "monthly";
 
 type AiAnalysisTabProps = {
   active: boolean;
@@ -20,13 +21,37 @@ export function AiAnalysisTab({ active }: AiAnalysisTabProps) {
 
   return (
     <Tabs value={subTab} onValueChange={(v) => setSubTab(v as AiSubTab)}>
-      <TabsList className="mb-3 grid w-full grid-cols-3">
-        <TabsTrigger value="memory">{locale === "ru" ? "Память" : "Memory"}</TabsTrigger>
-        <TabsTrigger value="weekly">{locale === "ru" ? "7 дней" : t(locale, "aiTabWeekly")}</TabsTrigger>
-        <TabsTrigger value="monthly">{locale === "ru" ? "30 дней" : t(locale, "aiTabMonthly")}</TabsTrigger>
+      <TabsList className="mb-3 grid w-full grid-cols-4">
+        <TabsTrigger value="memory" className="h-auto min-h-10 px-1 text-xs leading-tight">
+          {locale === "ru" ? "Память" : "Memory"}
+        </TabsTrigger>
+        <TabsTrigger value="mission" className="h-auto min-h-10 px-1 text-xs leading-tight">
+          {locale === "ru" ? (
+            <>
+              Миссия
+              <br />
+              недели
+            </>
+          ) : (
+            <>
+              Weekly
+              <br />
+              mission
+            </>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="weekly" className="h-auto min-h-10 px-1 text-xs leading-tight">
+          {locale === "ru" ? "7 дней" : t(locale, "aiTabWeekly")}
+        </TabsTrigger>
+        <TabsTrigger value="monthly" className="h-auto min-h-10 px-1 text-xs leading-tight">
+          {locale === "ru" ? "30 дней" : t(locale, "aiTabMonthly")}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="memory">
         <AiMemoryCenter />
+      </TabsContent>
+      <TabsContent value="mission">
+        <AiWeeklyMissionTab />
       </TabsContent>
       <TabsContent value="weekly">
         <WeeklyAnalysisTab active={active && subTab === "weekly"} />
