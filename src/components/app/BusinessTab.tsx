@@ -309,12 +309,14 @@ function UnitCard({
 function BusinessUnitTabs({
   units,
   activeUnitId,
+  metricsMap,
   locale,
   onSelect,
   onAdd,
 }: {
   units: BusinessUnit[];
   activeUnitId: string | null;
+  metricsMap: Map<string, UnitCardMetrics>;
   locale: "ru" | "en";
   onSelect: (unitId: string) => void;
   onAdd: () => void;
@@ -328,6 +330,8 @@ function BusinessUnitTabs({
       >
         {units.map((unit) => {
           const active = unit.id === activeUnitId;
+          const metrics = metricsMap.get(unit.id);
+          const profit = metrics?.profit ?? 0;
           return (
             <button
               key={unit.id}
@@ -353,6 +357,19 @@ function BusinessUnitTabs({
                 }}
               >
                 {unit.name}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 block truncate text-[10px] font-semibold tabular-nums",
+                  profit > 0
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : profit < 0
+                      ? "text-red-700 dark:text-red-400"
+                      : "text-muted-foreground",
+                )}
+              >
+                {profit > 0 ? "+" : profit < 0 ? "−" : ""}
+                {formatMoney(Math.abs(profit), locale)}
               </span>
             </button>
           );
@@ -563,6 +580,7 @@ export function BusinessTab() {
         <BusinessUnitTabs
           units={visibleUnits}
           activeUnitId={activeUnitId}
+          metricsMap={unitMetricsMap}
           locale={locale}
           onSelect={setSelectedUnitId}
           onAdd={() => setUnitDialogOpen(true)}
