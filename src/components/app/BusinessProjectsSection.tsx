@@ -338,7 +338,14 @@ export function BusinessProjectsSection() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-[11px] text-muted-foreground">{t(locale, "bizProjectsSectionHint")}</p>
+          <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed">
+            <p className="font-medium text-foreground">{t(locale, "bizProjectsHowTitle")}</p>
+            <ul className="mt-1 space-y-0.5 text-muted-foreground">
+              <li>{t(locale, "bizProjectsHow1")}</li>
+              <li>{t(locale, "bizProjectsHow2")}</li>
+              <li>{t(locale, "bizProjectsHow3")}</li>
+            </ul>
+          </div>
 
           {totalReceivedAll > 0 ? (
             <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">
