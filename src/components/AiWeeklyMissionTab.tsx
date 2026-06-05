@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Circle, Target } from "lucide-react";
+import { CheckCircle2, Circle, Sparkles, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
@@ -63,6 +63,25 @@ function missionToneClass(tone: AiMission["tone"]): string {
   return "border-primary/20 bg-primary/5";
 }
 
+function isChildCareCategory(category: string): boolean {
+  const normalized = category.toLowerCase();
+  return [
+    "дет",
+    "реб",
+    "сад",
+    "садик",
+    "школ",
+    "образован",
+    "обуч",
+    "круж",
+    "секц",
+    "child",
+    "kid",
+    "school",
+    "education",
+  ].some((token) => normalized.includes(token));
+}
+
 function buildWeeklyMissions(params: {
   locale: Locale;
   periodStart: string;
@@ -121,15 +140,24 @@ function buildWeeklyMissions(params: {
   }
 
   if (habit && habit.sharePercent >= 25) {
+    const childCare = isChildCareCategory(habit.category);
     add({
       id: `habit:${habit.category}`,
       tone: "habit",
       title: isRu
-        ? `Минус один чек: ${habit.category}`
-        : `One less check: ${habit.category}`,
+        ? childCare
+          ? `Проверить статью «${habit.category}»`
+          : `Минус один чек: ${habit.category}`
+        : childCare
+          ? `Review "${habit.category}"`
+          : `One less check: ${habit.category}`,
       detail: isRu
-        ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Если убрать один такой расход в неделю, уже появится запас.`
-        : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
+        ? childCare
+          ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Детские расходы не режем вслепую: проверьте, что входит в сумму, план платежей и где можно оптимизировать без вреда для ребёнка.`
+          : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Если убрать один такой расход в неделю, уже появится запас.`
+        : childCare
+          ? `Average check ${formatMoney(habit.avgAmount, locale)}. Do not cut child-related spending blindly: check what is included, payment plan, and safe optimizations.`
+          : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
     });
   }
 
@@ -245,6 +273,8 @@ export function AiWeeklyMissionTab() {
     learnedRulesCount,
     transactionsCount: weekTransactionsCount,
   });
+  const allMissionsDone =
+    missions.length > 0 && missions.every((mission) => doneMissions.has(mission.id));
 
   const toggleMission = (id: string) => {
     const next = new Set(doneMissions);
@@ -312,6 +342,29 @@ export function AiWeeklyMissionTab() {
           );
         })}
       </ul>
+
+      {allMissionsDone ? (
+        <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3">
+          <div className="flex items-start gap-2">
+            <Sparkles
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                {locale === "ru"
+                  ? "Все 3 цели недели закрыты"
+                  : "All 3 weekly goals are done"}
+              </p>
+              <p className="mt-0.5 text-xs leading-snug text-emerald-900/80 dark:text-emerald-100/80">
+                {locale === "ru"
+                  ? "Отличная работа: вы не просто ведёте учёт, а закрепляете финансовую привычку. На следующей неделе советник подберёт новый шаг."
+                  : "Great work: you are not just tracking money, you are building the habit. Next week the advisor will suggest a new step."}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
