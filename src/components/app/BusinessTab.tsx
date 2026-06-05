@@ -49,6 +49,7 @@ import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStatsPeriod, useStore } from "@/store/useStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
+const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
 type BusinessSection = "operations" | "reserve" | "tax" | "projects";
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
@@ -764,6 +765,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
   useEffect(() => {
     setShowBusinessHow(localStorage.getItem(BUSINESS_HOW_HIDDEN_KEY) !== "1");
+    setBusinessAdvisorOpen(
+      localStorage.getItem(BUSINESS_ADVISOR_OPEN_KEY) !== "0",
+    );
   }, []);
 
   useEffect(() => {
@@ -907,6 +911,14 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     localStorage.setItem(BUSINESS_HOW_HIDDEN_KEY, "1");
   };
 
+  const toggleBusinessAdvisor = () => {
+    setBusinessAdvisorOpen((open) => {
+      const next = !open;
+      localStorage.setItem(BUSINESS_ADVISOR_OPEN_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
   const submitCushionAmount = () => {
     if (!activeUnit || !activeMetrics) return;
     const amount = parseMoneyAmount(cushionAmount);
@@ -1004,7 +1016,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
             safeWithdraw={safeWithdraw}
             locale={locale}
             open={businessAdvisorOpen}
-            onToggle={() => setBusinessAdvisorOpen((v) => !v)}
+            onToggle={toggleBusinessAdvisor}
           />
           <BusinessQuickEntry
             locale={locale}
