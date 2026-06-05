@@ -213,14 +213,14 @@ export function TransactionEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(var(--tg-viewport-height,100dvh)-1rem)] w-[calc(100vw-1rem)] max-w-sm flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(90dvh,42rem)]">
-        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-10 text-left">
+        <DialogHeader className="shrink-0 border-b px-4 py-3 pr-10 text-left">
           <DialogTitle>{t(locale, "txEditTitle")}</DialogTitle>
           <p className="text-sm text-muted-foreground">
             {formatTransactionDate(transaction.date, locale)}
           </p>
         </DialogHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 [-webkit-overflow-scrolling:touch]">
-          <div className="space-y-1.5">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 [-webkit-overflow-scrolling:touch]">
+          <div className="space-y-1">
             <span className="text-sm font-medium">{t(locale, "txType")}</span>
             <div className="flex gap-2">
               <Button
@@ -241,7 +241,7 @@ export function TransactionEditDialog({
               </Button>
             </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="tx-amount">
               {t(locale, "txAmount")}
             </label>
@@ -254,7 +254,7 @@ export function TransactionEditDialog({
               placeholder="500"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="tx-comment">
               {t(locale, "txComment")}
             </label>
@@ -267,9 +267,9 @@ export function TransactionEditDialog({
               maxLength={120}
               className="flex min-h-[56px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <p className="text-xs text-muted-foreground">{t(locale, "txCommentHint")}</p>
+            <p className="text-[11px] leading-tight text-muted-foreground">{t(locale, "txCommentHint")}</p>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="tx-category">
               {t(locale, "txCategory")}
             </label>
@@ -287,7 +287,7 @@ export function TransactionEditDialog({
             </select>
           </div>
           {showVehicleFields ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {vehicles.length > 1 ? (
                 <>
                   <label className="text-sm font-medium" htmlFor="tx-vehicle">
@@ -320,7 +320,7 @@ export function TransactionEditDialog({
             </div>
           ) : null}
           {txType === "income" && savingsGoals.length > 0 ? (
-            <div className="space-y-2 rounded-md border border-dashed p-3">
+            <div className="space-y-1.5 rounded-md border border-dashed p-2.5">
               <p className="text-sm font-medium">{t(locale, "txGoal")}</p>
               <select
                 value={goalId}
@@ -343,13 +343,13 @@ export function TransactionEditDialog({
                     onChange={(e) => setGoalAmount(e.target.value)}
                     placeholder={t(locale, "txGoalAmount")}
                   />
-                  <p className="text-xs text-muted-foreground">{t(locale, "txGoalHint")}</p>
+                  <p className="text-[11px] leading-tight text-muted-foreground">{t(locale, "txGoalHint")}</p>
                 </>
               ) : null}
             </div>
           ) : null}
           {hasPartnerBudget(partnerName, partnerKeywords) && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="tx-owner">
                 {t(locale, "txOwner")}
               </label>
@@ -377,7 +377,7 @@ export function TransactionEditDialog({
               {t(locale, "confirm")}
             </Button>
           </div>
-          <div className="border-t pt-3">
+          <div className="border-t pt-2">
             {confirmDelete ? (
               <div className="space-y-2">
                 <p className="text-center text-sm text-muted-foreground">

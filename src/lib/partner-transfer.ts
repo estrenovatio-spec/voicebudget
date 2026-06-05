@@ -9,6 +9,15 @@ export function isPartnerTransferCategory(categoryId: string): boolean {
   return categoryId === PARTNER_TRANSFER_CATEGORY_ID;
 }
 
+export function isPartnerTransferLike(tx: Pick<Transaction, "categoryId" | "note">): boolean {
+  if (isPartnerTransferCategory(tx.categoryId)) return true;
+  const note = tx.note.toLowerCase();
+  return (
+    note.includes("перевод") &&
+    (note.includes("партн") || note.includes("partner"))
+  );
+}
+
 /** Колонка баланса для перевода партнёру (отдельно от обычных операций). */
 export function resolvePartnerTransferOwnerForViewer(
   tx: Transaction,

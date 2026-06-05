@@ -195,8 +195,9 @@ export function MoreReportsTab() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
-            variant="secondary"
-            className="gap-1.5"
+            variant="default"
+            className="gap-1.5 opacity-100"
+            disabled={false}
             onClick={exportExcel}
           >
             <FileSpreadsheet className="h-4 w-4" aria-hidden />

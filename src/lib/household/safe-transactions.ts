@@ -6,7 +6,7 @@ import {
   isMissingDbObject,
   type HouseholdDbCapabilities,
 } from "@/lib/household/db-capabilities";
-import { PARTNER_TRANSFER_CATEGORY_ID } from "@/lib/partner-transfer";
+import { PARTNER_TRANSFER_CATEGORY_ID, isPartnerTransferLike } from "@/lib/partner-transfer";
 import { appTransactionToDb, dbTransactionToApp } from "@/lib/household/sync-mapper";
 import type { Transaction } from "@/types";
 
@@ -236,8 +236,9 @@ export async function deleteTransactionForHousehold(
 ): Promise<void> {
   const caps = await getHouseholdDbCapabilities();
   const existing = await findTransactionInHousehold(householdId, id);
-  const shouldDeletePartnerPair =
-    existing?.categoryId === PARTNER_TRANSFER_CATEGORY_ID;
+  if (!existing) return;
+  const shouldDeletePartnerPair = isPartnerTransferLike(existing);
+  const oppositeType = existing?.type === "income" ? "expense" : "income";
 
   if (canUsePrismaTransactionModel(caps)) {
     try {
@@ -245,10 +246,21 @@ export async function deleteTransactionForHousehold(
         await prisma.transaction.deleteMany({
           where: {
             householdId,
-            categoryId: PARTNER_TRANSFER_CATEGORY_ID,
             date: existing.date,
             amount: existing.amount,
-            OR: [{ id }, { type: existing.type === "income" ? "expense" : "income" }],
+            AND: [
+              {
+                OR: [
+                  { id },
+                  { categoryId: PARTNER_TRANSFER_CATEGORY_ID },
+                  { note: { contains: "партн", mode: "insensitive" } },
+                  { note: { contains: "partner", mode: "insensitive" } },
+                ],
+              },
+              {
+                OR: [{ id }, { type: oppositeType }],
+              },
+            ],
           },
         });
       } else {
@@ -263,10 +275,15 @@ export async function deleteTransactionForHousehold(
     await prisma.$executeRaw`
       DELETE FROM "Transaction"
       WHERE "householdId" = ${householdId}
-        AND "categoryId" = ${PARTNER_TRANSFER_CATEGORY_ID}
         AND date = ${existing.date}
         AND amount = ${existing.amount}
-        AND (id = ${id} OR type = ${existing.type === "income" ? "expense" : "income"})
+        AND (
+          id = ${id}
+          OR "categoryId" = ${PARTNER_TRANSFER_CATEGORY_ID}
+          OR LOWER(note) LIKE '%партн%'
+          OR LOWER(note) LIKE '%partner%'
+        )
+        AND (id = ${id} OR type = ${oppositeType})
     `;
     return;
   }

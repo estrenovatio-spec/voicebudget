@@ -23,7 +23,7 @@ import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
-const MOBILE_MIC_IDLE_MS = 60 * 60_000;
+const MOBILE_MIC_IDLE_MS = Number.POSITIVE_INFINITY;
 const CAPTURE_START_MS = 5_000;
 const CAPTURE_STOP_MS = 18_000;
 
@@ -203,6 +203,7 @@ function releaseMobileStreamAfterIdle(stream: MediaStream): void {
   }
   cachedMobileStream = stream;
   clearCachedMobileStreamTimer();
+  if (!Number.isFinite(MOBILE_MIC_IDLE_MS)) return;
   cachedMobileStreamTimer = window.setTimeout(() => {
     if (cachedMobileStream === stream && !session) stopStream(stream);
   }, MOBILE_MIC_IDLE_MS);
