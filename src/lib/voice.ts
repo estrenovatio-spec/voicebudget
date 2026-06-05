@@ -23,7 +23,7 @@ import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
-const MOBILE_MIC_IDLE_MS = 10 * 60_000;
+const MOBILE_MIC_IDLE_MS = 60 * 60_000;
 const CAPTURE_START_MS = 5_000;
 const CAPTURE_STOP_MS = 18_000;
 
@@ -278,7 +278,7 @@ export async function cancelVoiceRecording(): Promise<void> {
       /* ignore */
     }
   }
-  stopStream(s.stream);
+  releaseMobileStreamAfterIdle(s.stream);
 }
 
 function speechLang(locale: Locale): string {
@@ -506,14 +506,6 @@ export async function startVoiceRecording(
   await cancelVoiceRecording();
 
   try {
-    if (isAndroidUa()) {
-      const speechSession = await createSpeechSession(locale);
-      if (speechSession) {
-        session = speechSession;
-        return { ok: true };
-      }
-    }
-
     const stream = await openMicStream();
     const track = stream.getAudioTracks()[0];
     if (!track || track.readyState !== "live") {
@@ -582,6 +574,13 @@ export async function startVoiceRecording(
   } catch (e) {
     await cancelVoiceRecording();
     const msg = e instanceof Error ? e.message : "";
+    if (isAndroidUa() && (msg === "record_failed" || msg === "start_timeout")) {
+      const speechSession = await createSpeechSession(locale);
+      if (speechSession) {
+        session = speechSession;
+        return { ok: true };
+      }
+    }
     if (msg === "mic_timeout") return { ok: false, error: "mic_timeout" };
     if (msg === "record_failed" || msg === "start_timeout") {
       return { ok: false, error: "recorder_start_failed" };
