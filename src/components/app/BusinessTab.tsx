@@ -39,7 +39,11 @@ import type {
   BusinessTransaction,
   BusinessUnit,
 } from "@/lib/business/types";
-import { formatBudgetPeriodLabel } from "@/lib/budget-period";
+import {
+  formatBudgetPeriodLabel,
+  isDateInBudgetPeriod,
+  type BudgetPeriod,
+} from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
 import {
@@ -414,6 +418,36 @@ function safeWithdrawAmount(metrics: UnitCardMetrics): number {
   );
 }
 
+function businessAdSpendForPeriod(
+  transactions: BusinessTransaction[],
+  unitId: string,
+  period: BudgetPeriod,
+): number {
+  const adTokens = [
+    "реклам",
+    "маркет",
+    "таргет",
+    "директ",
+    "яндекс",
+    "vk",
+    "вк",
+    "ads",
+    "advert",
+    "marketing",
+    "direct",
+    "target",
+    "seo",
+    "smm",
+  ];
+  return transactions.reduce((sum, tx) => {
+    if (tx.unitId !== unitId || tx.kind !== "operating_expense") return sum;
+    if (!isDateInBudgetPeriod(tx.date, period)) return sum;
+    const note = tx.note.toLowerCase();
+    if (!adTokens.some((token) => note.includes(token))) return sum;
+    return sum + tx.amount;
+  }, 0);
+}
+
 function BusinessTotalBalance({
   income,
   expense,
@@ -568,16 +602,19 @@ function BusinessKpis({
 function BusinessAdvisor({
   metrics,
   safeWithdraw,
+  adSpend,
   locale,
   open,
   onToggle,
 }: {
   metrics: UnitCardMetrics;
   safeWithdraw: number;
+  adSpend: number;
   locale: "ru" | "en";
   open: boolean;
   onToggle: () => void;
 }) {
+  const isRu = locale === "ru";
   const reserveMonths =
     metrics.avgMonthlyExpense > 0
       ? Math.min(
@@ -593,6 +630,10 @@ function BusinessAdvisor({
     metrics.income > 0
       ? Math.round((metrics.expense / metrics.income) * 100)
       : 0;
+  const margin = Math.round(metrics.profitMarginPct);
+  const adShare = metrics.income > 0 ? Math.round((adSpend / metrics.income) * 100) : 0;
+  const cashNeeded = Math.max(0, metrics.taxReserve + metrics.debtMinPayment);
+  const cashGap = metrics.operatingBalance - cashNeeded;
 
   let main = t(locale, "bizAdvisorProfit");
   if (metrics.income <= 0 && metrics.expense > 0) {
@@ -603,6 +644,96 @@ function BusinessAdvisor({
     main = t(locale, "bizAdvisorExpenseRatio", { pct: String(expenseRatio) });
   } else if (metrics.income === 0 && metrics.expense === 0) {
     main = t(locale, "bizAdvisorEmpty");
+  }
+
+  const signals: { label: string; text: string; tone: "ok" | "warn" | "risk" }[] = [];
+  const addSignal = (signal: { label: string; text: string; tone?: "ok" | "warn" | "risk" }) => {
+    signals.push({ ...signal, tone: signal.tone ?? "ok" });
+  };
+
+  addSignal({
+    label: isRu ? "Можно вывести" : "Can withdraw",
+    text:
+      safeWithdraw > 0
+        ? isRu
+          ? `Безопасно к выводу сейчас: ${formatMoney(safeWithdraw, locale)}. Это после налога и минимальных платежей.`
+          : `Safe to withdraw now: ${formatMoney(safeWithdraw, locale)} after tax and minimum payments.`
+        : isRu
+          ? "К выводу лучше не забирать: сначала закрыть налог, минимальные платежи и резерв."
+          : "Better not withdraw yet: cover tax, minimum payments, and reserve first.",
+    tone: safeWithdraw > 0 ? "ok" : "risk",
+  });
+
+  addSignal({
+    label: isRu ? "Маржинальность" : "Margin",
+    text:
+      metrics.income <= 0
+        ? isRu
+          ? "Маржу пока считать рано: нет выручки за период."
+          : "Too early to read margin: no revenue this period."
+        : margin < 0
+          ? isRu
+            ? `Маржа ${margin}%. Бизнес продаёт ниже расходов — нужен разбор цены, себестоимости и рекламы.`
+            : `Margin is ${margin}%. Sales are below costs — review pricing, cost base, and ads.`
+          : margin < 20
+            ? isRu
+              ? `Маржа ${margin}%. Зона внимания: небольшой сбой в расходах может съесть прибыль.`
+              : `Margin is ${margin}%. Watch closely: a small cost jump can erase profit.`
+            : isRu
+              ? `Маржа ${margin}%. Есть пространство для резерва, налога и аккуратного вывода.`
+              : `Margin is ${margin}%. There is room for reserve, tax, and careful withdrawal.`,
+    tone: metrics.income <= 0 ? "warn" : margin < 0 ? "risk" : margin < 20 ? "warn" : "ok",
+  });
+
+  if (adSpend > 0) {
+    addSignal({
+      label: isRu ? "Реклама" : "Ads",
+      text:
+        metrics.income > 0
+          ? isRu
+            ? `На рекламу ушло ${formatMoney(adSpend, locale)} (${adShare}% выручки). Проверьте: сколько заявок/продаж дал этот расход.`
+            : `Ad spend is ${formatMoney(adSpend, locale)} (${adShare}% of revenue). Check leads/sales from this spend.`
+          : isRu
+            ? `На рекламу ушло ${formatMoney(adSpend, locale)}, но выручки за период нет. Это тревожный сигнал по окупаемости.`
+            : `Ad spend is ${formatMoney(adSpend, locale)}, but there is no revenue this period. ROI risk signal.`,
+      tone: metrics.income <= 0 || adShare >= 25 ? "risk" : adShare >= 12 ? "warn" : "ok",
+    });
+  }
+
+  addSignal({
+    label: isRu ? "Кассовый разрыв" : "Cash gap",
+    text:
+      cashGap < 0
+        ? isRu
+          ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} до налога и обязательных платежей. Вывод денег лучше поставить на паузу.`
+          : `${formatMoney(Math.abs(cashGap), locale)} short for tax and required payments. Pause withdrawals.`
+        : isRu
+          ? `После налога и обязательных платежей остаётся запас ${formatMoney(cashGap, locale)}.`
+          : `After tax and required payments, buffer is ${formatMoney(cashGap, locale)}.`,
+    tone: cashGap < 0 ? "risk" : cashGap < metrics.avgMonthlyExpense * 0.5 ? "warn" : "ok",
+  });
+
+  addSignal({
+    label: isRu ? "Резерв" : "Reserve",
+    text:
+      reserveMonths >= 3
+        ? isRu
+          ? `Резерв закрывает ${reserveMonths} мес расходов. Это сильная позиция для собственника.`
+          : `Reserve covers ${reserveMonths} months of expenses. Strong owner position.`
+        : isRu
+          ? `Резерв закрывает ${reserveMonths} мес из цели 3 мес. До активного вывода лучше постепенно усилить запас.`
+          : `Reserve covers ${reserveMonths} of 3 target months. Strengthen it before aggressive withdrawals.`,
+    tone: reserveMonths >= 3 ? "ok" : reserveMonths >= 1 ? "warn" : "risk",
+  });
+
+  if (metrics.taxReserve > 0) {
+    addSignal({
+      label: isRu ? "Налог" : "Tax",
+      text: isRu
+        ? `Отложить под налог: ${formatMoney(metrics.taxReserve, locale)}. Эти деньги не считать прибылью собственника.`
+        : `Set aside for tax: ${formatMoney(metrics.taxReserve, locale)}. Do not treat it as owner profit.`,
+      tone: "warn",
+    });
   }
 
   return (
@@ -631,17 +762,23 @@ function BusinessAdvisor({
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {main}
           </p>
-          <div className="mt-2 grid gap-1 text-[11px] leading-relaxed text-muted-foreground">
-            <p>
-              {t(locale, "bizAdvisorSafeWithdraw", {
-                amount: formatMoney(safeWithdraw, locale),
-              })}
-            </p>
-            <p>
-              {t(locale, "bizAdvisorReserve", {
-                months: String(reserveMonths),
-              })}
-            </p>
+          <div className="mt-2 grid gap-1.5">
+            {signals.slice(0, 6).map((signal) => (
+              <div
+                key={signal.label}
+                className={cn(
+                  "rounded-md border px-2 py-1.5 text-[11px] leading-relaxed",
+                  signal.tone === "risk"
+                    ? "border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-100"
+                    : signal.tone === "warn"
+                      ? "border-amber-500/25 bg-amber-500/5 text-amber-900 dark:text-amber-100"
+                      : "border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:text-emerald-100",
+                )}
+              >
+                <span className="font-semibold">{signal.label}: </span>
+                <span>{signal.text}</span>
+              </div>
+            ))}
           </div>
         </>
       ) : null}
@@ -859,6 +996,13 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const activeDebts = useMemo(
     () => (activeUnitId ? debts.filter((d) => d.unitId === activeUnitId) : []),
     [debts, activeUnitId],
+  );
+  const activeAdSpend = useMemo(
+    () =>
+      activeUnit
+        ? businessAdSpendForPeriod(transactions, activeUnit.id, period)
+        : 0,
+    [activeUnit, period, transactions],
   );
 
   if (!ready) {
@@ -1082,6 +1226,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           <BusinessAdvisor
             metrics={activeMetrics}
             safeWithdraw={safeWithdraw}
+            adSpend={activeAdSpend}
             locale={locale}
             open={businessAdvisorOpen}
             onToggle={toggleBusinessAdvisor}
