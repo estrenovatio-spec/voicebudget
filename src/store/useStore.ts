@@ -885,15 +885,18 @@ export const useStore = create<StoreState>()(
       setActualCash: (owner, actualAmount) => {
         if (!Number.isFinite(actualAmount)) return;
         const actual = Math.round(actualAmount);
-        const txs = filterByHousehold(get().transactions, owner).filter(countsInBalance);
+        const period = getCurrentBudgetPeriod(get().budgetMonthStartDay);
+        const txs = filterByHousehold(get().transactions, owner).filter(
+          (tx) => countsInBalance(tx) && isDateInBudgetPeriod(tx.date, period),
+        );
         const computed = calcBalance(txs);
         const offset = actual - computed;
         if (owner === "me") {
           set({ cashOffsetMe: offset });
-          void cloudPushBalanceOffset("me", offset);
+          void cloudPushBalanceOffset("me", offset, period.from);
         } else {
           set({ cashOffsetPartner: offset });
-          void cloudPushBalanceOffset("partner", offset);
+          void cloudPushBalanceOffset("partner", offset, period.from);
         }
       },
       addCategory: (type, labelRu, labelEn, keywords = []) => {
@@ -1444,6 +1447,21 @@ export function useComputedBalance(owner: "me" | "partner" | "all" = "all"): num
     }
     return computedOwnerBalanceFromTxs(viewerTxs, owner);
   }, [viewerTxs, owner]);
+}
+
+export function useComputedPeriodBalance(owner: "me" | "partner" | "all" = "all"): number {
+  const viewerTxs = useViewerMappedTransactions(false);
+  const period = useBudgetPeriod();
+  return useMemo(() => {
+    const periodTxs = viewerTxs.filter((tx) => isDateInBudgetPeriod(tx.date, period));
+    if (owner === "all") {
+      return (
+        computedOwnerBalanceFromTxs(periodTxs, "me") +
+        computedOwnerBalanceFromTxs(periodTxs, "partner")
+      );
+    }
+    return computedOwnerBalanceFromTxs(periodTxs, owner);
+  }, [viewerTxs, owner, period]);
 }
 
 export const useBalance = (ownerFilter?: HouseholdFilter) => {

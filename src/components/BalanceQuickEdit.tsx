@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { useComputedBalance, useStore } from "@/store/useStore";
+import { useComputedPeriodBalance, useStore } from "@/store/useStore";
 import type { BudgetOwner } from "@/types";
 
 type BalanceQuickEditProps = {
@@ -45,8 +45,8 @@ export function BalanceQuickEdit({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState(String(displayed));
 
-  const computedMe = useComputedBalance("me");
-  const computedPartner = useComputedBalance("partner");
+  const computedMe = useComputedPeriodBalance("me");
+  const computedPartner = useComputedPeriodBalance("partner");
 
   useEffect(() => {
     if (open) setInput(String(displayed));

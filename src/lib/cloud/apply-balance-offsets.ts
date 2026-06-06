@@ -1,6 +1,7 @@
 import { cashOffsetsForViewer, parseBalanceOffsets } from "@/lib/balance-offsets";
 import type { BalanceOffsetsByUser } from "@/lib/balance-offsets";
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
+import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
@@ -21,7 +22,8 @@ export function applyBalanceOffsetsFromCloud(
 
   const viewerUserId =
     decodeUserIdFromHouseholdToken(token) ?? cloud.cloudUserId ?? null;
-  const cash = cashOffsetsForViewer(parsed, viewerUserId, members);
+  const period = getCurrentBudgetPeriod(useStore.getState().budgetMonthStartDay);
+  const cash = cashOffsetsForViewer(parsed, viewerUserId, members, period.from);
 
   useStore.setState({
     cashOffsetMe: cash.cashOffsetMe,

@@ -248,6 +248,7 @@ export async function cloudDeleteGarage(): Promise<void> {
 export async function cloudPushBalanceOffset(
   owner: BudgetOwner,
   offset: number,
+  periodStart?: string,
 ): Promise<void> {
   const t = token();
   if (!t) return;
@@ -258,7 +259,7 @@ export async function cloudPushBalanceOffset(
   const targetUserId = owner === "me" ? viewerId : partnerId;
   if (!targetUserId) return;
   try {
-    await apiPatchBalanceOffset(t, targetUserId, offset);
+    await apiPatchBalanceOffset(t, targetUserId, offset, periodStart);
     await pullCloudAfterWrite();
   } catch {
     /* колонка balanceOffsets ещё не в БД — см. prisma/migrate-planning-and-balance.sql */
