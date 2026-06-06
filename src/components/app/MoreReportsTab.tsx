@@ -8,10 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
 import {
   buildBudgetExcelXml,
+  buildTransactionsPdfBlob,
+  downloadBlobFile,
   downloadTextFile,
   filterBusinessTransactionsByPeriod,
   filterTransactionsByPeriod,
-  openTransactionsPdfPrint,
 } from "@/lib/export/transactions-export";
 import { formatIsoPeriod } from "@/lib/format-date";
 import { t } from "@/lib/i18n";
@@ -155,15 +156,18 @@ export function MoreReportsTab() {
   };
 
   const exportPdf = () => {
-    if (periodTxs.length === 0) return;
-    openTransactionsPdfPrint({
+    if (periodTxs.length + periodBusinessTxs.length === 0) return;
+    const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
+      businessTransactions: periodBusinessTxs,
+      businessUnits,
       locale,
       periodStart: period.from,
       periodEnd: period.to,
       title: t(locale, "moreReportsExportTitle"),
     });
+    downloadBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf);
   };
 
   return (
@@ -207,7 +211,7 @@ export function MoreReportsTab() {
             type="button"
             variant="outline"
             className="gap-1.5"
-            disabled={periodTxs.length === 0}
+            disabled={periodTxs.length + periodBusinessTxs.length === 0}
             onClick={exportPdf}
           >
             <FileText className="h-4 w-4" aria-hidden />
