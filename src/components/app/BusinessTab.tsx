@@ -56,7 +56,19 @@ import { useStatsPeriod, useStore } from "@/store/useStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
+const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v1";
 type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
+type BusinessAdvisorTone = "ok" | "warn" | "risk";
+type BusinessAdvisorSignal = {
+  label: string;
+  text: string;
+  tone: BusinessAdvisorTone;
+};
+type BusinessAiAdvice = {
+  summary: string;
+  action: string;
+  tone: BusinessAdvisorTone;
+};
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
@@ -615,6 +627,8 @@ function BusinessAdvisor({
   onToggle: () => void;
 }) {
   const isRu = locale === "ru";
+  const [aiAdvice, setAiAdvice] = useState<BusinessAiAdvice | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const reserveMonths =
     metrics.avgMonthlyExpense > 0
       ? Math.min(
@@ -646,8 +660,8 @@ function BusinessAdvisor({
     main = t(locale, "bizAdvisorEmpty");
   }
 
-  const signals: { label: string; text: string; tone: "ok" | "warn" | "risk" }[] = [];
-  const addSignal = (signal: { label: string; text: string; tone?: "ok" | "warn" | "risk" }) => {
+  const signals: BusinessAdvisorSignal[] = [];
+  const addSignal = (signal: { label: string; text: string; tone?: BusinessAdvisorTone }) => {
     signals.push({ ...signal, tone: signal.tone ?? "ok" });
   };
 
@@ -736,6 +750,125 @@ function BusinessAdvisor({
     });
   }
 
+  const visibleSignals = signals.slice(0, 6);
+  const visibleSignalKey = visibleSignals
+    .map((signal) => `${signal.label}:${signal.tone}`)
+    .join("|");
+  const adviceCacheId = [
+    locale,
+    metrics.unitId,
+    metrics.income,
+    metrics.expense,
+    metrics.profit,
+    margin,
+    safeWithdraw,
+    adSpend,
+    adShare,
+    metrics.taxReserve,
+    reserveMonths,
+    metrics.debtMinPayment,
+    cashGap,
+    visibleSignalKey,
+  ].join(":");
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    const readCachedAdvice = () => {
+      try {
+        const cached = localStorage.getItem(BUSINESS_ADVISOR_AI_CACHE_KEY);
+        if (!cached) return null;
+        const parsed = JSON.parse(cached) as {
+          cacheId?: string;
+          advice?: BusinessAiAdvice;
+        };
+        if (parsed.cacheId !== adviceCacheId || !parsed.advice) return null;
+        return parsed.advice;
+      } catch {
+        return null;
+      }
+    };
+
+    const cachedAdvice = readCachedAdvice();
+    if (cachedAdvice) {
+      setAiAdvice(cachedAdvice);
+      setAiLoading(false);
+      return;
+    }
+
+    setAiLoading(true);
+    setAiAdvice(null);
+    fetch("/api/business-advisor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        locale,
+        metrics: {
+          income: metrics.income,
+          expense: metrics.expense,
+          profit: metrics.profit,
+          margin,
+          safeWithdraw,
+          adSpend,
+          adShare,
+          taxReserve: metrics.taxReserve,
+          reserveMonths,
+          debtMinPayment: metrics.debtMinPayment,
+          cashGap,
+        },
+        signals: visibleSignals,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const advice = data?.advice as BusinessAiAdvice | undefined;
+        if (cancelled || !advice) return;
+        setAiAdvice(advice);
+        try {
+          localStorage.setItem(
+            BUSINESS_ADVISOR_AI_CACHE_KEY,
+            JSON.stringify({ cacheId: adviceCacheId, advice }),
+          );
+        } catch {
+          // localStorage can be unavailable in private/embedded contexts.
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAiAdvice(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAiLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    adShare,
+    adSpend,
+    adviceCacheId,
+    cashGap,
+    locale,
+    margin,
+    metrics.debtMinPayment,
+    metrics.expense,
+    metrics.income,
+    metrics.profit,
+    metrics.taxReserve,
+    open,
+    reserveMonths,
+    safeWithdraw,
+    visibleSignalKey,
+  ]);
+
+  const toneClass = (tone: BusinessAdvisorTone) =>
+    tone === "risk"
+      ? "border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-100"
+      : tone === "warn"
+        ? "border-amber-500/25 bg-amber-500/5 text-amber-900 dark:text-amber-100"
+        : "border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:text-emerald-100";
+
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
       <button
@@ -762,17 +895,38 @@ function BusinessAdvisor({
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {main}
           </p>
+          {aiAdvice ? (
+            <div
+              className={cn(
+                "mt-2 rounded-md border px-2 py-1.5 text-[11px] leading-relaxed",
+                toneClass(aiAdvice.tone),
+              )}
+            >
+              <p className="font-semibold">
+                {isRu ? "ИИ-вывод финсоветника" : "Advisor AI insight"}
+              </p>
+              <p className="mt-0.5">{aiAdvice.summary}</p>
+              <p className="mt-1">
+                <span className="font-semibold">
+                  {isRu ? "Действие: " : "Action: "}
+                </span>
+                {aiAdvice.action}
+              </p>
+            </div>
+          ) : aiLoading ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {isRu
+                ? "ИИ формулирует короткий вывод по бизнесу..."
+                : "AI is preparing a short business insight..."}
+            </p>
+          ) : null}
           <div className="mt-2 grid gap-1.5">
-            {signals.slice(0, 6).map((signal) => (
+            {visibleSignals.map((signal) => (
               <div
                 key={signal.label}
                 className={cn(
                   "rounded-md border px-2 py-1.5 text-[11px] leading-relaxed",
-                  signal.tone === "risk"
-                    ? "border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-100"
-                    : signal.tone === "warn"
-                      ? "border-amber-500/25 bg-amber-500/5 text-amber-900 dark:text-amber-100"
-                      : "border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:text-emerald-100",
+                  toneClass(signal.tone),
                 )}
               >
                 <span className="font-semibold">{signal.label}: </span>
