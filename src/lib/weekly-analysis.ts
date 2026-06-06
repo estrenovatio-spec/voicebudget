@@ -4,7 +4,6 @@ import {
   type BudgetSummary,
 } from "@/lib/budget-analytics";
 import type { AdvisorConfig } from "@/lib/advisor-config";
-import { advisorPlanningWithRu } from "@/lib/advisor-config";
 import { formatIsoPeriod } from "@/lib/format-date";
 import type { AiCoachingContext } from "@/lib/ai-coaching-context";
 import { coachingPromptBlock } from "@/lib/ai-coaching-context";
@@ -164,7 +163,7 @@ Critical rules:
 - Never scold for one big expense or negative balance alone — suggest one small next step.
 - Do NOT tell user to cut everything; max one gentle limit idea.
 - Russia context: RUB, optional mention of subscriptions/inflation — no tax/legal advice.
-- Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `deeper plan with ${advisor.name} — ${advisor.contact}`}.
+- Do not add advisor contacts, Telegram handles, sales phrases, or consultation invitations in the weekly report.
 ${coaching ? coachingPromptBlock(coaching, locale) : ""}
 `;
 };
@@ -183,8 +182,5 @@ export function ruleBasedWeeklyAnalysis(
     isRu
       ? "На следующей неделе картина станет яснее — главное не бросать записи."
       : "Next week the picture will be clearer — keep logging.",
-    isRu
-      ? advisorPlanningWithRu(advisor)
-      : `Planning help — ${advisor.name}: ${advisor.contact}`,
   ];
 }

@@ -266,7 +266,7 @@ Critical rules:
 - Tone: warm, zero shame. User may ask follow-up questions in chat — write tips they can refer to.
 - ${limited ? "Data is LIMITED — say so. No invented patterns." : "Use real numbers from data."}
 - Russia context: RUB. No tax/legal advice.
-- Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `deeper plan with ${advisor.name} — ${advisor.contact}`}.
+- Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `Need advice — contact a financial advisor: ${advisor.contact}`}.
 ${coaching ? coachingPromptBlock(coaching, locale) : ""}
 `;
 };
@@ -303,7 +303,7 @@ export function ruleBasedMonthlyAnalysis(
       : "Ask a question in the chat below — AI will answer using your numbers.",
     isRu
       ? advisorPlanningWithRu(advisor)
-      : `Planning with ${advisor.name}: ${advisor.contact}`,
+      : `Need advice — contact a financial advisor: ${advisor.contact}`,
   );
 
   return tips;

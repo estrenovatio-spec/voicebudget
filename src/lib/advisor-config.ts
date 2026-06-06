@@ -77,7 +77,7 @@ export function advisorBookConsultRu(advisor: AdvisorConfig): string {
   return `запишитесь на консультацию к ${advisor.dative}: ${advisor.contact}`;
 }
 
-/** «Планирование с финансовым советником: …» */
+/** «Нужен совет — обращайтесь к финансовому советнику: …» */
 export function advisorPlanningWithRu(advisor: AdvisorConfig): string {
-  return `Планирование с ${advisor.instrumental}: ${advisor.contact}`;
+  return `Нужен совет — обращайтесь к ${advisor.dative}: ${advisor.contact}`;
 }
