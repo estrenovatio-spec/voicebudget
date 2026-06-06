@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Pencil,
   Plus,
-  Shield,
   Trash2,
   X,
 } from "lucide-react";
@@ -457,7 +456,6 @@ function sortBusinessDebtsByStrategy(
     const aOverdue = a.nextPaymentDate ? a.nextPaymentDate < today : false;
     const bOverdue = b.nextPaymentDate ? b.nextPaymentDate < today : false;
     if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-    if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
     if (strategy === "snowball") {
       if (a.balance !== b.balance) return a.balance - b.balance;
       return (b.ratePct ?? 0) - (a.ratePct ?? 0);
@@ -1158,6 +1156,12 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     useState<DebtRepaymentStrategy>("avalanche");
   const [debtPayId, setDebtPayId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
+  const [editDebtId, setEditDebtId] = useState<string | null>(null);
+  const [editDebtName, setEditDebtName] = useState("");
+  const [editDebtBalance, setEditDebtBalance] = useState("");
+  const [editDebtMinPayment, setEditDebtMinPayment] = useState("");
+  const [editDebtRate, setEditDebtRate] = useState("");
+  const [editDebtDate, setEditDebtDate] = useState("");
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
@@ -1397,6 +1401,39 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         : `Debt payment: ${formatMoney(amount, locale)}`,
       "success",
     );
+  };
+
+  const startEditBusinessDebt = (debt: BusinessDebt) => {
+    setEditDebtId(debt.id);
+    setEditDebtName(debt.name);
+    setEditDebtBalance(String(debt.balance || ""));
+    setEditDebtMinPayment(String(debt.minPayment || ""));
+    setEditDebtRate(debt.ratePct == null ? "" : String(debt.ratePct));
+    setEditDebtDate(debt.nextPaymentDate ?? "");
+    setDebtPayId(null);
+  };
+
+  const cancelEditBusinessDebt = () => {
+    setEditDebtId(null);
+    setEditDebtName("");
+    setEditDebtBalance("");
+    setEditDebtMinPayment("");
+    setEditDebtRate("");
+    setEditDebtDate("");
+  };
+
+  const saveEditBusinessDebt = (debt: BusinessDebt) => {
+    const name = editDebtName.trim();
+    const balance = parseMoneyAmount(editDebtBalance);
+    if (!name || balance == null) return;
+    updateDebt(debt.id, {
+      name,
+      balance,
+      minPayment: parseMoneyAmount(editDebtMinPayment) ?? 0,
+      ratePct: editDebtRate.trim() ? (parseMoneyAmount(editDebtRate) ?? 0) : null,
+      nextPaymentDate: editDebtDate.trim() || null,
+    });
+    cancelEditBusinessDebt();
   };
 
   return (
@@ -1924,15 +1961,12 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 text-amber-700"
-                                  onClick={() =>
-                                    updateDebt(debt.id, {
-                                      priority: debt.priority === "high" ? "normal" : "high",
-                                    })
-                                  }
-                                  aria-label={locale === "ru" ? "Приоритет" : "Priority"}
+                                  className="h-7 w-7 text-muted-foreground"
+                                  onClick={() => startEditBusinessDebt(debt)}
+                                  aria-label={locale === "ru" ? "Редактировать долг" : "Edit debt"}
+                                  title={locale === "ru" ? "Редактировать долг" : "Edit debt"}
                                 >
-                                  <Shield className="h-3.5 w-3.5" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   type="button"
@@ -1946,6 +1980,52 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                                 </Button>
                               </div>
                             </div>
+                            {editDebtId === debt.id ? (
+                              <div className="mt-2 space-y-2 rounded-md border border-border/80 bg-background p-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input
+                                    placeholder={locale === "ru" ? "Название" : "Name"}
+                                    value={editDebtName}
+                                    onChange={(e) => setEditDebtName(e.target.value)}
+                                  />
+                                  <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder={locale === "ru" ? "Остаток" : "Balance"}
+                                    value={editDebtBalance}
+                                    onChange={(e) => setEditDebtBalance(e.target.value)}
+                                  />
+                                  <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder={locale === "ru" ? "Мин. платёж" : "Min payment"}
+                                    value={editDebtMinPayment}
+                                    onChange={(e) => setEditDebtMinPayment(e.target.value)}
+                                  />
+                                  <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder={locale === "ru" ? "Ставка %" : "Rate %"}
+                                    value={editDebtRate}
+                                    onChange={(e) => setEditDebtRate(e.target.value)}
+                                  />
+                                </div>
+                                <Input
+                                  type="date"
+                                  value={editDebtDate}
+                                  onChange={(e) => setEditDebtDate(e.target.value)}
+                                  aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                                />
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="flex-1" onClick={() => saveEditBusinessDebt(debt)}>
+                                    {locale === "ru" ? "Сохранить" : "Save"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="flex-1" onClick={cancelEditBusinessDebt}>
+                                    {locale === "ru" ? "Отмена" : "Cancel"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
                             {debtPayId === debt.id ? (
                               <div className="mt-2 flex gap-2">
                                 <Input

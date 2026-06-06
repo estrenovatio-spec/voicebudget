@@ -132,7 +132,6 @@ function sortDebtsByStrategy(debts: DebtItem[], strategy: DebtItem["strategy"]):
     const aOverdue = a.nextPaymentDate ? a.nextPaymentDate < today : false;
     const bOverdue = b.nextPaymentDate ? b.nextPaymentDate < today : false;
     if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-    if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
     if (strategy === "snowball") {
       if (a.balance !== b.balance) return a.balance - b.balance;
       return (b.ratePct ?? 0) - (a.ratePct ?? 0);
@@ -212,6 +211,13 @@ export function PlanningPanel() {
   const [debtStrategy, setDebtStrategy] = useState<DebtItem["strategy"]>("avalanche");
   const [debtPayId, setDebtPayId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
+  const [editDebtId, setEditDebtId] = useState<string | null>(null);
+  const [editDebtName, setEditDebtName] = useState("");
+  const [editDebtBalance, setEditDebtBalance] = useState("");
+  const [editDebtMinPayment, setEditDebtMinPayment] = useState("");
+  const [editDebtRate, setEditDebtRate] = useState("");
+  const [editDebtDate, setEditDebtDate] = useState("");
+  const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
 
   const customGoals = savingsGoals.filter((g) => g.kind !== "emergency");
   const emergencyGoal = savingsGoals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency");
@@ -376,6 +382,42 @@ export function PlanningPanel() {
     payDebt(id, amount);
     setDebtPayId(null);
     setDebtPayAmount("");
+  };
+
+  const startEditDebt = (debt: DebtItem) => {
+    setEditDebtId(debt.id);
+    setEditDebtName(debt.name);
+    setEditDebtBalance(String(debt.balance || ""));
+    setEditDebtMinPayment(String(debt.minPayment || ""));
+    setEditDebtRate(debt.ratePct == null ? "" : String(debt.ratePct));
+    setEditDebtDate(debt.nextPaymentDate ?? "");
+    setEditDebtOwner(debt.owner);
+    setDebtPayId(null);
+  };
+
+  const cancelEditDebt = () => {
+    setEditDebtId(null);
+    setEditDebtName("");
+    setEditDebtBalance("");
+    setEditDebtMinPayment("");
+    setEditDebtRate("");
+    setEditDebtDate("");
+    setEditDebtOwner("all");
+  };
+
+  const saveEditDebt = (debt: DebtItem) => {
+    const name = editDebtName.trim();
+    const balance = numInput(editDebtBalance);
+    if (!name || balance < 0) return;
+    updateDebt(debt.id, {
+      name,
+      owner: editDebtOwner,
+      balance,
+      minPayment: Math.max(0, numInput(editDebtMinPayment)),
+      ratePct: editDebtRate.trim() ? numInput(editDebtRate) : null,
+      nextPaymentDate: editDebtDate.trim() || null,
+    });
+    cancelEditDebt();
   };
 
   const handleRecurringDateChange = (id: string, date: string) => {
@@ -827,15 +869,12 @@ export function PlanningPanel() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-amber-700"
-                            onClick={() =>
-                              updateDebt(debt.id, {
-                                priority: debt.priority === "high" ? "normal" : "high",
-                              })
-                            }
-                            aria-label={locale === "ru" ? "Приоритет" : "Priority"}
+                            className="h-8 w-8 text-muted-foreground"
+                            onClick={() => startEditDebt(debt)}
+                            aria-label={locale === "ru" ? "Редактировать долг" : "Edit debt"}
+                            title={locale === "ru" ? "Редактировать долг" : "Edit debt"}
                           >
-                            <Shield className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -849,6 +888,60 @@ export function PlanningPanel() {
                         </div>
                       </div>
                       <ProgressBar percent={percentPaid} />
+                      {editDebtId === debt.id ? (
+                        <div className="space-y-2 rounded-md border border-border/80 bg-background p-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              placeholder={locale === "ru" ? "Название долга" : "Debt name"}
+                              value={editDebtName}
+                              onChange={(e) => setEditDebtName(e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              placeholder={locale === "ru" ? "Остаток" : "Balance"}
+                              value={editDebtBalance}
+                              onChange={(e) => setEditDebtBalance(e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              placeholder={locale === "ru" ? "Мин. платёж" : "Min payment"}
+                              value={editDebtMinPayment}
+                              onChange={(e) => setEditDebtMinPayment(e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              placeholder={locale === "ru" ? "Ставка %" : "Rate %"}
+                              value={editDebtRate}
+                              onChange={(e) => setEditDebtRate(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <select
+                              className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
+                              value={editDebtOwner}
+                              onChange={(e) => setEditDebtOwner(e.target.value as DebtItem["owner"])}
+                            >
+                              <option value="all">{locale === "ru" ? "Общий" : "Shared"}</option>
+                              <option value="me">{locale === "ru" ? "Я" : "Me"}</option>
+                              <option value="partner">{locale === "ru" ? "Партнёр" : "Partner"}</option>
+                            </select>
+                            <Input
+                              type="date"
+                              value={editDebtDate}
+                              onChange={(e) => setEditDebtDate(e.target.value)}
+                              aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="flex-1" onClick={() => saveEditDebt(debt)}>
+                              {locale === "ru" ? "Сохранить" : "Save"}
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={cancelEditDebt}>
+                              {locale === "ru" ? "Отмена" : "Cancel"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                       {debtPayId === debt.id ? (
                         <div className="flex gap-2">
                           <Input
