@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Pencil,
   Plus,
+  Shield,
   Trash2,
   X,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { taxPeriodLabel } from "@/lib/business/tax";
 import type {
   BusinessTaxPeriod,
+  BusinessDebt,
   BusinessTransaction,
   BusinessUnit,
 } from "@/lib/business/types";
@@ -50,7 +52,7 @@ import { useStatsPeriod, useStore } from "@/store/useStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
-type BusinessSection = "operations" | "reserve" | "tax" | "projects";
+type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
@@ -406,7 +408,10 @@ function BusinessUnitTabs({
 }
 
 function safeWithdrawAmount(metrics: UnitCardMetrics): number {
-  return Math.max(0, Math.floor(metrics.operatingBalance - metrics.taxReserve));
+  return Math.max(
+    0,
+    Math.floor(metrics.operatingBalance - metrics.taxReserve - metrics.debtMinPayment),
+  );
 }
 
 function BusinessTotalBalance({
@@ -522,6 +527,14 @@ function BusinessKpis({
       value: formatMoney(metrics.taxReserve, locale),
       tone:
         metrics.taxReserve > 0
+          ? "text-amber-700 dark:text-amber-300"
+          : "text-muted-foreground",
+    },
+    {
+      label: locale === "ru" ? "Обязательства" : "Obligations",
+      value: formatMoney(metrics.debtMinPayment, locale),
+      tone:
+        metrics.debtMinPayment > 0
           ? "text-amber-700 dark:text-amber-300"
           : "text-muted-foreground",
     },
@@ -725,6 +738,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const units = useBusinessStore((s) => s.units);
   const transactions = useBusinessStore((s) => s.transactions);
   const assets = useBusinessStore((s) => s.assets);
+  const debts = useBusinessStore((s) => s.debts);
   const selectedUnitId = useBusinessStore((s) => s.selectedUnitId);
   const setSelectedUnitId = useBusinessStore((s) => s.setSelectedUnitId);
   const addUnit = useBusinessStore((s) => s.addUnit);
@@ -734,6 +748,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const transferToCushion = useBusinessStore((s) => s.transferToCushion);
   const transferToFamily = useBusinessStore((s) => s.transferToFamily);
   const removeTransaction = useBusinessStore((s) => s.removeTransaction);
+  const addDebt = useBusinessStore((s) => s.addDebt);
+  const updateDebt = useBusinessStore((s) => s.updateDebt);
+  const payDebt = useBusinessStore((s) => s.payDebt);
+  const removeDebt = useBusinessStore((s) => s.removeDebt);
 
   const visibleUnits = useMemo(() => visibleBusinessUnits(units), [units]);
   const activeUnitId = useMemo(
@@ -754,6 +772,13 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(false);
   const [cushionAmount, setCushionAmount] = useState("");
+  const [debtName, setDebtName] = useState("");
+  const [debtBalance, setDebtBalance] = useState("");
+  const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtRate, setDebtRate] = useState("");
+  const [debtDate, setDebtDate] = useState("");
+  const [debtPayId, setDebtPayId] = useState<string | null>(null);
+  const [debtPayAmount, setDebtPayAmount] = useState("");
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
@@ -782,10 +807,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const unitMetricsMap = useMemo(() => {
     const map = new Map<string, UnitCardMetrics>();
     for (const u of units) {
-      map.set(u.id, unitCardMetrics(transactions, [], u, period));
+      map.set(u.id, unitCardMetrics(transactions, [], u, period, new Date(), debts));
     }
     return map;
-  }, [units, transactions, period]);
+  }, [units, transactions, period, debts]);
 
   const incomeSources = useMemo(
     () => incomeSourcesForPeriod(transactions, period, activeUnitId),
@@ -810,9 +835,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     if (!activeUnit) return null;
     return (
       unitMetricsMap.get(activeUnit.id) ??
-      unitCardMetrics(transactions, [], activeUnit, period)
+      unitCardMetrics(transactions, [], activeUnit, period, new Date(), debts)
     );
-  }, [activeUnit, unitMetricsMap, transactions, period]);
+  }, [activeUnit, unitMetricsMap, transactions, period, debts]);
   const totalMetrics = useMemo(() => {
     return visibleUnits.reduce(
       (acc, unit) => {
@@ -828,6 +853,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     );
   }, [visibleUnits, unitMetricsMap]);
   const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
+  const activeDebts = useMemo(
+    () => (activeUnitId ? debts.filter((d) => d.unitId === activeUnitId) : []),
+    [debts, activeUnitId],
+  );
 
   if (!ready) {
     return (
@@ -936,6 +965,40 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     );
   };
 
+  const submitBusinessDebt = () => {
+    if (!activeUnit) return;
+    const name = debtName.trim();
+    const balance = parseMoneyAmount(debtBalance);
+    if (!name || !balance) return;
+    addDebt(activeUnit.id, {
+      name,
+      balance,
+      minPayment: parseMoneyAmount(debtMinPayment) ?? 0,
+      ratePct: debtRate.trim() ? (parseMoneyAmount(debtRate) ?? 0) : null,
+      nextPaymentDate: debtDate.trim() || null,
+      priority: "normal",
+    });
+    setDebtName("");
+    setDebtBalance("");
+    setDebtMinPayment("");
+    setDebtRate("");
+    setDebtDate("");
+  };
+
+  const submitBusinessDebtPayment = (debt: BusinessDebt) => {
+    const amount = parseMoneyAmount(debtPayAmount);
+    if (!amount) return;
+    payDebt(debt.id, amount);
+    setDebtPayId(null);
+    setDebtPayAmount("");
+    toast(
+      locale === "ru"
+        ? `Платёж по долгу: ${formatMoney(amount, locale)}`
+        : `Debt payment: ${formatMoney(amount, locale)}`,
+      "success",
+    );
+  };
+
   return (
     <div className="space-y-3 py-1">
       {process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? (
@@ -1036,12 +1099,13 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           />
 
           <div className="space-y-3 border-t border-border/60 pt-3">
-            <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
+            <div className="grid grid-cols-5 gap-1 rounded-lg bg-muted p-1">
               {(
                 [
                   "operations",
                   "reserve",
                   "tax",
+                  "debts",
                   "projects",
                 ] as BusinessSection[]
               ).map((section) => {
@@ -1049,12 +1113,14 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   operations: "bizSectionOperations",
                   reserve: "bizSectionReserve",
                   tax: "bizSectionTax",
+                  debts: null,
                   projects: "bizSectionProjects",
                 }[section] as
                   | "bizSectionOperations"
                   | "bizSectionReserve"
                   | "bizSectionTax"
-                  | "bizSectionProjects";
+                  | "bizSectionProjects"
+                  | null;
                 return (
                   <button
                     key={section}
@@ -1067,7 +1133,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                         : "text-muted-foreground",
                     )}
                   >
-                    {t(locale, labelKey)}
+                    {labelKey ? t(locale, labelKey) : locale === "ru" ? "Долги" : "Debts"}
                   </button>
                 );
               })}
@@ -1342,6 +1408,170 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       {formatMoney(safeWithdraw, locale)}
                     </Button>
                   ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {businessSection === "debts" ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {locale === "ru" ? "Долги и обязательства" : "Debts and obligations"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    {locale === "ru"
+                      ? "Эти платежи уменьшают сумму «можно вывести». Сначала обязательства, налог и резерв — потом вывод собственнику."
+                      : "These payments reduce safe withdrawal. Obligations, tax, and reserve come before owner withdrawal."}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {locale === "ru" ? "Остаток долгов" : "Debt balance"}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.debtBalance, locale)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {locale === "ru" ? "Мин. платёж" : "Min payment"}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.debtMinPayment, locale)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeDebts.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                      {locale === "ru"
+                        ? "Добавьте кредит, долг поставщику, рассрочку или налоговую задолженность."
+                        : "Add a loan, supplier debt, installment, or tax arrears."}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeDebts.map((debt) => {
+                        const overdue = debt.nextPaymentDate ? debt.nextPaymentDate < new Date().toISOString().slice(0, 10) : false;
+                        return (
+                          <div key={debt.id} className="rounded-lg border p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium leading-tight">{debt.name}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {debt.ratePct ? `${debt.ratePct}% · ` : ""}
+                                  {debt.nextPaymentDate ?? (locale === "ru" ? "дата не задана" : "no date")}
+                                </p>
+                                <p className="mt-1 font-semibold tabular-nums">
+                                  {formatMoney(debt.balance, locale)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {locale === "ru" ? "Мин. платёж: " : "Min payment: "}
+                                  {formatMoney(debt.minPayment, locale)}
+                                </p>
+                                {overdue ? (
+                                  <p className="text-xs font-medium text-destructive">
+                                    {locale === "ru" ? "Платёж просрочен" : "Payment overdue"}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <div className="flex shrink-0 gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-amber-700"
+                                  onClick={() =>
+                                    updateDebt(debt.id, {
+                                      priority: debt.priority === "high" ? "normal" : "high",
+                                    })
+                                  }
+                                  aria-label={locale === "ru" ? "Приоритет" : "Priority"}
+                                >
+                                  <Shield className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => removeDebt(debt.id)}
+                                  aria-label={t(locale, "txDelete")}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                            {debtPayId === debt.id ? (
+                              <div className="mt-2 flex gap-2">
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder={locale === "ru" ? "Сумма платежа" : "Payment amount"}
+                                  value={debtPayAmount}
+                                  onChange={(e) => setDebtPayAmount(e.target.value)}
+                                />
+                                <Button size="sm" onClick={() => submitBusinessDebtPayment(debt)}>
+                                  OK
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => setDebtPayId(debt.id)}
+                              >
+                                {locale === "ru" ? "Внести платёж" : "Add payment"}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder={locale === "ru" ? "Название" : "Name"}
+                        value={debtName}
+                        onChange={(e) => setDebtName(e.target.value)}
+                      />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={locale === "ru" ? "Остаток" : "Balance"}
+                        value={debtBalance}
+                        onChange={(e) => setDebtBalance(e.target.value)}
+                      />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={locale === "ru" ? "Мин. платёж" : "Min payment"}
+                        value={debtMinPayment}
+                        onChange={(e) => setDebtMinPayment(e.target.value)}
+                      />
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={locale === "ru" ? "Ставка %" : "Rate %"}
+                        value={debtRate}
+                        onChange={(e) => setDebtRate(e.target.value)}
+                      />
+                    </div>
+                    <Input
+                      type="date"
+                      value={debtDate}
+                      onChange={(e) => setDebtDate(e.target.value)}
+                      aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                    />
+                    <Button type="button" className="w-full" onClick={submitBusinessDebt}>
+                      {locale === "ru" ? "Добавить обязательство" : "Add obligation"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : null}

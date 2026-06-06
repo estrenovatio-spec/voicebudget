@@ -170,6 +170,7 @@ function buildWeeklyMissions(params: {
   signals: ReturnType<typeof buildAiCoachingContext>["smartSignals"];
   categoryBudgets: ReturnType<typeof buildAiCoachingContext>["categoryBudgets"];
   savingsGoals: ReturnType<typeof buildAiCoachingContext>["savingsGoals"];
+  debtFocus: { name: string; balance: number; minPayment: number; ratePct: number | null } | null;
   learnedRulesCount: number;
   transactionsCount: number;
 }): AiMission[] {
@@ -181,6 +182,7 @@ function buildWeeklyMissions(params: {
     signals,
     categoryBudgets,
     savingsGoals,
+    debtFocus,
     learnedRulesCount,
     transactionsCount,
   } = params;
@@ -238,6 +240,17 @@ function buildWeeklyMissions(params: {
         : essentialKind
           ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
           : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
+    });
+  }
+
+  if (debtFocus) {
+    add({
+      id: `debt:${debtFocus.name}`,
+      tone: "focus",
+      title: isRu ? `Проверить долг «${debtFocus.name}»` : `Review debt "${debtFocus.name}"`,
+      detail: isRu
+        ? `Остаток ${formatMoney(debtFocus.balance, locale)}, минимальный платёж ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, ставка ${debtFocus.ratePct}%` : ""}. Сначала обязательный платёж, затем копилки и комфорт.`
+        : `Balance ${formatMoney(debtFocus.balance, locale)}, minimum payment ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, rate ${debtFocus.ratePct}%` : ""}. Required payment first, then savings and comfort.`,
     });
   }
 
@@ -302,6 +315,7 @@ export function AiWeeklyMissionTab() {
   const locale = useStore((s) => s.locale);
   const savingsGoals = useStore((s) => s.savingsGoals);
   const categoryBudgets = useStore((s) => s.categoryBudgets);
+  const debts = useStore((s) => s.debts);
   const transactions = useViewerMappedTransactions(false);
   const categories = useCategories();
   const [doneMissions, setDoneMissions] = useState(readDoneMissions);
@@ -345,6 +359,17 @@ export function AiWeeklyMissionTab() {
       savingsGoals,
     ],
   );
+  const debtFocus = useMemo(() => {
+    const active = debts.filter((d) => d.balance > 0);
+    if (active.length === 0) return null;
+    return [...active].sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
+      const ar = a.ratePct ?? 0;
+      const br = b.ratePct ?? 0;
+      if (br !== ar) return br - ar;
+      return a.balance - b.balance;
+    })[0];
+  }, [debts]);
 
   const missions = buildWeeklyMissions({
     locale,
@@ -354,6 +379,7 @@ export function AiWeeklyMissionTab() {
     signals: ctx.smartSignals,
     categoryBudgets: ctx.categoryBudgets,
     savingsGoals: ctx.savingsGoals,
+    debtFocus,
     learnedRulesCount,
     transactionsCount: weekTransactionsCount,
   });

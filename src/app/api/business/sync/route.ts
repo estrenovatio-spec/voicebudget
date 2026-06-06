@@ -21,6 +21,7 @@ const payloadSchema = z.object({
   units: z.array(z.any()),
   transactions: z.array(z.any()),
   assets: z.array(z.any()),
+  debts: z.array(z.any()).optional(),
   passiveReceipts: z.array(z.any()).optional(),
   taxRatePct: z.number().min(0).max(100).optional(),
 });
@@ -74,6 +75,9 @@ export async function PUT(req: NextRequest) {
         (existing.passiveReceipts?.length ?? 0) > 0
       ) {
         toSave.passiveReceipts = existing.passiveReceipts;
+      }
+      if ((incoming.debts?.length ?? 0) === 0 && (existing.debts?.length ?? 0) > 0) {
+        toSave.debts = existing.debts;
       }
     }
     const saved = await saveUserBusinessPayload(session.userId, toSave);

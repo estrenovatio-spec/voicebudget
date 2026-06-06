@@ -41,6 +41,22 @@ export interface RecurringTransaction {
   updatedAt?: string;
 }
 
+export type DebtPriority = "normal" | "high";
+export type DebtStrategy = "avalanche" | "snowball";
+
+export interface DebtItem {
+  id: string;
+  name: string;
+  owner: BudgetOwner | "all";
+  balance: number;
+  minPayment: number;
+  ratePct: number | null;
+  nextPaymentDate: string | null;
+  strategy: DebtStrategy;
+  priority: DebtPriority;
+  updatedAt?: string;
+}
+
 export const EMERGENCY_GOAL_ID = "__emergency_fund__";
 
 export type PlanningInputAction =

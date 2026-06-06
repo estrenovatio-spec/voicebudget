@@ -5,6 +5,7 @@ import type {
   BusinessAsset,
   BusinessAssetType,
   BusinessCloudPayload,
+  BusinessDebt,
   BusinessSnapshot,
   BusinessTaxPeriod,
   BusinessPassiveReceipt,
@@ -50,6 +51,7 @@ type BusinessStore = {
   units: BusinessUnit[];
   transactions: BusinessTransaction[];
   assets: BusinessAsset[];
+  debts: BusinessDebt[];
   passiveReceipts: BusinessPassiveReceipt[];
   selectedUnitId: string | null;
   cloudSyncedAt: string | null;
@@ -76,6 +78,16 @@ type BusinessStore = {
   /** Зачислить пассив с проекта в семью (сумма и дата — на выбор). */
   transferPassiveToFamily: (assetId: string, amount: number, date?: string) => boolean;
   removePassiveReceiptByFamilyTxId: (familyTxId: string) => void;
+  addDebt: (
+    unitId: string,
+    data: Omit<BusinessDebt, "id" | "unitId" | "updatedAt">,
+  ) => string | null;
+  updateDebt: (
+    id: string,
+    patch: Partial<Omit<BusinessDebt, "id" | "unitId">>,
+  ) => void;
+  payDebt: (id: string, amount: number) => boolean;
+  removeDebt: (id: string) => void;
   updateAsset: (
     assetId: string,
     patch: {
@@ -119,6 +131,7 @@ function migratePersisted(raw: unknown): Pick<
   | "units"
   | "transactions"
   | "assets"
+  | "debts"
   | "passiveReceipts"
   | "selectedUnitId"
   | "cloudSyncedAt"
@@ -192,11 +205,36 @@ function migratePersisted(raw: unknown): Pick<
       );
     },
   ) as BusinessPassiveReceipt[];
+  const debts: BusinessDebt[] = (Array.isArray(r.debts) ? r.debts : [])
+    .filter((d) => {
+      const debt = d as BusinessDebt;
+      return debt && typeof debt.id === "string" && typeof debt.name === "string";
+    })
+    .map((d) => {
+      const debt = d as BusinessDebt;
+      return {
+        ...debt,
+        unitId: typeof debt.unitId === "string" ? debt.unitId : defaultId,
+        name: debt.name.trim().slice(0, 80) || "Долг",
+        balance: Math.max(0, roundMoneyUp(Number(debt.balance) || 0)),
+        minPayment: Math.max(0, roundMoneyUp(Number(debt.minPayment) || 0)),
+        ratePct:
+          debt.ratePct == null || Number.isNaN(Number(debt.ratePct))
+            ? null
+            : Math.max(0, Math.min(999, Math.round(Number(debt.ratePct) * 10) / 10)),
+        nextPaymentDate:
+          typeof debt.nextPaymentDate === "string" && debt.nextPaymentDate
+            ? debt.nextPaymentDate
+            : null,
+        priority: debt.priority === "high" ? "high" : "normal",
+      };
+    });
 
   return {
     units,
     transactions,
     assets,
+    debts,
     passiveReceipts,
     selectedUnitId:
       typeof r.selectedUnitId === "string" ? r.selectedUnitId : units[0]?.id ?? null,
@@ -214,6 +252,7 @@ export const useBusinessStore = create<BusinessStore>()(
       units: [defaultBusinessUnit()],
       transactions: [],
       assets: [],
+      debts: [],
       passiveReceipts: [],
       selectedUnitId: null,
       cloudSyncedAt: null,
@@ -237,7 +276,7 @@ export const useBusinessStore = create<BusinessStore>()(
         return unit.id;
       },
       removeUnit: (id) => {
-        const { units, transactions, assets, passiveReceipts } = get();
+        const { units, transactions, assets, debts, passiveReceipts } = get();
         if (units.length <= 1) return false;
         const target = units.find((u) => u.id === id);
         if (target && target.name.trim() === PROJECTS_SERVICE_UNIT_NAME) return false;
@@ -249,6 +288,7 @@ export const useBusinessStore = create<BusinessStore>()(
           units: nextUnits,
           transactions: transactions.filter((t) => t.unitId !== id),
           assets: assets.filter((a) => a.unitId !== id),
+          debts: debts.filter((d) => d.unitId !== id),
           passiveReceipts: passiveReceipts.filter((r) => !removedAssetIds.has(r.assetId)),
           selectedUnitId: nextUnits[0]?.id ?? null,
         });
@@ -380,6 +420,69 @@ export const useBusinessStore = create<BusinessStore>()(
         set((s) => ({
           passiveReceipts: s.passiveReceipts.filter((r) => r.linkedFamilyTxId !== familyTxId),
         }));
+        void pushBusinessToCloud();
+      },
+      addDebt: (unitId, data) => {
+        if (!get().units.some((u) => u.id === unitId)) return null;
+        const id = makeId("debt");
+        const debt: BusinessDebt = {
+          ...data,
+          id,
+          unitId,
+          name: data.name.trim().slice(0, 80) || "Долг",
+          balance: Math.max(0, roundMoneyUp(data.balance)),
+          minPayment: Math.max(0, roundMoneyUp(data.minPayment)),
+          ratePct:
+            data.ratePct == null
+              ? null
+              : Math.max(0, Math.min(999, Math.round(data.ratePct * 10) / 10)),
+          nextPaymentDate: data.nextPaymentDate?.trim() || null,
+          priority: data.priority === "high" ? "high" : "normal",
+          updatedAt: new Date().toISOString(),
+        };
+        set((s) => ({ debts: [debt, ...s.debts] }));
+        void pushBusinessToCloud();
+        return id;
+      },
+      updateDebt: (id, patch) => {
+        set((s) => ({
+          debts: s.debts.map((debt) => {
+            if (debt.id !== id) return debt;
+            const next = { ...debt, ...patch, updatedAt: new Date().toISOString() };
+            next.name = next.name.trim().slice(0, 80) || debt.name;
+            next.balance = Math.max(0, roundMoneyUp(next.balance));
+            next.minPayment = Math.max(0, roundMoneyUp(next.minPayment));
+            next.ratePct =
+              next.ratePct == null
+                ? null
+                : Math.max(0, Math.min(999, Math.round(next.ratePct * 10) / 10));
+            next.nextPaymentDate = next.nextPaymentDate?.trim() || null;
+            next.priority = next.priority === "high" ? "high" : "normal";
+            return next;
+          }),
+        }));
+        void pushBusinessToCloud();
+      },
+      payDebt: (id, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return false;
+        let ok = false;
+        set((s) => ({
+          debts: s.debts.map((debt) => {
+            if (debt.id !== id) return debt;
+            ok = true;
+            return {
+              ...debt,
+              balance: Math.max(0, roundMoneyUp(debt.balance - amt)),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        }));
+        if (ok) void pushBusinessToCloud();
+        return ok;
+      },
+      removeDebt: (id) => {
+        set((s) => ({ debts: s.debts.filter((d) => d.id !== id) }));
         void pushBusinessToCloud();
       },
       updateAsset: (assetId, patch) => {
@@ -530,6 +633,7 @@ export const useBusinessStore = create<BusinessStore>()(
           id,
           new Date(),
           get().taxRatePct,
+          get().debts,
         );
       },
       exportPayload: () => ({
@@ -537,6 +641,7 @@ export const useBusinessStore = create<BusinessStore>()(
         units: get().units,
         transactions: get().transactions,
         assets: get().assets,
+        debts: get().debts,
         passiveReceipts: get().passiveReceipts,
         taxRatePct: get().taxRatePct,
       }),
@@ -557,6 +662,7 @@ export const useBusinessStore = create<BusinessStore>()(
         units: state.units,
         transactions: state.transactions,
         assets: state.assets,
+        debts: state.debts,
         passiveReceipts: state.passiveReceipts,
         selectedUnitId: state.selectedUnitId,
         cloudSyncedAt: state.cloudSyncedAt,
@@ -569,8 +675,9 @@ export const useBusinessStore = create<BusinessStore>()(
 export function useBusinessSnapshot(unitId?: string | null): BusinessSnapshot {
   const transactions = useBusinessStore((s) => s.transactions);
   const assets = useBusinessStore((s) => s.assets);
+  const debts = useBusinessStore((s) => s.debts);
   const selectedUnitId = useBusinessStore((s) => s.selectedUnitId);
   const taxRatePct = useBusinessStore((s) => s.taxRatePct);
   const id = unitId === undefined ? selectedUnitId : unitId;
-  return buildBusinessSnapshot(transactions, assets, id, new Date(), taxRatePct);
+  return buildBusinessSnapshot(transactions, assets, id, new Date(), taxRatePct, debts);
 }

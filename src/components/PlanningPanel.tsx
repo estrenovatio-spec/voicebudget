@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Landmark, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
-import type { RecurringFrequency, SavingsGoal } from "@/types/planning";
+import type { DebtItem, RecurringFrequency, SavingsGoal } from "@/types/planning";
 
 function replaceTokens(template: string, tokens: Record<string, string>): string {
   let s = template;
@@ -98,6 +98,21 @@ function ProgressBar({ percent, over }: { percent: number; over?: boolean }) {
   );
 }
 
+function numInput(value: string): number {
+  return Number(value.replace(/\s/g, "").replace(",", ".")) || 0;
+}
+
+function debtOwnerLabel(owner: DebtItem["owner"], locale: Locale): string {
+  if (owner === "me") return locale === "ru" ? "Я" : "Me";
+  if (owner === "partner") return locale === "ru" ? "Партнёр" : "Partner";
+  return locale === "ru" ? "Общий" : "Shared";
+}
+
+function debtStrategyLabel(strategy: DebtItem["strategy"], locale: Locale): string {
+  if (strategy === "snowball") return locale === "ru" ? "Снежный ком" : "Snowball";
+  return locale === "ru" ? "Лавина" : "Avalanche";
+}
+
 export function PlanningPanel() {
   const locale = useStore((s) => s.locale);
   const transactions = useTransactions();
@@ -105,6 +120,7 @@ export function PlanningPanel() {
   const savingsGoals = useStore((s) => s.savingsGoals);
   const categoryBudgets = useStore((s) => s.categoryBudgets);
   const recurringTransactions = useStore((s) => s.recurringTransactions);
+  const debts = useStore((s) => s.debts);
   const addGoal = useStore((s) => s.addGoal);
   const updateGoal = useStore((s) => s.updateGoal);
   const depositGoal = useStore((s) => s.depositGoal);
@@ -116,6 +132,10 @@ export function PlanningPanel() {
   const addRecurring = useStore((s) => s.addRecurring);
   const updateRecurring = useStore((s) => s.updateRecurring);
   const removeRecurring = useStore((s) => s.removeRecurring);
+  const addDebt = useStore((s) => s.addDebt);
+  const updateDebt = useStore((s) => s.updateDebt);
+  const payDebt = useStore((s) => s.payDebt);
+  const removeDebt = useStore((s) => s.removeDebt);
   const entryOwner = useStore((s) => s.entryOwner);
   const budgetMonthStartDay = useStore((s) => s.budgetMonthStartDay);
   const setBudgetMonthStartDay = useStore((s) => s.setBudgetMonthStartDay);
@@ -152,6 +172,15 @@ export function PlanningPanel() {
   const [recNote, setRecNote] = useState("");
   const [recFrequency, setRecFrequency] = useState<RecurringFrequency>("monthly");
   const [recStartDate, setRecStartDate] = useState(() => todayIso());
+  const [debtName, setDebtName] = useState("");
+  const [debtBalance, setDebtBalance] = useState("");
+  const [debtMinPayment, setDebtMinPayment] = useState("");
+  const [debtRate, setDebtRate] = useState("");
+  const [debtDate, setDebtDate] = useState("");
+  const [debtOwner, setDebtOwner] = useState<DebtItem["owner"]>("all");
+  const [debtStrategy, setDebtStrategy] = useState<DebtItem["strategy"]>("avalanche");
+  const [debtPayId, setDebtPayId] = useState<string | null>(null);
+  const [debtPayAmount, setDebtPayAmount] = useState("");
 
   const customGoals = savingsGoals.filter((g) => g.kind !== "emergency");
   const emergencyGoal = savingsGoals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency");
@@ -175,6 +204,24 @@ export function PlanningPanel() {
     () => formatBudgetPeriodLabel(getCurrentBudgetPeriod(budgetMonthStartDay), locale),
     [budgetMonthStartDay, locale],
   );
+  const debtTotals = useMemo(
+    () => ({
+      balance: debts.reduce((sum, d) => sum + d.balance, 0),
+      minPayment: debts.reduce((sum, d) => sum + d.minPayment, 0),
+    }),
+    [debts],
+  );
+  const debtFocus = useMemo(() => {
+    const active = debts.filter((d) => d.balance > 0);
+    if (active.length === 0) return null;
+    return [...active].sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
+      const ar = a.ratePct ?? 0;
+      const br = b.ratePct ?? 0;
+      if (br !== ar) return br - ar;
+      return a.balance - b.balance;
+    })[0];
+  }, [debts]);
 
   const editingGoal = editGoalId
     ? customGoals.find((g) => g.id === editGoalId) ?? null
@@ -262,6 +309,35 @@ export function PlanningPanel() {
     setRecNote("");
   };
 
+  const handleAddDebt = () => {
+    const name = debtName.trim();
+    const balance = numInput(debtBalance);
+    if (!name || balance <= 0) return;
+    addDebt({
+      name,
+      owner: debtOwner,
+      balance,
+      minPayment: Math.max(0, numInput(debtMinPayment)),
+      ratePct: debtRate.trim() ? numInput(debtRate) : null,
+      nextPaymentDate: debtDate.trim() || null,
+      strategy: debtStrategy,
+      priority: "normal",
+    });
+    setDebtName("");
+    setDebtBalance("");
+    setDebtMinPayment("");
+    setDebtRate("");
+    setDebtDate("");
+  };
+
+  const handleDebtPayment = (id: string) => {
+    const amount = numInput(debtPayAmount);
+    if (amount <= 0) return;
+    payDebt(id, amount);
+    setDebtPayId(null);
+    setDebtPayAmount("");
+  };
+
   const handleRecurringDateChange = (id: string, date: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     const d = new Date(`${date}T12:00:00`);
@@ -317,9 +393,10 @@ export function PlanningPanel() {
       {open ? (
         <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
-            <TabsList className="mb-3 grid w-full grid-cols-4">
+            <TabsList className="mb-3 grid w-full grid-cols-5">
               <TabsTrigger value="goals">{t(locale, "planningTabGoals")}</TabsTrigger>
               <TabsTrigger value="limits">{t(locale, "planningTabLimits")}</TabsTrigger>
+              <TabsTrigger value="debts">{locale === "ru" ? "Долги" : "Debts"}</TabsTrigger>
               <TabsTrigger value="emergency">{t(locale, "planningTabEmergency")}</TabsTrigger>
               <TabsTrigger value="recurring">{t(locale, "planningTabRecurring")}</TabsTrigger>
             </TabsList>
@@ -584,6 +661,187 @@ export function PlanningPanel() {
                   onChange={(e) => setLimitAmount(e.target.value)}
                 />
                 <Button onClick={handleSetLimit}>{t(locale, "planningLimitSet")}</Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="debts" className="space-y-3">
+              <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 p-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/25">
+                <div className="flex items-start gap-2">
+                  <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {locale === "ru" ? "Долги и обязательства" : "Debts and obligations"}
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {locale === "ru"
+                        ? "Сначала просрочки, здоровье и пожары; затем дорогие ставки. Копилки и комфорт — после обязательных платежей."
+                        : "Overdue payments, health, and emergencies first; then high rates. Savings and comfort come after obligations."}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-background/70 px-2 py-1.5">
+                    <p className="text-[11px] text-muted-foreground">
+                      {locale === "ru" ? "Остаток" : "Balance"}
+                    </p>
+                    <p className="font-bold tabular-nums">
+                      {formatMoney(debtTotals.balance, locale)}
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-background/70 px-2 py-1.5">
+                    <p className="text-[11px] text-muted-foreground">
+                      {locale === "ru" ? "Мин. платёж" : "Min payment"}
+                    </p>
+                    <p className="font-bold tabular-nums">
+                      {formatMoney(debtTotals.minPayment, locale)}
+                    </p>
+                  </div>
+                </div>
+                {debtFocus ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {locale === "ru" ? "Фокус: " : "Focus: "}
+                    <span className="font-medium text-foreground">{debtFocus.name}</span>
+                    {debtFocus.ratePct ? ` · ${debtFocus.ratePct}%` : ""}
+                  </p>
+                ) : null}
+              </div>
+
+              {debts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {locale === "ru"
+                    ? "Добавьте кредит, долг, рассрочку или обязательство — советник начнёт учитывать платежи."
+                    : "Add a loan, debt, installment, or obligation — the advisor will account for payments."}
+                </p>
+              ) : (
+                debts.map((debt) => {
+                  const percentPaid =
+                    debt.balance <= 0 ? 100 : debt.minPayment > 0 ? Math.min(100, Math.round((debt.minPayment / debt.balance) * 100)) : 0;
+                  const overdue = debt.nextPaymentDate ? debt.nextPaymentDate < todayIso() : false;
+                  return (
+                    <div key={debt.id} className="space-y-2 rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium leading-tight">{debt.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {debtOwnerLabel(debt.owner, locale)} · {debtStrategyLabel(debt.strategy, locale)}
+                            {debt.ratePct ? ` · ${debt.ratePct}%` : ""}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold tabular-nums">
+                            {formatMoney(debt.balance, locale)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {locale === "ru" ? "Мин. платёж: " : "Min payment: "}
+                            {formatMoney(debt.minPayment, locale)}
+                            {debt.nextPaymentDate ? ` · ${formatTransactionDate(debt.nextPaymentDate, locale)}` : ""}
+                          </p>
+                          {overdue ? (
+                            <p className="text-xs font-medium text-destructive">
+                              {locale === "ru" ? "Платёж просрочен — это первый приоритет." : "Payment is overdue — first priority."}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-amber-700"
+                            onClick={() =>
+                              updateDebt(debt.id, {
+                                priority: debt.priority === "high" ? "normal" : "high",
+                              })
+                            }
+                            aria-label={locale === "ru" ? "Приоритет" : "Priority"}
+                          >
+                            <Shield className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => removeDebt(debt.id)}
+                            aria-label={t(locale, "txDelete")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <ProgressBar percent={percentPaid} />
+                      {debtPayId === debt.id ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder={locale === "ru" ? "Сумма платежа" : "Payment amount"}
+                            value={debtPayAmount}
+                            onChange={(e) => setDebtPayAmount(e.target.value)}
+                          />
+                          <Button size="sm" onClick={() => handleDebtPayment(debt.id)}>
+                            OK
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => setDebtPayId(debt.id)}>
+                          {locale === "ru" ? "Внести платёж" : "Add payment"}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              <div className="space-y-2 border-t pt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder={locale === "ru" ? "Название долга" : "Debt name"}
+                    value={debtName}
+                    onChange={(e) => setDebtName(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder={locale === "ru" ? "Остаток" : "Balance"}
+                    value={debtBalance}
+                    onChange={(e) => setDebtBalance(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder={locale === "ru" ? "Мин. платёж" : "Min payment"}
+                    value={debtMinPayment}
+                    onChange={(e) => setDebtMinPayment(e.target.value)}
+                  />
+                  <Input
+                    type="number"
+                    placeholder={locale === "ru" ? "Ставка %" : "Rate %"}
+                    value={debtRate}
+                    onChange={(e) => setDebtRate(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <select
+                    className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={debtOwner}
+                    onChange={(e) => setDebtOwner(e.target.value as DebtItem["owner"])}
+                  >
+                    <option value="all">{locale === "ru" ? "Общий" : "Shared"}</option>
+                    <option value="me">{locale === "ru" ? "Я" : "Me"}</option>
+                    <option value="partner">{locale === "ru" ? "Партнёр" : "Partner"}</option>
+                  </select>
+                  <select
+                    className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={debtStrategy}
+                    onChange={(e) => setDebtStrategy(e.target.value as DebtItem["strategy"])}
+                  >
+                    <option value="avalanche">{locale === "ru" ? "Лавина" : "Avalanche"}</option>
+                    <option value="snowball">{locale === "ru" ? "Снежный ком" : "Snowball"}</option>
+                  </select>
+                  <Input
+                    type="date"
+                    value={debtDate}
+                    onChange={(e) => setDebtDate(e.target.value)}
+                    aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleAddDebt}>
+                  {locale === "ru" ? "Добавить долг" : "Add debt"}
+                </Button>
               </div>
             </TabsContent>
 

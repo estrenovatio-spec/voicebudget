@@ -6,6 +6,7 @@ import type {
   BusinessAsset,
   BusinessAssetType,
   BusinessAssetsByType,
+  BusinessDebt,
   BusinessExpenseRow,
   BusinessIncomeSource,
   BusinessPeriodStats,
@@ -104,6 +105,8 @@ export type UnitCardMetrics = {
   taxReserve: number;
   taxRatePct: number;
   taxPeriod: BusinessTaxPeriod;
+  debtBalance: number;
+  debtMinPayment: number;
 };
 
 /** Сводка выбранного бизнеса: период + KPI по юниту. */
@@ -113,11 +116,12 @@ export function unitCardMetrics(
   unit: BusinessUnit,
   period: BudgetPeriod,
   now = new Date(),
+  debts: BusinessDebt[] = [],
 ): UnitCardMetrics {
   const taxRate = unit.taxRatePct ?? 0;
   const taxPeriod = unit.taxPeriod ?? "quarter";
   const periodStats = periodOperatingStats(transactions, period, unit.id);
-  const snap = buildBusinessSnapshot(transactions, assets, unit.id, now, taxRate);
+  const snap = buildBusinessSnapshot(transactions, assets, unit.id, now, taxRate, debts);
   return {
     unitId: unit.id,
     income: periodStats.income,
@@ -134,6 +138,8 @@ export function unitCardMetrics(
     taxReserve: unitTaxReserve(transactions, unit.id, taxRate, taxPeriod, now),
     taxRatePct: taxRate,
     taxPeriod,
+    debtBalance: snap.debtBalance,
+    debtMinPayment: snap.debtMinPayment,
   };
 }
 
@@ -325,9 +331,11 @@ export function buildBusinessSnapshot(
   unitId: string | null = null,
   now = new Date(),
   taxRatePct = 0,
+  debts: BusinessDebt[] = [],
 ): BusinessSnapshot {
   const scopedTxs = filterUnitTxs(transactions, unitId);
   const scopedAssets = unitId ? assets.filter((a) => a.unitId === unitId) : assets;
+  const scopedDebts = unitId ? debts.filter((d) => d.unitId === unitId) : debts;
 
   const operatingBalance = calcOperatingBalance(scopedTxs);
   const cushionBalance = calcCushionBalance(scopedTxs);
@@ -361,6 +369,10 @@ export function buildBusinessSnapshot(
   const monthsRunway = runwayMonths(operatingBalance, avgMonthlyExpense);
   const suggestedTaxReserve =
     taxRatePct > 0 ? roundMoneyUp((monthIncome * taxRatePct) / 100) : 0;
+  const debtBalance = roundMoneyUp(scopedDebts.reduce((s, d) => s + Math.max(0, d.balance), 0));
+  const debtMinPayment = roundMoneyUp(
+    scopedDebts.reduce((s, d) => s + Math.max(0, d.minPayment), 0),
+  );
 
   return {
     operatingBalance,
@@ -379,5 +391,7 @@ export function buildBusinessSnapshot(
     weightedYieldPct: weightedYield,
     runwayMonths: monthsRunway,
     suggestedTaxReserve,
+    debtBalance,
+    debtMinPayment,
   };
 }

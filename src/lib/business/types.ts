@@ -54,6 +54,18 @@ export type BusinessPassiveReceipt = {
 
 export type BusinessTaxPeriod = "month" | "quarter" | "halfyear" | "year";
 
+export type BusinessDebt = {
+  id: string;
+  unitId: string;
+  name: string;
+  balance: number;
+  minPayment: number;
+  ratePct: number | null;
+  nextPaymentDate: string | null;
+  priority: "normal" | "high";
+  updatedAt?: string;
+};
+
 export type BusinessUnit = {
   id: string;
   name: string;
@@ -114,6 +126,8 @@ export type BusinessSnapshot = {
   weightedYieldPct: number;
   runwayMonths: number;
   suggestedTaxReserve: number;
+  debtBalance: number;
+  debtMinPayment: number;
 };
 
 export type BusinessCloudPayload = {
@@ -122,6 +136,7 @@ export type BusinessCloudPayload = {
   transactions: BusinessTransaction[];
   assets: BusinessAsset[];
   passiveReceipts?: BusinessPassiveReceipt[];
+  debts?: BusinessDebt[];
   taxRatePct?: number;
 };
 

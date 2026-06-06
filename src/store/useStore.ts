@@ -101,6 +101,7 @@ import type {
 } from "@/types";
 import type {
   CategoryBudget,
+  DebtItem,
   RecurringFrequency,
   RecurringTransaction,
   SavingsGoal,
@@ -156,6 +157,7 @@ interface StoreState {
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   recurringTransactions: RecurringTransaction[];
+  debts: DebtItem[];
   vehicles: Vehicle[];
   vehiclePrefs: VehicleGaragePrefs;
   /** Последняя машина в заправке (локально, для подстановки) */
@@ -262,6 +264,10 @@ interface StoreState {
     patch: Partial<Omit<RecurringTransaction, "id">>,
   ) => void;
   removeRecurring: (id: string) => void;
+  addDebt: (data: Omit<DebtItem, "id" | "updatedAt">) => string;
+  updateDebt: (id: string, patch: Partial<Omit<DebtItem, "id">>) => void;
+  payDebt: (id: string, amount: number) => boolean;
+  removeDebt: (id: string) => void;
   processRecurringDue: () => void;
   applyPlanningInput: (
     action: import("@/types/planning").PlanningInputAction,
@@ -422,6 +428,7 @@ export const useStore = create<StoreState>()(
       savingsGoals: [],
       categoryBudgets: [],
       recurringTransactions: [],
+      debts: [],
       vehicles: [],
       vehiclePrefs: defaultVehicleGaragePrefs(),
       lastFuelVehicleId: null,
@@ -1123,6 +1130,61 @@ export const useStore = create<StoreState>()(
         useCloudStore.getState().removeFromLastSyncedRemoteRecurringIds(id);
         void cloudPushRecurringDelete(id);
       },
+      addDebt: (data) => {
+        const id = makeId();
+        const debt: DebtItem = {
+          ...data,
+          id,
+          name: data.name.trim().slice(0, 80) || "Долг",
+          balance: Math.max(0, roundMoneyUp(data.balance)),
+          minPayment: Math.max(0, roundMoneyUp(data.minPayment)),
+          ratePct:
+            data.ratePct == null
+              ? null
+              : Math.max(0, Math.min(999, Math.round(data.ratePct * 10) / 10)),
+          nextPaymentDate: data.nextPaymentDate?.trim() || null,
+          updatedAt: new Date().toISOString(),
+        };
+        set((state) => ({ debts: [debt, ...state.debts] }));
+        return id;
+      },
+      updateDebt: (id, patch) => {
+        set((state) => ({
+          debts: state.debts.map((debt) => {
+            if (debt.id !== id) return debt;
+            const next = { ...debt, ...patch, updatedAt: new Date().toISOString() };
+            next.name = next.name.trim().slice(0, 80) || debt.name;
+            next.balance = Math.max(0, roundMoneyUp(next.balance));
+            next.minPayment = Math.max(0, roundMoneyUp(next.minPayment));
+            next.ratePct =
+              next.ratePct == null
+                ? null
+                : Math.max(0, Math.min(999, Math.round(next.ratePct * 10) / 10));
+            next.nextPaymentDate = next.nextPaymentDate?.trim() || null;
+            return next;
+          }),
+        }));
+      },
+      payDebt: (id, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return false;
+        let changed = false;
+        set((state) => ({
+          debts: state.debts.map((debt) => {
+            if (debt.id !== id) return debt;
+            changed = true;
+            return {
+              ...debt,
+              balance: Math.max(0, roundMoneyUp(debt.balance - amt)),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        }));
+        return changed;
+      },
+      removeDebt: (id) => {
+        set((state) => ({ debts: state.debts.filter((d) => d.id !== id) }));
+      },
       processRecurringDue: () => {
         const state = get();
         const today = todayIso();
@@ -1330,6 +1392,29 @@ export const useStore = create<StoreState>()(
                 ...r,
                 skippedDates: Array.isArray(r.skippedDates) ? r.skippedDates : [],
               }))
+            : [],
+          debts: Array.isArray(raw.debts)
+            ? (raw.debts as DebtItem[])
+                .filter((d) => d && typeof d.id === "string" && typeof d.name === "string")
+                .map((d) => ({
+                  ...d,
+                  owner:
+                    d.owner === "me" || d.owner === "partner" || d.owner === "all"
+                      ? d.owner
+                      : "all",
+                  balance: Math.max(0, roundMoneyUp(Number(d.balance) || 0)),
+                  minPayment: Math.max(0, roundMoneyUp(Number(d.minPayment) || 0)),
+                  ratePct:
+                    d.ratePct == null || Number.isNaN(Number(d.ratePct))
+                      ? null
+                      : Math.max(0, Math.min(999, Math.round(Number(d.ratePct) * 10) / 10)),
+                  nextPaymentDate:
+                    typeof d.nextPaymentDate === "string" && d.nextPaymentDate
+                      ? d.nextPaymentDate
+                      : null,
+                  strategy: d.strategy === "snowball" ? "snowball" : "avalanche",
+                  priority: d.priority === "high" ? "high" : "normal",
+                }))
             : [],
           budgetMonthStartDay: clampMonthStartDay(
             typeof raw.budgetMonthStartDay === "number" ? raw.budgetMonthStartDay : 1,

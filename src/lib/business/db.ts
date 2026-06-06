@@ -34,7 +34,7 @@ async function userBusinessLedgerTableExists(): Promise<boolean> {
 
 function emptyPayload(): BusinessCloudPayload {
   const unit = defaultBusinessUnit();
-  return { version: 2, units: [unit], transactions: [], assets: [], passiveReceipts: [] };
+  return { version: 2, units: [unit], transactions: [], assets: [], debts: [], passiveReceipts: [] };
 }
 
 function normalizePayload(raw: unknown): BusinessCloudPayload {
@@ -43,6 +43,7 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
   const units = Array.isArray(o.units) ? o.units : [];
   const transactions = Array.isArray(o.transactions) ? o.transactions : [];
   const assets = Array.isArray(o.assets) ? o.assets : [];
+  const debts = Array.isArray(o.debts) ? o.debts : [];
   if (units.length === 0) {
     const unit = defaultBusinessUnit();
     return {
@@ -56,6 +57,10 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
         ...(a as object),
         unitId: (a as { unitId?: string }).unitId ?? unit.id,
       })) as BusinessCloudPayload["assets"],
+      debts: debts.map((d) => ({
+        ...(d as object),
+        unitId: (d as { unitId?: string }).unitId ?? unit.id,
+      })) as BusinessCloudPayload["debts"],
       passiveReceipts: [],
       taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
     };
@@ -67,6 +72,7 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
     units: units as BusinessCloudPayload["units"],
     transactions: transactions as BusinessCloudPayload["transactions"],
     assets: assets as BusinessCloudPayload["assets"],
+    debts: debts as BusinessCloudPayload["debts"],
     passiveReceipts: passiveReceipts as BusinessCloudPayload["passiveReceipts"],
     taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
   };
@@ -140,12 +146,17 @@ export function mergeBusinessPayload(
   for (const r of [...(remote.passiveReceipts ?? []), ...(local.passiveReceipts ?? [])]) {
     if (r && typeof r.id === "string") receiptMap.set(r.id, r);
   }
+  const debtMap = new Map<string, NonNullable<BusinessCloudPayload["debts"]>[number]>();
+  for (const d of [...(remote.debts ?? []), ...(local.debts ?? [])]) {
+    if (d && typeof d.id === "string") debtMap.set(d.id, d);
+  }
 
   return {
     version: 2,
     units,
     transactions: Array.from(txMap.values()).sort((a, b) => b.date.localeCompare(a.date)),
     assets: Array.from(assetMap.values()),
+    debts: Array.from(debtMap.values()),
     passiveReceipts: Array.from(receiptMap.values()).sort((a, b) =>
       b.date.localeCompare(a.date),
     ),
