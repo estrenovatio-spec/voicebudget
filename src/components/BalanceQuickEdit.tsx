@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
-import { useComputedBalance, useStore } from "@/store/useStore";
+import { useStore } from "@/store/useStore";
 import type { BudgetOwner } from "@/types";
 
 type BalanceQuickEditProps = {
@@ -45,9 +45,6 @@ export function BalanceQuickEdit({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState(String(displayed));
 
-  const computedMe = useComputedBalance("me");
-  const computedPartner = useComputedBalance("partner");
-
   useEffect(() => {
     if (open) setInput(String(displayed));
   }, [open, displayed]);
@@ -73,8 +70,6 @@ export function BalanceQuickEdit({
     }
     closeDialog();
   };
-
-  const computedHint = owner === "me" ? computedMe : computedPartner;
 
   const handleTelegramBack = useCallback(() => {
     if (!open) return false;
@@ -127,9 +122,6 @@ export function BalanceQuickEdit({
           <DialogHeader>
             <DialogTitle>{label}</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">
-            {t(locale, "balanceFromTx", { amount: formatMoney(computedHint, locale) })}
-          </p>
           <Input
             type="number"
             inputMode="numeric"
