@@ -22,6 +22,7 @@ const payloadSchema = z.object({
   transactions: z.array(z.any()),
   assets: z.array(z.any()),
   debts: z.array(z.any()).optional(),
+  deletedUnitsArchive: z.array(z.any()).optional(),
   passiveReceipts: z.array(z.any()).optional(),
   taxRatePct: z.number().min(0).max(100).optional(),
 });
@@ -78,6 +79,12 @@ export async function PUT(req: NextRequest) {
       }
       if ((incoming.debts?.length ?? 0) === 0 && (existing.debts?.length ?? 0) > 0) {
         toSave.debts = existing.debts;
+      }
+      if (
+        (incoming.deletedUnitsArchive?.length ?? 0) === 0 &&
+        (existing.deletedUnitsArchive?.length ?? 0) > 0
+      ) {
+        toSave.deletedUnitsArchive = existing.deletedUnitsArchive;
       }
     }
     const saved = await saveUserBusinessPayload(session.userId, toSave);

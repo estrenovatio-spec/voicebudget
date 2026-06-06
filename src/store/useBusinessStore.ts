@@ -8,6 +8,7 @@ import type {
   BusinessDebt,
   BusinessSnapshot,
   BusinessTaxPeriod,
+  DeletedBusinessUnitArchive,
   BusinessPassiveReceipt,
   BusinessTransaction,
   BusinessTxKind,
@@ -52,6 +53,7 @@ type BusinessStore = {
   transactions: BusinessTransaction[];
   assets: BusinessAsset[];
   debts: BusinessDebt[];
+  deletedUnitsArchive: DeletedBusinessUnitArchive[];
   passiveReceipts: BusinessPassiveReceipt[];
   selectedUnitId: string | null;
   cloudSyncedAt: string | null;
@@ -132,6 +134,7 @@ function migratePersisted(raw: unknown): Pick<
   | "transactions"
   | "assets"
   | "debts"
+  | "deletedUnitsArchive"
   | "passiveReceipts"
   | "selectedUnitId"
   | "cloudSyncedAt"
@@ -229,12 +232,26 @@ function migratePersisted(raw: unknown): Pick<
         priority: debt.priority === "high" ? "high" : "normal",
       };
     });
+  const deletedUnitsArchive = (Array.isArray(r.deletedUnitsArchive)
+    ? (r.deletedUnitsArchive as DeletedBusinessUnitArchive[])
+    : []
+  )
+    .filter(
+      (item) =>
+        item &&
+        typeof item.id === "string" &&
+        typeof item.deletedAt === "string" &&
+        item.unit &&
+        typeof item.unit.id === "string",
+    )
+    .slice(0, 30);
 
   return {
     units,
     transactions,
     assets,
     debts,
+    deletedUnitsArchive,
     passiveReceipts,
     selectedUnitId:
       typeof r.selectedUnitId === "string" ? r.selectedUnitId : units[0]?.id ?? null,
@@ -253,6 +270,7 @@ export const useBusinessStore = create<BusinessStore>()(
       transactions: [],
       assets: [],
       debts: [],
+      deletedUnitsArchive: [],
       passiveReceipts: [],
       selectedUnitId: null,
       cloudSyncedAt: null,
@@ -276,19 +294,34 @@ export const useBusinessStore = create<BusinessStore>()(
         return unit.id;
       },
       removeUnit: (id) => {
-        const { units, transactions, assets, debts, passiveReceipts } = get();
+        const { units, transactions, assets, debts, deletedUnitsArchive, passiveReceipts } = get();
         if (units.length <= 1) return false;
         const target = units.find((u) => u.id === id);
         if (target && target.name.trim() === PROJECTS_SERVICE_UNIT_NAME) return false;
+        if (!target) return false;
         const removedAssetIds = new Set(
           assets.filter((a) => a.unitId === id).map((a) => a.id),
         );
+        const archivedAssets = assets.filter((a) => a.unitId === id);
+        const archivedTransactions = transactions.filter((t) => t.unitId === id);
+        const archivedDebts = debts.filter((d) => d.unitId === id);
+        const archivedReceipts = passiveReceipts.filter((r) => removedAssetIds.has(r.assetId));
+        const archiveEntry: DeletedBusinessUnitArchive = {
+          id: `${id}-${Date.now().toString(36)}`,
+          deletedAt: new Date().toISOString(),
+          unit: target,
+          transactions: archivedTransactions,
+          assets: archivedAssets,
+          debts: archivedDebts,
+          passiveReceipts: archivedReceipts,
+        };
         const nextUnits = units.filter((u) => u.id !== id);
         set({
           units: nextUnits,
           transactions: transactions.filter((t) => t.unitId !== id),
           assets: assets.filter((a) => a.unitId !== id),
           debts: debts.filter((d) => d.unitId !== id),
+          deletedUnitsArchive: [archiveEntry, ...deletedUnitsArchive].slice(0, 30),
           passiveReceipts: passiveReceipts.filter((r) => !removedAssetIds.has(r.assetId)),
           selectedUnitId: nextUnits[0]?.id ?? null,
         });
@@ -642,6 +675,7 @@ export const useBusinessStore = create<BusinessStore>()(
         transactions: get().transactions,
         assets: get().assets,
         debts: get().debts,
+        deletedUnitsArchive: get().deletedUnitsArchive,
         passiveReceipts: get().passiveReceipts,
         taxRatePct: get().taxRatePct,
       }),
@@ -663,6 +697,7 @@ export const useBusinessStore = create<BusinessStore>()(
         transactions: state.transactions,
         assets: state.assets,
         debts: state.debts,
+        deletedUnitsArchive: state.deletedUnitsArchive,
         passiveReceipts: state.passiveReceipts,
         selectedUnitId: state.selectedUnitId,
         cloudSyncedAt: state.cloudSyncedAt,

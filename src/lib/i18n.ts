@@ -304,7 +304,7 @@ export const DICT = {
     bizUnitDeleteHint: "Операции и проекты этого бизнеса будут удалены.",
     bizUnitDeleteLast: "Нельзя удалить последний бизнес",
     bizUnitDeleteConfirm:
-      "Удалить этот бизнес? Будет удалено: проектов — {assets}, операций — {txs}.",
+      "Удалить этот бизнес? Будет удалено: проектов — {assets}, операций — {txs}, долгов — {debts}. Копия сохранится в архиве бизнеса и облаке.",
     bizUnitDeleteProjectsHint:
       "Служебный бизнес «Проекты» не удаляют. Удалите проект кнопкой корзины на карточке ниже.",
     bizUnitDeleted: "Бизнес удалён",
@@ -978,7 +978,7 @@ export const DICT = {
     categorySystem: "базовая",
     categoryDelete: "Удалить",
     categoryDeleteConfirm:
-      "Удалить «{name}»? Операции с этой категорией перейдут в «{fallback}».",
+      "Удалить «{name}»? Операции с этой категорией перейдут в «{fallback}». Копия категории и связанных операций сохранится в локальном архиве.",
     categoryDeleteYes: "Да, удалить",
     categoryDeleteBlocked:
       "Категорию «Прочее» удалить нельзя — нужна хотя бы одна на тип",
@@ -1358,7 +1358,7 @@ export const DICT = {
       "This business's transactions and projects will be removed.",
     bizUnitDeleteLast: "Cannot delete the last business",
     bizUnitDeleteConfirm:
-      "Delete this business? Projects: {assets}, transactions: {txs} will be removed.",
+      "Delete this business? Projects: {assets}, transactions: {txs}, debts: {debts} will be removed. A copy will stay in the business archive and cloud.",
     bizUnitDeleteProjectsHint:
       "The «Projects» unit cannot be deleted. Remove each project with the trash icon on its card.",
     bizUnitDeleted: "Business deleted",
@@ -2018,7 +2018,7 @@ export const DICT = {
     categorySystem: "default",
     categoryDelete: "Delete",
     categoryDeleteConfirm:
-      "Delete «{name}»? Transactions will move to «{fallback}».",
+      "Delete «{name}»? Transactions will move to «{fallback}». A copy will stay in the local archive.",
     categoryDeleteYes: "Yes, delete",
     categoryDeleteBlocked:
       "Cannot delete Other — at least one category per type is required",

@@ -34,7 +34,15 @@ async function userBusinessLedgerTableExists(): Promise<boolean> {
 
 function emptyPayload(): BusinessCloudPayload {
   const unit = defaultBusinessUnit();
-  return { version: 2, units: [unit], transactions: [], assets: [], debts: [], passiveReceipts: [] };
+  return {
+    version: 2,
+    units: [unit],
+    transactions: [],
+    assets: [],
+    debts: [],
+    deletedUnitsArchive: [],
+    passiveReceipts: [],
+  };
 }
 
 function normalizePayload(raw: unknown): BusinessCloudPayload {
@@ -44,6 +52,7 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
   const transactions = Array.isArray(o.transactions) ? o.transactions : [];
   const assets = Array.isArray(o.assets) ? o.assets : [];
   const debts = Array.isArray(o.debts) ? o.debts : [];
+  const deletedUnitsArchive = Array.isArray(o.deletedUnitsArchive) ? o.deletedUnitsArchive : [];
   if (units.length === 0) {
     const unit = defaultBusinessUnit();
     return {
@@ -61,6 +70,8 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
         ...(d as object),
         unitId: (d as { unitId?: string }).unitId ?? unit.id,
       })) as BusinessCloudPayload["debts"],
+      deletedUnitsArchive:
+        deletedUnitsArchive as BusinessCloudPayload["deletedUnitsArchive"],
       passiveReceipts: [],
       taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
     };
@@ -73,6 +84,8 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
     transactions: transactions as BusinessCloudPayload["transactions"],
     assets: assets as BusinessCloudPayload["assets"],
     debts: debts as BusinessCloudPayload["debts"],
+    deletedUnitsArchive:
+      deletedUnitsArchive as BusinessCloudPayload["deletedUnitsArchive"],
     passiveReceipts: passiveReceipts as BusinessCloudPayload["passiveReceipts"],
     taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
   };
@@ -150,6 +163,16 @@ export function mergeBusinessPayload(
   for (const d of [...(remote.debts ?? []), ...(local.debts ?? [])]) {
     if (d && typeof d.id === "string") debtMap.set(d.id, d);
   }
+  const archiveMap = new Map<
+    string,
+    NonNullable<BusinessCloudPayload["deletedUnitsArchive"]>[number]
+  >();
+  for (const item of [
+    ...(remote.deletedUnitsArchive ?? []),
+    ...(local.deletedUnitsArchive ?? []),
+  ]) {
+    if (item && typeof item.id === "string") archiveMap.set(item.id, item);
+  }
 
   return {
     version: 2,
@@ -157,6 +180,9 @@ export function mergeBusinessPayload(
     transactions: Array.from(txMap.values()).sort((a, b) => b.date.localeCompare(a.date)),
     assets: Array.from(assetMap.values()),
     debts: Array.from(debtMap.values()),
+    deletedUnitsArchive: Array.from(archiveMap.values())
+      .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+      .slice(0, 30),
     passiveReceipts: Array.from(receiptMap.values()).sort((a, b) =>
       b.date.localeCompare(a.date),
     ),

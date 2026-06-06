@@ -79,6 +79,16 @@ export type BusinessUnit = {
   taxPeriod?: BusinessTaxPeriod;
 };
 
+export type DeletedBusinessUnitArchive = {
+  id: string;
+  deletedAt: string;
+  unit: BusinessUnit;
+  transactions: BusinessTransaction[];
+  assets: BusinessAsset[];
+  debts: BusinessDebt[];
+  passiveReceipts: BusinessPassiveReceipt[];
+};
+
 export type BusinessUnitPeriodStats = {
   unitId: string;
   income: number;
@@ -137,6 +147,7 @@ export type BusinessCloudPayload = {
   assets: BusinessAsset[];
   passiveReceipts?: BusinessPassiveReceipt[];
   debts?: BusinessDebt[];
+  deletedUnitsArchive?: DeletedBusinessUnitArchive[];
   taxRatePct?: number;
 };
 

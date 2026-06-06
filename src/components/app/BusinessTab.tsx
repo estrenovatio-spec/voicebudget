@@ -909,6 +909,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       return;
     }
     const assetCount = assets.filter((a) => a.unitId === editUnitId).length;
+    const debtCount = debts.filter((d) => d.unitId === editUnitId).length;
     const txCount = transactions.filter(
       (tx) => tx.unitId === editUnitId,
     ).length;
@@ -918,6 +919,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         t(locale, "bizUnitDeleteConfirm", {
           assets: String(assetCount),
           txs: String(txCount),
+          debts: String(debtCount),
         }),
       )
     ) {

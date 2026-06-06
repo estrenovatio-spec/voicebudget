@@ -158,6 +158,13 @@ interface StoreState {
   categoryBudgets: CategoryBudget[];
   recurringTransactions: RecurringTransaction[];
   debts: DebtItem[];
+  deletedCategoryArchive: {
+    id: string;
+    deletedAt: string;
+    category: CategoryDefinition;
+    fallbackCategoryId: string;
+    affectedTransactions: Transaction[];
+  }[];
   vehicles: Vehicle[];
   vehiclePrefs: VehicleGaragePrefs;
   /** Последняя машина в заправке (локально, для подстановки) */
@@ -429,6 +436,7 @@ export const useStore = create<StoreState>()(
       categoryBudgets: [],
       recurringTransactions: [],
       debts: [],
+      deletedCategoryArchive: [],
       vehicles: [],
       vehiclePrefs: defaultVehicleGaragePrefs(),
       lastFuelVehicleId: null,
@@ -943,7 +951,16 @@ export const useStore = create<StoreState>()(
         if (!cat) return false;
         const fallback = getFallbackCategoryId(cat.type);
         if (cat.id === fallback) return false;
+        const affectedTransactions = get().transactions.filter((tx) => tx.categoryId === id);
+        const archiveEntry = {
+          id: `${id}-${Date.now().toString(36)}`,
+          deletedAt: new Date().toISOString(),
+          category: { ...cat, keywords: [...cat.keywords] },
+          fallbackCategoryId: fallback,
+          affectedTransactions,
+        };
         set((state) => ({
+          deletedCategoryArchive: [archiveEntry, ...state.deletedCategoryArchive].slice(0, 50),
           categories: state.categories.filter((c) => c.id !== id),
           transactions: state.transactions.map((tx) =>
             tx.categoryId === id ? { ...tx, categoryId: fallback } : tx,
@@ -957,7 +974,21 @@ export const useStore = create<StoreState>()(
         const defaults = getDefaultCategories();
         const defaultIds = new Set(defaults.map((c) => c.id));
         const prev = get().categories;
+        const now = new Date().toISOString();
+        const archivedCustom = prev
+          .filter((cat) => !defaultIds.has(cat.id))
+          .map((cat) => ({
+            id: `${cat.id}-${Date.now().toString(36)}`,
+            deletedAt: now,
+            category: { ...cat, keywords: [...cat.keywords] },
+            fallbackCategoryId: getFallbackCategoryId(cat.type),
+            affectedTransactions: get().transactions.filter((tx) => tx.categoryId === cat.id),
+          }));
         set((state) => ({
+          deletedCategoryArchive: [
+            ...archivedCustom,
+            ...state.deletedCategoryArchive,
+          ].slice(0, 50),
           categories: defaults.map((c) => ({ ...c, keywords: [...c.keywords] })),
           transactions: state.transactions.map((tx) =>
             defaultIds.has(tx.categoryId) ? tx : { ...tx, categoryId: getFallbackCategoryId(tx.type) },
@@ -1415,6 +1446,18 @@ export const useStore = create<StoreState>()(
                   strategy: d.strategy === "snowball" ? "snowball" : "avalanche",
                   priority: d.priority === "high" ? "high" : "normal",
                 }))
+            : [],
+          deletedCategoryArchive: Array.isArray(raw.deletedCategoryArchive)
+            ? (raw.deletedCategoryArchive as StoreState["deletedCategoryArchive"])
+                .filter(
+                  (item) =>
+                    item &&
+                    typeof item.id === "string" &&
+                    typeof item.deletedAt === "string" &&
+                    item.category &&
+                    typeof item.category.id === "string",
+                )
+                .slice(0, 50)
             : [],
           budgetMonthStartDay: clampMonthStartDay(
             typeof raw.budgetMonthStartDay === "number" ? raw.budgetMonthStartDay : 1,
