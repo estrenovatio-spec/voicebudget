@@ -1564,12 +1564,44 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                         onChange={(e) => setDebtRate(e.target.value)}
                       />
                     </div>
-                    <Input
-                      type="date"
-                      value={debtDate}
-                      onChange={(e) => setDebtDate(e.target.value)}
-                      aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
-                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {locale === "ru" ? "Дата платежа" : "Payment date"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7 rounded-full text-xs font-semibold"
+                          aria-label={
+                            locale === "ru"
+                              ? "Что значит дата платежа"
+                              : "What payment date means"
+                          }
+                          title={
+                            locale === "ru"
+                              ? "Что значит дата платежа"
+                              : "What payment date means"
+                          }
+                          onClick={() =>
+                            window.alert(
+                              locale === "ru"
+                                ? "Это дата ближайшего обязательного платежа или день, когда долг нужно отдать. Она нужна, чтобы не пропустить срок."
+                                : "This is the next required payment date or the date when the debt is due. It helps you avoid missing the deadline.",
+                            )
+                          }
+                        >
+                          !
+                        </Button>
+                      </div>
+                      <Input
+                        type="date"
+                        value={debtDate}
+                        onChange={(e) => setDebtDate(e.target.value)}
+                        aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                      />
+                    </div>
                     <Button type="button" className="w-full" onClick={submitBusinessDebt}>
                       {locale === "ru" ? "Добавить обязательство" : "Add obligation"}
                     </Button>
