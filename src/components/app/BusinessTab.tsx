@@ -1446,13 +1446,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                     </div>
                   </div>
 
-                  {activeDebts.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
-                      {locale === "ru"
-                        ? "Добавьте кредит, долг поставщику, рассрочку или налоговую задолженность."
-                        : "Add a loan, supplier debt, installment, or tax arrears."}
-                    </p>
-                  ) : (
+                  {activeDebts.length > 0 ? (
                     <div className="space-y-2">
                       {activeDebts.map((debt) => {
                         const overdue = debt.nextPaymentDate ? debt.nextPaymentDate < new Date().toISOString().slice(0, 10) : false;
@@ -1533,7 +1527,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                         );
                       })}
                     </div>
-                  )}
+                  ) : null}
 
                   <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2">
                     <div className="grid grid-cols-2 gap-2">
@@ -1565,7 +1559,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       />
                     </div>
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">
                           {locale === "ru" ? "Дата платежа" : "Payment date"}
                         </span>
