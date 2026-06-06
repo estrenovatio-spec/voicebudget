@@ -15,7 +15,14 @@ export function parseBalanceOffsets(raw: unknown): BalanceOffsetsByUser {
   const out: BalanceOffsetsByUser = {};
   for (const [key, value] of Object.entries(raw)) {
     const n = coerceOffset(value);
-    if (n !== null) out[key] = n;
+    if (n !== null) {
+      out[key] = n;
+      continue;
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const offset = coerceOffset((value as Record<string, unknown>).offset);
+      if (offset !== null) out[key] = offset;
+    }
   }
   return out;
 }

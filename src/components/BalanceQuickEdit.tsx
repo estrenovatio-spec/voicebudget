@@ -47,7 +47,7 @@ export function BalanceQuickEdit({
 
   useEffect(() => {
     if (open) setInput(String(displayed));
-  }, [open, displayed]);
+  }, [open]);
 
   const closeDialog = () => {
     setOpen(false);
@@ -123,7 +123,7 @@ export function BalanceQuickEdit({
             <DialogTitle>{label}</DialogTitle>
           </DialogHeader>
           <Input
-            type="number"
+            type="text"
             inputMode="numeric"
             autoFocus
             value={input}
