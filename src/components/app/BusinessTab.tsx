@@ -419,38 +419,89 @@ function BusinessTotalBalance({
   expense,
   profit,
   safeWithdraw,
-  cushionBalance,
-  cushionTarget,
-  taxReserve,
-  debtMinPayment,
   locale,
 }: {
   income: number;
   expense: number;
   profit: number;
   safeWithdraw: number;
-  cushionBalance: number;
-  cushionTarget: number;
-  taxReserve: number;
-  debtMinPayment: number;
+  locale: "ru" | "en";
+}) {
+  const rowClass =
+    "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2";
+  const labelClass = "min-w-0 text-sm font-semibold leading-tight text-foreground";
+  const amountClass = "shrink-0 text-sm font-semibold tabular-nums";
+
+  return (
+    <div className="rounded-lg border-2 border-primary/20 bg-card px-3 py-2.5 shadow-sm">
+      <div className="flex w-full flex-col gap-y-0.5">
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizKpiRevenue")}:</span>
+          <span className={cn(amountClass, "text-emerald-700 dark:text-emerald-400")}>
+            +{formatMoney(income, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizKpiExpenses")}:</span>
+          <span className={cn(amountClass, "text-red-700 dark:text-red-400")}>
+            −{formatMoney(expense, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizUnitProfit")}:</span>
+          <span
+            className={cn(
+              amountClass,
+              profit >= 0
+                ? "text-emerald-700 dark:text-emerald-400"
+                : "text-red-700 dark:text-red-400",
+            )}
+          >
+            {profit >= 0 ? "+" : "−"}
+            {formatMoney(Math.abs(profit), locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{t(locale, "bizCanWithdraw")}:</span>
+          <span
+            className={cn(
+              amountClass,
+              safeWithdraw > 0 ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            {formatMoney(safeWithdraw, locale)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BusinessKpis({
+  metrics,
+  safeWithdraw,
+  locale,
+}: {
+  metrics: UnitCardMetrics;
+  safeWithdraw: number;
   locale: "ru" | "en";
 }) {
   const mainItems = [
     {
       label: t(locale, "bizKpiRevenue"),
-      value: `+${formatMoney(income, locale)}`,
+      value: `+${formatMoney(metrics.income, locale)}`,
       tone: "text-emerald-700 dark:text-emerald-400",
     },
     {
       label: t(locale, "bizKpiExpenses"),
-      value: `−${formatMoney(expense, locale)}`,
+      value: `−${formatMoney(metrics.expense, locale)}`,
       tone: "text-red-700 dark:text-red-400",
     },
     {
       label: t(locale, "bizUnitProfit"),
-      value: `${profit >= 0 ? "+" : "−"}${formatMoney(Math.abs(profit), locale)}`,
+      value: `${metrics.profit >= 0 ? "+" : "−"}${formatMoney(Math.abs(metrics.profit), locale)}`,
       tone:
-        profit >= 0
+        metrics.profit >= 0
           ? "text-emerald-700 dark:text-emerald-400"
           : "text-red-700 dark:text-red-400",
     },
@@ -463,29 +514,29 @@ function BusinessTotalBalance({
   const supportItems = [
     {
       label: locale === "ru" ? "Резерв" : "Reserve",
-      value: `${formatMoney(cushionBalance, locale)} / ${formatMoney(cushionTarget, locale)}`,
+      value: `${formatMoney(metrics.cushionBalance, locale)} / ${formatMoney(metrics.cushionTarget, locale)}`,
       tone: "text-amber-700 dark:text-amber-300",
     },
     {
       label: locale === "ru" ? "Налог" : "Tax",
-      value: formatMoney(taxReserve, locale),
+      value: formatMoney(metrics.taxReserve, locale),
       tone:
-        taxReserve > 0
+        metrics.taxReserve > 0
           ? "text-amber-700 dark:text-amber-300"
           : "text-muted-foreground",
     },
     {
       label: locale === "ru" ? "Долги" : "Debts",
-      value: formatMoney(debtMinPayment, locale),
+      value: formatMoney(metrics.debtMinPayment, locale),
       tone:
-        debtMinPayment > 0
+        metrics.debtMinPayment > 0
           ? "text-amber-700 dark:text-amber-300"
           : "text-muted-foreground",
     },
   ];
 
   return (
-    <div className="rounded-lg border-2 border-primary/20 bg-card px-2.5 py-2 shadow-sm">
+    <div className="rounded-lg border border-border/80 bg-card px-2.5 py-2">
       <div className="grid grid-cols-2 gap-1.5">
         {mainItems.map((item) => (
           <div key={item.label} className="min-w-0 rounded-md bg-muted/55 px-2 py-1.5">
@@ -799,22 +850,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         acc.expense += metrics.expense;
         acc.profit += metrics.profit;
         acc.safeWithdraw += safeWithdrawAmount(metrics);
-        acc.cushionBalance += metrics.cushionBalance;
-        acc.cushionTarget += metrics.cushionTarget;
-        acc.taxReserve += metrics.taxReserve;
-        acc.debtMinPayment += metrics.debtMinPayment;
         return acc;
       },
-      {
-        income: 0,
-        expense: 0,
-        profit: 0,
-        safeWithdraw: 0,
-        cushionBalance: 0,
-        cushionTarget: 0,
-        taxReserve: 0,
-        debtMinPayment: 0,
-      },
+      { income: 0, expense: 0, profit: 0, safeWithdraw: 0 },
     );
   }, [visibleUnits, unitMetricsMap]);
   const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
@@ -981,10 +1019,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               expense={totalMetrics.expense}
               profit={totalMetrics.profit}
               safeWithdraw={totalMetrics.safeWithdraw}
-              cushionBalance={totalMetrics.cushionBalance}
-              cushionTarget={totalMetrics.cushionTarget}
-              taxReserve={totalMetrics.taxReserve}
-              debtMinPayment={totalMetrics.debtMinPayment}
               locale={locale}
             />
           </div>
@@ -1006,10 +1040,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
             expense={totalMetrics.expense}
             profit={totalMetrics.profit}
             safeWithdraw={totalMetrics.safeWithdraw}
-            cushionBalance={totalMetrics.cushionBalance}
-            cushionTarget={totalMetrics.cushionTarget}
-            taxReserve={totalMetrics.taxReserve}
-            debtMinPayment={totalMetrics.debtMinPayment}
             locale={locale}
           />
         </>
@@ -1044,6 +1074,11 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
       {activeUnit && activeMetrics ? (
         <>
+          <BusinessKpis
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            locale={locale}
+          />
           <BusinessAdvisor
             metrics={activeMetrics}
             safeWithdraw={safeWithdraw}
