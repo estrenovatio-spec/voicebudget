@@ -1322,6 +1322,38 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                         : t(locale, "bizTaxOff")}
                     </p>
                   </div>
+                  <div className="space-y-1">
+                    <label
+                      className="text-xs font-medium text-muted-foreground"
+                      htmlFor="biz-tax-rate"
+                    >
+                      {t(locale, "bizTaxCustomRate")}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="biz-tax-rate"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        value={
+                          activeMetrics.taxRatePct > 0
+                            ? String(activeMetrics.taxRatePct)
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(",", ".");
+                          const next = raw.trim() ? Number(raw) : 0;
+                          updateUnitSettings(activeUnit.id, {
+                            taxRatePct: Number.isFinite(next) ? next : 0,
+                          });
+                        }}
+                        placeholder="6"
+                      />
+                      <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+                        %
+                      </span>
+                    </div>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"

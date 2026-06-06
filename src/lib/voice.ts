@@ -24,6 +24,8 @@ import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
 const MOBILE_MIC_IDLE_MS = 10 * 60_000;
+const MIC_PERMISSION_CACHE_KEY = "voicebudget-mic-permission-ok-at";
+const MIC_PERMISSION_CACHE_MS = 30 * 24 * 60 * 60_000;
 const CAPTURE_START_MS = 5_000;
 const CAPTURE_STOP_MS = 18_000;
 
@@ -138,6 +140,7 @@ type VoiceSession = WavSession | RecorderSession | SpeechSession;
 let session: VoiceSession | null = null;
 let cachedMobileStream: MediaStream | null = null;
 let cachedMobileStreamTimer: number | null = null;
+let micPermissionState: PermissionState | "unknown" = "unknown";
 
 function isMobileUa(): boolean {
   return typeof navigator !== "undefined" && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -175,6 +178,43 @@ function clearCachedMobileStreamTimer(): void {
   if (cachedMobileStreamTimer !== null) {
     window.clearTimeout(cachedMobileStreamTimer);
     cachedMobileStreamTimer = null;
+  }
+}
+
+function readMicPermissionCache(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem(MIC_PERMISSION_CACHE_KEY);
+  const value = raw ? Number(raw) : 0;
+  return Number.isFinite(value) ? value : 0;
+}
+
+function rememberMicPermission(): void {
+  micPermissionState = "granted";
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MIC_PERMISSION_CACHE_KEY, String(Date.now()));
+}
+
+function hasRecentMicPermission(): boolean {
+  const last = readMicPermissionCache();
+  return last > 0 && Date.now() - last < MIC_PERMISSION_CACHE_MS;
+}
+
+async function queryMicPermissionState(): Promise<PermissionState | "unknown"> {
+  if (typeof navigator === "undefined" || !navigator.permissions?.query) {
+    return micPermissionState;
+  }
+  try {
+    const status = await navigator.permissions.query({
+      name: "microphone" as PermissionName,
+    });
+    micPermissionState = status.state;
+    status.onchange = () => {
+      micPermissionState = status.state;
+      if (status.state === "granted") rememberMicPermission();
+    };
+    return status.state;
+  } catch {
+    return micPermissionState;
   }
 }
 
@@ -408,6 +448,11 @@ async function openMicStream(): Promise<MediaStream> {
     return cachedMobileStream;
   }
 
+  const permission = await queryMicPermissionState();
+  if (permission === "denied") {
+    throw new Error("mic_denied");
+  }
+
   const ask = (constraints: MediaStreamConstraints) =>
     Promise.race([
       navigator.mediaDevices.getUserMedia(constraints),
@@ -415,24 +460,46 @@ async function openMicStream(): Promise<MediaStream> {
         window.setTimeout(() => reject(new Error("mic_timeout")), MIC_ASK_MS);
       }),
     ]);
+  const isPermissionError = (error: unknown) => {
+    if (
+      typeof DOMException !== "undefined" &&
+      error instanceof DOMException
+    ) {
+      return error.name === "NotAllowedError" || error.name === "SecurityError";
+    }
+    return (
+      error instanceof Error &&
+      (error.name === "NotAllowedError" || error.name === "SecurityError")
+    );
+  };
 
   // На телефоне — простой запрос без обработки (AGC иногда глушит WebView)
   if (isMobileUa()) {
     try {
-      return await ask({ audio: true });
-    } catch {
-      return ask({
+      const stream = await ask({ audio: true });
+      rememberMicPermission();
+      return stream;
+    } catch (error) {
+      if (isPermissionError(error)) throw new Error("mic_denied");
+      const stream = await ask({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       });
+      rememberMicPermission();
+      return stream;
     }
   }
 
   try {
-    return await ask({
+    const stream = await ask({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
-  } catch {
-    return ask({ audio: true });
+    rememberMicPermission();
+    return stream;
+  } catch (error) {
+    if (isPermissionError(error)) throw new Error("mic_denied");
+    const stream = await ask({ audio: true });
+    rememberMicPermission();
+    return stream;
   }
 }
 
@@ -506,10 +573,15 @@ export async function startVoiceRecording(
   await cancelVoiceRecording();
 
   try {
-    if (isAndroidUa()) {
+    const permission = await queryMicPermissionState();
+    const canReuseMicPermission =
+      permission === "granted" || hasRecentMicPermission() || isLiveStream(cachedMobileStream);
+
+    if (isAndroidUa() && !canReuseMicPermission) {
       const speechSession = await createSpeechSession(locale);
       if (speechSession) {
         session = speechSession;
+        rememberMicPermission();
         return { ok: true };
       }
     }
@@ -520,6 +592,8 @@ export async function startVoiceRecording(
       stopStream(stream);
       return { ok: false, error: "mic_denied" };
     }
+
+    rememberMicPermission();
 
     if (isMobileUa() && !isAndroidUa() && !isIosUa()) {
       const wavSession = await createWavSession(stream);
