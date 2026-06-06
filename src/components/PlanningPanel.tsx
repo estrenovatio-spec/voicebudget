@@ -113,6 +113,17 @@ function debtStrategyLabel(strategy: DebtItem["strategy"], locale: Locale): stri
   return locale === "ru" ? "Лавина" : "Avalanche";
 }
 
+function debtStrategyHelp(strategy: DebtItem["strategy"], locale: Locale): string {
+  if (strategy === "snowball") {
+    return locale === "ru"
+      ? "Снежный ком: сначала закрываем самый маленький долг. Это быстрее даёт ощущение победы и помогает не бросить план."
+      : "Snowball: pay off the smallest debt first. It creates quick wins and helps you stay consistent.";
+  }
+  return locale === "ru"
+    ? "Лавина: сначала гасим долг с самой высокой ставкой. Обычно это математически выгоднее, потому что меньше переплата."
+    : "Avalanche: pay the highest-rate debt first. It is usually mathematically better because it reduces overpayment.";
+}
+
 export function PlanningPanel() {
   const locale = useStore((s) => s.locale);
   const transactions = useTransactions();
@@ -829,14 +840,32 @@ export function PlanningPanel() {
                     <option value="me">{locale === "ru" ? "Я" : "Me"}</option>
                     <option value="partner">{locale === "ru" ? "Партнёр" : "Partner"}</option>
                   </select>
-                  <select
-                    className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    value={debtStrategy}
-                    onChange={(e) => setDebtStrategy(e.target.value as DebtItem["strategy"])}
-                  >
-                    <option value="avalanche">{locale === "ru" ? "Лавина" : "Avalanche"}</option>
-                    <option value="snowball">{locale === "ru" ? "Снежный ком" : "Snowball"}</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-1">
+                    {(["avalanche", "snowball"] as DebtItem["strategy"][]).map((strategy) => (
+                      <div key={strategy} className="flex min-w-0 rounded-md border border-input bg-background p-0.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={debtStrategy === strategy ? "default" : "ghost"}
+                          className="min-w-0 flex-1 px-1.5 text-xs"
+                          onClick={() => setDebtStrategy(strategy)}
+                        >
+                          <span className="truncate">{debtStrategyLabel(strategy, locale)}</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-7 shrink-0 text-xs font-bold"
+                          aria-label={debtStrategyHelp(strategy, locale)}
+                          title={debtStrategyHelp(strategy, locale)}
+                          onClick={() => window.alert(debtStrategyHelp(strategy, locale))}
+                        >
+                          !
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                   <Input
                     type="date"
                     value={debtDate}
