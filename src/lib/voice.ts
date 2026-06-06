@@ -24,9 +24,8 @@ import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MIC_ASK_MS = 12_000;
 const MIN_RECORD_MS = 800;
-const MOBILE_MIC_IDLE_MS = 10 * 60_000;
+const MOBILE_MIC_IDLE_MS = 45 * 60_000;
 const MIC_PERMISSION_CACHE_KEY = "voicebudget-mic-permission-ok-at";
-const MIC_PERMISSION_CACHE_MS = 30 * 24 * 60 * 60_000;
 const CAPTURE_START_MS = 5_000;
 const CAPTURE_STOP_MS = 18_000;
 
@@ -182,22 +181,10 @@ function clearCachedMobileStreamTimer(): void {
   }
 }
 
-function readMicPermissionCache(): number {
-  if (typeof window === "undefined") return 0;
-  const raw = window.localStorage.getItem(MIC_PERMISSION_CACHE_KEY);
-  const value = raw ? Number(raw) : 0;
-  return Number.isFinite(value) ? value : 0;
-}
-
 function rememberMicPermission(): void {
   micPermissionState = "granted";
   if (typeof window === "undefined") return;
   window.localStorage.setItem(MIC_PERMISSION_CACHE_KEY, String(Date.now()));
-}
-
-function hasRecentMicPermission(): boolean {
-  const last = readMicPermissionCache();
-  return last > 0 && Date.now() - last < MIC_PERMISSION_CACHE_MS;
 }
 
 async function queryMicPermissionState(): Promise<PermissionState | "unknown"> {
@@ -574,19 +561,6 @@ export async function startVoiceRecording(
   await cancelVoiceRecording();
 
   try {
-    const permission = await queryMicPermissionState();
-    const canReuseMicPermission =
-      permission === "granted" || hasRecentMicPermission() || isLiveStream(cachedMobileStream);
-
-    if (isAndroidUa() && !canReuseMicPermission) {
-      const speechSession = await createSpeechSession(locale);
-      if (speechSession) {
-        session = speechSession;
-        rememberMicPermission();
-        return { ok: true };
-      }
-    }
-
     const stream = await openMicStream();
     const track = stream.getAudioTracks()[0];
     if (!track || track.readyState !== "live") {
@@ -596,7 +570,7 @@ export async function startVoiceRecording(
 
     rememberMicPermission();
 
-    if (isMobileUa() && !isAndroidUa() && !isIosUa()) {
+    if (isAndroidUa() || (isMobileUa() && !isIosUa())) {
       const wavSession = await createWavSession(stream);
       if (wavSession) {
         session = wavSession;

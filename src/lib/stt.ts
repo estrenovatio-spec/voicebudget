@@ -114,11 +114,6 @@ export async function transcribeAudioFile(
   audio: File,
   locale: string,
 ): Promise<TranscribeResult> {
-  if (!isLlmConfigured()) return { transcript: "", lastError: "no_api_key" };
-
-  const client = getLlmClient();
-  if (!client) return { transcript: "", lastError: "no_client" };
-
   if (audio.size < 64) {
     return { transcript: "", lastError: "audio_too_small" };
   }
@@ -127,6 +122,32 @@ export async function transcribeAudioFile(
   const primaryFmt = audioFormat(audio.type || "", audio.name);
   const altFmt: "webm" | "mp4" = primaryFmt === "mp4" ? "webm" : "mp4";
   const altFile = wrapAudioFile(audio, altFmt);
+  const providers = getSttProviders();
+  const providerFiles =
+    primaryFmt === "wav" || primaryFmt === "ogg"
+      ? [audio]
+      : [audio, altFile];
+
+  for (const provider of providers) {
+    for (const file of providerFiles) {
+      const method = `${provider.id}-${file.name || primaryFmt}`;
+      try {
+        const transcript = await transcribeWhisperFetch(provider, file, locale, 26_000);
+        const ok = accept(transcript, method);
+        if (ok) return ok;
+        if (transcript) lastError = "garbage_filtered";
+      } catch (e) {
+        lastError = e instanceof Error ? e.message.slice(0, 220) : "error";
+      }
+    }
+  }
+
+  if (!isLlmConfigured()) {
+    return { transcript: "", lastError: lastError || "no_api_key" };
+  }
+
+  const client = getLlmClient();
+  if (!client) return { transcript: "", lastError: lastError || "no_client" };
 
   const steps: Array<{ method: string; run: () => Promise<string> }> = [
     {
