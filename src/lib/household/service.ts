@@ -148,7 +148,6 @@ export async function patchHouseholdBalanceOffset(
   householdId: string,
   targetUserId: string,
   offset: number,
-  periodStart?: string,
 ): Promise<BalanceOffsetsByUser> {
   await assertMember(userId, householdId);
   const members = await prisma.householdMember.findMany({
@@ -160,13 +159,7 @@ export async function patchHouseholdBalanceOffset(
   }
 
   const current = await readHouseholdBalanceOffsets(householdId);
-  const next = {
-    ...current,
-    [targetUserId]: {
-      offset,
-      periodStart: periodStart?.trim() || null,
-    },
-  };
+  const next = { ...current, [targetUserId]: offset };
 
   try {
     await prisma.household.update({

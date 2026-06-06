@@ -190,7 +190,6 @@ export async function apiPatchBalanceOffset(
   token: string,
   targetUserId: string,
   offset: number,
-  periodStart?: string,
 ) {
   const res = await apiFetch("/api/household/balance-offsets", {
     method: "PATCH",
@@ -198,7 +197,7 @@ export async function apiPatchBalanceOffset(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ targetUserId, offset, periodStart }),
+    body: JSON.stringify({ targetUserId, offset }),
   });
   return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }

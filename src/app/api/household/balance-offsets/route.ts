@@ -13,7 +13,6 @@ import { buildSyncPayload, patchHouseholdBalanceOffset } from "@/lib/household/s
 const bodySchema = z.object({
   targetUserId: z.string().min(1),
   offset: z.number().finite(),
-  periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -35,7 +34,6 @@ export async function PATCH(req: NextRequest) {
       session.householdId,
       body.targetUserId,
       body.offset,
-      body.periodStart,
     );
     const sync = await buildSyncPayload(session.householdId, session.userId);
     return NextResponse.json({ ok: true, sync });
