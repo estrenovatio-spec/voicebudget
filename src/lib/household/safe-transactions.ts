@@ -255,6 +255,10 @@ export async function deleteTransactionForHousehold(
                   { categoryId: PARTNER_TRANSFER_CATEGORY_ID },
                   { note: { contains: "партн", mode: "insensitive" } },
                   { note: { contains: "partner", mode: "insensitive" } },
+                  { note: { contains: "жене", mode: "insensitive" } },
+                  { note: { contains: "жена", mode: "insensitive" } },
+                  { note: { contains: "мужу", mode: "insensitive" } },
+                  { note: { contains: "муж", mode: "insensitive" } },
                 ],
               },
               {
@@ -282,6 +286,10 @@ export async function deleteTransactionForHousehold(
           OR "categoryId" = ${PARTNER_TRANSFER_CATEGORY_ID}
           OR LOWER(note) LIKE '%партн%'
           OR LOWER(note) LIKE '%partner%'
+          OR LOWER(note) LIKE '%жене%'
+          OR LOWER(note) LIKE '%жена%'
+          OR LOWER(note) LIKE '%мужу%'
+          OR LOWER(note) LIKE '%муж%'
         )
         AND (id = ${id} OR type = ${oppositeType})
     `;

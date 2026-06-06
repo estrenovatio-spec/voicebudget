@@ -13,8 +13,28 @@ export function isPartnerTransferLike(tx: Pick<Transaction, "categoryId" | "note
   if (isPartnerTransferCategory(tx.categoryId)) return true;
   const note = tx.note.toLowerCase();
   return (
-    note.includes("перевод") &&
-    (note.includes("партн") || note.includes("partner"))
+    (note.includes("перевод") || note.includes("transfer")) &&
+    (note.includes("партн") ||
+      note.includes("partner") ||
+      note.includes("жене") ||
+      note.includes("жена") ||
+      note.includes("мужу") ||
+      note.includes("муж"))
+  );
+}
+
+export function isPartnerTransferPairCandidate(
+  base: Pick<Transaction, "id" | "amount" | "type" | "date" | "categoryId" | "note" | "transferPairId">,
+  candidate: Pick<Transaction, "id" | "amount" | "type" | "date" | "categoryId" | "note" | "transferPairId">,
+): boolean {
+  if (candidate.id === base.id) return true;
+  if (base.transferPairId && candidate.transferPairId === base.transferPairId) return true;
+  return (
+    isPartnerTransferLike(base) &&
+    isPartnerTransferLike(candidate) &&
+    candidate.amount === base.amount &&
+    candidate.date === base.date &&
+    candidate.type !== base.type
   );
 }
 

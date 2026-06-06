@@ -38,7 +38,11 @@ import {
   findHouseholdPartnerUserId,
 } from "@/lib/cloud/viewer-identity";
 import { countsInBalance, countsInHouseholdTotal } from "@/lib/transaction-confirmed";
-import { buildPartnerTransferPair, isPartnerTransferLike } from "@/lib/partner-transfer";
+import {
+  buildPartnerTransferPair,
+  isPartnerTransferLike,
+  isPartnerTransferPairCandidate,
+} from "@/lib/partner-transfer";
 import { GOAL_JAR_CATEGORY_ID } from "@/lib/planning/goal-transfer";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import {
@@ -787,21 +791,10 @@ export const useStore = create<StoreState>()(
             biz.removePassiveReceiptByFamilyTxId(id);
           });
         }
-        const pairId = tx?.transferPairId;
-        const idsToDelete = pairId
-          ? get()
-              .transactions.filter((t) => t.transferPairId === pairId)
-              .map((t) => t.id)
-          : tx && isPartnerTransferLike(tx)
+        const idsToDelete =
+          tx && isPartnerTransferLike(tx)
             ? get()
-                .transactions.filter(
-                  (t) =>
-                    t.id === id ||
-                    (isPartnerTransferLike(t) &&
-                      t.amount === tx.amount &&
-                      t.date === tx.date &&
-                      t.type !== tx.type),
-                )
+                .transactions.filter((t) => isPartnerTransferPairCandidate(tx, t))
                 .map((t) => t.id)
             : [id];
         let goalAfterDelete: SavingsGoal | null = null;
