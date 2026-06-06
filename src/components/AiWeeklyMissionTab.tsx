@@ -63,9 +63,11 @@ function missionToneClass(tone: AiMission["tone"]): string {
   return "border-primary/20 bg-primary/5";
 }
 
-function isChildCareCategory(category: string): boolean {
+function essentialCategoryKind(
+  category: string,
+): "child" | "health" | "debt" | "emergency" | null {
   const normalized = category.toLowerCase();
-  return [
+  if ([
     "дет",
     "реб",
     "сад",
@@ -79,7 +81,85 @@ function isChildCareCategory(category: string): boolean {
     "kid",
     "school",
     "education",
-  ].some((token) => normalized.includes(token));
+  ].some((token) => normalized.includes(token))) {
+    return "child";
+  }
+  if ([
+    "здоров",
+    "мед",
+    "лекар",
+    "аптек",
+    "врач",
+    "клиник",
+    "анализ",
+    "стомат",
+    "health",
+    "medical",
+    "medicine",
+    "pharmacy",
+    "doctor",
+    "clinic",
+    "dental",
+  ].some((token) => normalized.includes(token))) {
+    return "health";
+  }
+  if ([
+    "долг",
+    "кредит",
+    "заём",
+    "займ",
+    "ипотек",
+    "loan",
+    "debt",
+    "credit",
+    "mortgage",
+  ].some((token) => normalized.includes(token))) {
+    return "debt";
+  }
+  if ([
+    "пожар",
+    "авар",
+    "сроч",
+    "ремонт",
+    "штраф",
+    "emergency",
+    "urgent",
+    "repair",
+    "fine",
+  ].some((token) => normalized.includes(token))) {
+    return "emergency";
+  }
+  return null;
+}
+
+function essentialHabitDetail(
+  kind: NonNullable<ReturnType<typeof essentialCategoryKind>>,
+  avgAmount: number,
+  locale: Locale,
+): string {
+  const amount = formatMoney(avgAmount, locale);
+  if (locale !== "ru") {
+    if (kind === "health") {
+      return `Average check ${amount}. Do not cut health blindly: check what is recurring, what can be planned, and whether documents/insurance can reduce pressure.`;
+    }
+    if (kind === "debt") {
+      return `Average payment ${amount}. Debt is a priority: check rate, minimum payment, and choose avalanche or snowball repayment.`;
+    }
+    if (kind === "emergency") {
+      return `Average check ${amount}. Treat it as an emergency signal: separate one-off fires from recurring risks and rebuild a small reserve.`;
+    }
+    return `Average check ${amount}. Do not cut child-related spending blindly: check what is included, payment plan, and safe optimizations.`;
+  }
+  if (kind === "health") {
+    return `Средний чек ${amount}. Здоровье не режем вслепую: проверьте, что обязательно, что можно запланировать заранее, и где помогут документы, ДМС или налоговый вычет.`;
+  }
+  if (kind === "debt") {
+    return `Средний платёж ${amount}. Долги — приоритет: проверьте ставку, минимальный платёж и выберите стратегию погашения — лавина или снежный ком.`;
+  }
+  if (kind === "emergency") {
+    return `Средний чек ${amount}. Это не статья для жёсткой экономии, а сигнал: отделите разовый пожар от повторяющегося риска и восстановите небольшой резерв.`;
+  }
+  return `Средний чек ${amount}. Детские расходы не режем вслепую: проверьте, что входит в сумму, план платежей и где можно оптимизировать без вреда для ребёнка.`;
 }
 
 function buildWeeklyMissions(params: {
@@ -140,23 +220,23 @@ function buildWeeklyMissions(params: {
   }
 
   if (habit && habit.sharePercent >= 25) {
-    const childCare = isChildCareCategory(habit.category);
+    const essentialKind = essentialCategoryKind(habit.category);
     add({
       id: `habit:${habit.category}`,
       tone: "habit",
       title: isRu
-        ? childCare
+        ? essentialKind
           ? `Проверить статью «${habit.category}»`
           : `Минус один чек: ${habit.category}`
-        : childCare
+        : essentialKind
           ? `Review "${habit.category}"`
           : `One less check: ${habit.category}`,
       detail: isRu
-        ? childCare
-          ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Детские расходы не режем вслепую: проверьте, что входит в сумму, план платежей и где можно оптимизировать без вреда для ребёнка.`
+        ? essentialKind
+          ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
           : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Если убрать один такой расход в неделю, уже появится запас.`
-        : childCare
-          ? `Average check ${formatMoney(habit.avgAmount, locale)}. Do not cut child-related spending blindly: check what is included, payment plan, and safe optimizations.`
+        : essentialKind
+          ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
           : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
     });
   }
