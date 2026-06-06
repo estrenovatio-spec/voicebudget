@@ -42,6 +42,8 @@ import type { Locale } from "@/types";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
 import type { DebtItem, RecurringFrequency, SavingsGoal } from "@/types/planning";
 
+const HOUSEHOLD_DEBT_STRATEGY_KEY = "voicebudget-household-debt-strategy";
+
 function replaceTokens(template: string, tokens: Record<string, string>): string {
   let s = template;
   for (const [key, value] of Object.entries(tokens)) {
@@ -122,6 +124,24 @@ function debtStrategyHelp(strategy: DebtItem["strategy"], locale: Locale): strin
   return locale === "ru"
     ? "Лавина: сначала гасим долг с самой высокой ставкой. Обычно это математически выгоднее, потому что меньше переплата."
     : "Avalanche: pay the highest-rate debt first. It is usually mathematically better because it reduces overpayment.";
+}
+
+function sortDebtsByStrategy(debts: DebtItem[], strategy: DebtItem["strategy"]): DebtItem[] {
+  const today = todayIso();
+  return [...debts].sort((a, b) => {
+    const aOverdue = a.nextPaymentDate ? a.nextPaymentDate < today : false;
+    const bOverdue = b.nextPaymentDate ? b.nextPaymentDate < today : false;
+    if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+    if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
+    if (strategy === "snowball") {
+      if (a.balance !== b.balance) return a.balance - b.balance;
+      return (b.ratePct ?? 0) - (a.ratePct ?? 0);
+    }
+    const ar = a.ratePct ?? -1;
+    const br = b.ratePct ?? -1;
+    if (br !== ar) return br - ar;
+    return a.balance - b.balance;
+  });
 }
 
 export function PlanningPanel() {
@@ -222,17 +242,26 @@ export function PlanningPanel() {
     }),
     [debts],
   );
+  const sortedDebts = useMemo(
+    () => sortDebtsByStrategy(debts, debtStrategy),
+    [debts, debtStrategy],
+  );
   const debtFocus = useMemo(() => {
-    const active = debts.filter((d) => d.balance > 0);
+    const active = sortedDebts.filter((d) => d.balance > 0);
     if (active.length === 0) return null;
-    return [...active].sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
-      const ar = a.ratePct ?? 0;
-      const br = b.ratePct ?? 0;
-      if (br !== ar) return br - ar;
-      return a.balance - b.balance;
-    })[0];
-  }, [debts]);
+    return active[0];
+  }, [sortedDebts]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(HOUSEHOLD_DEBT_STRATEGY_KEY);
+    if (stored === "snowball" || stored === "avalanche") {
+      setDebtStrategy(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(HOUSEHOLD_DEBT_STRATEGY_KEY, debtStrategy);
+  }, [debtStrategy]);
 
   const editingGoal = editGoalId
     ? customGoals.find((g) => g.id === editGoalId) ?? null
@@ -722,8 +751,45 @@ export function PlanningPanel() {
                 ) : null}
               </div>
 
+              <div className="rounded-lg border border-border/80 bg-background p-2">
+                <p className="text-xs font-medium text-foreground">
+                  {locale === "ru" ? "Стратегия погашения" : "Repayment strategy"}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  {locale === "ru"
+                    ? "Выберите один раз — список сам поставит первым долг, который лучше гасить."
+                    : "Choose once — the list will place the best debt to pay first."}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-1">
+                  {(["avalanche", "snowball"] as DebtItem["strategy"][]).map((strategy) => (
+                    <div key={strategy} className="flex min-w-0 rounded-md border border-input bg-muted/30 p-0.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={debtStrategy === strategy ? "default" : "ghost"}
+                        className="min-w-0 flex-1 px-1.5 text-xs"
+                        onClick={() => setDebtStrategy(strategy)}
+                      >
+                        <span className="truncate">{debtStrategyLabel(strategy, locale)}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-7 shrink-0 text-xs font-bold"
+                        aria-label={debtStrategyHelp(strategy, locale)}
+                        title={debtStrategyHelp(strategy, locale)}
+                        onClick={() => window.alert(debtStrategyHelp(strategy, locale))}
+                      >
+                        !
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {debts.length > 0 ? (
-                debts.map((debt) => {
+                sortedDebts.map((debt, index) => {
                   const percentPaid =
                     debt.balance <= 0 ? 100 : debt.minPayment > 0 ? Math.min(100, Math.round((debt.minPayment / debt.balance) * 100)) : 0;
                   const overdue = debt.nextPaymentDate ? debt.nextPaymentDate < todayIso() : false;
@@ -733,7 +799,14 @@ export function PlanningPanel() {
                         <div className="min-w-0">
                           <p className="font-medium leading-tight">{debt.name}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            {debtOwnerLabel(debt.owner, locale)} · {debtStrategyLabel(debt.strategy, locale)}
+                            {index === 0
+                              ? locale === "ru"
+                                ? "Гасить первым · "
+                                : "Pay first · "
+                              : locale === "ru"
+                                ? `Очередь ${index + 1} · `
+                                : `Order ${index + 1} · `}
+                            {debtOwnerLabel(debt.owner, locale)}
                             {debt.ratePct ? ` · ${debt.ratePct}%` : ""}
                           </p>
                           <p className="mt-1 text-sm font-semibold tabular-nums">
@@ -824,7 +897,7 @@ export function PlanningPanel() {
                     onChange={(e) => setDebtRate(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <select
                     className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={debtOwner}
@@ -834,32 +907,6 @@ export function PlanningPanel() {
                     <option value="me">{locale === "ru" ? "Я" : "Me"}</option>
                     <option value="partner">{locale === "ru" ? "Партнёр" : "Partner"}</option>
                   </select>
-                  <div className="grid grid-cols-2 gap-1">
-                    {(["avalanche", "snowball"] as DebtItem["strategy"][]).map((strategy) => (
-                      <div key={strategy} className="flex min-w-0 rounded-md border border-input bg-background p-0.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={debtStrategy === strategy ? "default" : "ghost"}
-                          className="min-w-0 flex-1 px-1.5 text-xs"
-                          onClick={() => setDebtStrategy(strategy)}
-                        >
-                          <span className="truncate">{debtStrategyLabel(strategy, locale)}</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-7 shrink-0 text-xs font-bold"
-                          aria-label={debtStrategyHelp(strategy, locale)}
-                          title={debtStrategyHelp(strategy, locale)}
-                          onClick={() => window.alert(debtStrategyHelp(strategy, locale))}
-                        >
-                          !
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-muted-foreground">

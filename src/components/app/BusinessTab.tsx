@@ -57,7 +57,9 @@ import { useStatsPeriod, useStore } from "@/store/useStore";
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
 const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v1";
+const BUSINESS_DEBT_STRATEGY_KEY = "voicebudget-business-debt-strategy";
 type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
+type DebtRepaymentStrategy = "avalanche" | "snowball";
 type BusinessAdvisorTone = "ok" | "warn" | "risk";
 type BusinessAdvisorSignal = {
   label: string;
@@ -428,6 +430,43 @@ function safeWithdrawAmount(metrics: UnitCardMetrics): number {
     0,
     Math.floor(metrics.operatingBalance - metrics.taxReserve - metrics.debtMinPayment),
   );
+}
+
+function debtStrategyLabel(strategy: DebtRepaymentStrategy, locale: "ru" | "en"): string {
+  if (strategy === "snowball") return locale === "ru" ? "Снежный ком" : "Snowball";
+  return locale === "ru" ? "Лавина" : "Avalanche";
+}
+
+function debtStrategyHelp(strategy: DebtRepaymentStrategy, locale: "ru" | "en"): string {
+  if (strategy === "snowball") {
+    return locale === "ru"
+      ? "Снежный ком: сначала закрываем самый маленький долг. Это психологически легче: быстрее видна победа и меньше риск бросить план."
+      : "Snowball: pay off the smallest debt first. It creates quick wins and helps you stay consistent.";
+  }
+  return locale === "ru"
+    ? "Лавина: сначала гасим долг с самой высокой ставкой. Обычно это выгоднее математически: меньше переплата."
+    : "Avalanche: pay the highest-rate debt first. It is usually mathematically better because it reduces overpayment.";
+}
+
+function sortBusinessDebtsByStrategy(
+  debts: BusinessDebt[],
+  strategy: DebtRepaymentStrategy,
+): BusinessDebt[] {
+  const today = new Date().toISOString().slice(0, 10);
+  return [...debts].sort((a, b) => {
+    const aOverdue = a.nextPaymentDate ? a.nextPaymentDate < today : false;
+    const bOverdue = b.nextPaymentDate ? b.nextPaymentDate < today : false;
+    if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+    if (a.priority !== b.priority) return a.priority === "high" ? -1 : 1;
+    if (strategy === "snowball") {
+      if (a.balance !== b.balance) return a.balance - b.balance;
+      return (b.ratePct ?? 0) - (a.ratePct ?? 0);
+    }
+    const ar = a.ratePct ?? -1;
+    const br = b.ratePct ?? -1;
+    if (br !== ar) return br - ar;
+    return a.balance - b.balance;
+  });
 }
 
 function businessAdSpendForPeriod(
@@ -1115,6 +1154,8 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [debtMinPayment, setDebtMinPayment] = useState("");
   const [debtRate, setDebtRate] = useState("");
   const [debtDate, setDebtDate] = useState("");
+  const [businessDebtStrategy, setBusinessDebtStrategy] =
+    useState<DebtRepaymentStrategy>("avalanche");
   const [debtPayId, setDebtPayId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
@@ -1131,7 +1172,15 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     setBusinessAdvisorOpen(
       localStorage.getItem(BUSINESS_ADVISOR_OPEN_KEY) !== "0",
     );
+    const storedDebtStrategy = localStorage.getItem(BUSINESS_DEBT_STRATEGY_KEY);
+    if (storedDebtStrategy === "snowball" || storedDebtStrategy === "avalanche") {
+      setBusinessDebtStrategy(storedDebtStrategy);
+    }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(BUSINESS_DEBT_STRATEGY_KEY, businessDebtStrategy);
+  }, [businessDebtStrategy]);
 
   useEffect(() => {
     if (!ready) return;
@@ -1194,6 +1243,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const activeDebts = useMemo(
     () => (activeUnitId ? debts.filter((d) => d.unitId === activeUnitId) : []),
     [debts, activeUnitId],
+  );
+  const sortedActiveDebts = useMemo(
+    () => sortBusinessDebtsByStrategy(activeDebts, businessDebtStrategy),
+    [activeDebts, businessDebtStrategy],
   );
   const activeAdSpend = useMemo(
     () =>
@@ -1797,7 +1850,45 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
                   {activeDebts.length > 0 ? (
                     <div className="space-y-2">
-                      {activeDebts.map((debt) => {
+                      <div className="rounded-lg border border-border/80 bg-background p-2">
+                        <p className="text-xs font-medium text-foreground">
+                          {locale === "ru" ? "Стратегия погашения" : "Repayment strategy"}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                          {locale === "ru"
+                            ? "Выберите один раз — долги ниже сами встанут в нужном порядке."
+                            : "Choose once — debts below will sort themselves in the right order."}
+                        </p>
+                        <div className="mt-2 grid grid-cols-2 gap-1">
+                          {(["avalanche", "snowball"] as DebtRepaymentStrategy[]).map((strategy) => (
+                            <div key={strategy} className="flex min-w-0 rounded-md border border-input bg-muted/30 p-0.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={businessDebtStrategy === strategy ? "default" : "ghost"}
+                                className="min-w-0 flex-1 px-1.5 text-xs"
+                                onClick={() => setBusinessDebtStrategy(strategy)}
+                              >
+                                <span className="truncate">
+                                  {debtStrategyLabel(strategy, locale)}
+                                </span>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-7 shrink-0 text-xs font-bold"
+                                aria-label={debtStrategyHelp(strategy, locale)}
+                                title={debtStrategyHelp(strategy, locale)}
+                                onClick={() => window.alert(debtStrategyHelp(strategy, locale))}
+                              >
+                                !
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {sortedActiveDebts.map((debt, index) => {
                         const overdue = debt.nextPaymentDate ? debt.nextPaymentDate < new Date().toISOString().slice(0, 10) : false;
                         return (
                           <div key={debt.id} className="rounded-lg border p-3">
@@ -1805,6 +1896,13 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                               <div className="min-w-0">
                                 <p className="font-medium leading-tight">{debt.name}</p>
                                 <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {index === 0
+                                    ? locale === "ru"
+                                      ? "Гасить первым · "
+                                      : "Pay first · "
+                                    : locale === "ru"
+                                      ? `Очередь ${index + 1} · `
+                                      : `Order ${index + 1} · `}
                                   {debt.ratePct ? `${debt.ratePct}% · ` : ""}
                                   {debt.nextPaymentDate ?? (locale === "ru" ? "дата не задана" : "no date")}
                                 </p>
