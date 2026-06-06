@@ -160,7 +160,30 @@ export function MoreReportsTab() {
     );
   };
 
+  const openServerExport = (type: "xls" | "pdf") => {
+    if (!token) return false;
+    const params = new URLSearchParams({
+      type,
+      from: period.from,
+      to: period.to,
+      locale,
+      token,
+    });
+    const url = `${window.location.origin}/api/reports/export?${params.toString()}`;
+    toast(
+      locale === "ru"
+        ? "Открываю файл. Если Telegram спросит — выберите «Скачать» или «Поделиться»."
+        : "Opening file. If Telegram asks, choose Download or Share.",
+      "default",
+    );
+    window.setTimeout(() => {
+      window.location.assign(url);
+    }, 80);
+    return true;
+  };
+
   const exportExcel = async () => {
+    if (openServerExport("xls")) return;
     const workbook = buildBudgetExcelXml({
       transactions: periodTxs,
       categories,
@@ -188,6 +211,7 @@ export function MoreReportsTab() {
       );
       return;
     }
+    if (openServerExport("pdf")) return;
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
