@@ -682,11 +682,6 @@ export function PlanningPanel() {
                     <p className="font-medium">
                       {locale === "ru" ? "Долги и обязательства" : "Debts and obligations"}
                     </p>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {locale === "ru"
-                        ? "Сначала просрочки, здоровье и пожары; затем дорогие ставки. Копилки и комфорт — после обязательных платежей."
-                        : "Overdue payments, health, and emergencies first; then high rates. Savings and comfort come after obligations."}
-                    </p>
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
