@@ -4,8 +4,8 @@ import { createLlmChatCompletion, getLlmClient, isLlmConfigured } from "@/lib/ll
 import { extractJsonFromLlmContent } from "@/lib/llm-json";
 
 const missionSchema = z.object({
-  title: z.string().min(6).max(80),
-  detail: z.string().min(20).max(360),
+  title: z.string().min(6).max(140),
+  detail: z.string().min(20).max(700),
   tone: z.enum(["focus", "save", "learn", "habit"]),
 });
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true, mission: validated.data });
     } catch (error) {
-      console.error("[weekly-mission]", error);
+      console.warn("[weekly-mission fallback]", error);
       return NextResponse.json({
         success: true,
         mission: fallbackMission(parsed.data),
