@@ -393,12 +393,22 @@ export function PlanningPanel() {
       {open ? (
         <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
-            <TabsList className="mb-3 grid w-full grid-cols-5">
-              <TabsTrigger value="goals">{t(locale, "planningTabGoals")}</TabsTrigger>
-              <TabsTrigger value="limits">{t(locale, "planningTabLimits")}</TabsTrigger>
-              <TabsTrigger value="debts">{locale === "ru" ? "Долги" : "Debts"}</TabsTrigger>
-              <TabsTrigger value="emergency">{t(locale, "planningTabEmergency")}</TabsTrigger>
-              <TabsTrigger value="recurring">{t(locale, "planningTabRecurring")}</TabsTrigger>
+            <TabsList className="mb-3 flex h-auto w-full justify-start gap-1 overflow-x-auto overflow-y-hidden p-1">
+              <TabsTrigger value="goals" className="min-w-fit shrink-0 px-3 text-xs">
+                {t(locale, "planningTabGoals")}
+              </TabsTrigger>
+              <TabsTrigger value="limits" className="min-w-fit shrink-0 px-3 text-xs">
+                {t(locale, "planningTabLimits")}
+              </TabsTrigger>
+              <TabsTrigger value="debts" className="min-w-fit shrink-0 px-3 text-xs">
+                {locale === "ru" ? "Долги" : "Debts"}
+              </TabsTrigger>
+              <TabsTrigger value="emergency" className="min-w-fit shrink-0 px-3 text-xs">
+                {t(locale, "planningTabEmergency")}
+              </TabsTrigger>
+              <TabsTrigger value="recurring" className="min-w-fit shrink-0 px-3 text-xs">
+                {t(locale, "planningTabRecurring")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="goals" className="space-y-3">
