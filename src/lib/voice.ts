@@ -5,6 +5,7 @@ import { fallbackParseMany, splitTranscriptClauses, detectType } from "@/lib/ai"
 import { refineParsedTransaction, sanitizeCategories } from "@/lib/categories";
 import {
   applyDetectedOwner,
+  applyDetectedOwnersWithCarry,
   normalizeOwnerDetectOptions,
 } from "@/lib/detect-owner";
 import { hasPartnerBudget } from "@/lib/owner-labels";
@@ -854,8 +855,14 @@ export async function parseVoiceTranscripts(
             "me",
           );
         });
-        return {
+        const carriedItems = applyDetectedOwnersWithCarry(
           items,
+          items.map((item, index) => clauses[index]?.trim() || item.note?.trim() || text),
+          ownerOpts,
+          "me",
+        );
+        return {
+          items: carriedItems,
           usedFallback: Boolean(json.fallback),
         };
       }
@@ -877,9 +884,10 @@ export async function parseVoiceTranscripts(
       );
     }
     const clauses = splitTranscriptClauses(text);
-    const items = local.map((item, index) =>
-      applyDetectedOwner(item, clauses[index]?.trim() || item.note?.trim() || text, ownerOpts, "me"),
+    const itemClauses = local.map(
+      (item, index) => clauses[index]?.trim() || item.note?.trim() || text,
     );
+    const items = applyDetectedOwnersWithCarry(local, itemClauses, ownerOpts, "me");
     return { items, usedFallback: true };
   }
   return null;

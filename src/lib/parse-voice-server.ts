@@ -17,7 +17,7 @@ import {
 } from "@/lib/llm";
 import { extractJsonFromLlmContent } from "@/lib/llm-json";
 import {
-  applyDetectedOwner,
+  applyDetectedOwnersWithCarry,
   normalizeOwnerDetectOptions,
   type OwnerDetectOptions,
 } from "@/lib/detect-owner";
@@ -99,10 +99,10 @@ function applyOwnersToItems(
   ownerOpts: OwnerDetectOptions,
 ): ParsedTransaction[] {
   const clauses = splitTranscriptClauses(fullText);
-  return items.map((item, index) => {
-    const clause = clauses[index]?.trim() || item.note?.trim() || fullText;
-    return applyDetectedOwner(item, clause, ownerOpts, item.owner ?? "me");
-  });
+  const itemClauses = items.map(
+    (item, index) => clauses[index]?.trim() || item.note?.trim() || fullText,
+  );
+  return applyDetectedOwnersWithCarry(items, itemClauses, ownerOpts, "me");
 }
 
 export async function parseTranscriptServerMany(

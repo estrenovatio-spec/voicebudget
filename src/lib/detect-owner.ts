@@ -318,3 +318,28 @@ export function applyDetectedOwner<T extends { owner?: BudgetOwner }>(
   }
   return { ...data, owner: fallbackOwner };
 }
+
+export function applyDetectedOwnersWithCarry<T extends { owner?: BudgetOwner }>(
+  items: readonly T[],
+  clauses: readonly string[],
+  opts: OwnerDetectOptions | string | null | undefined,
+  fallbackOwner: BudgetOwner,
+): (T & { owner: BudgetOwner })[] {
+  let currentExplicitOwner: BudgetOwner | null = null;
+
+  return items.map((item, index) => {
+    const clause = clauses[index]?.trim() || "";
+    const detected = detectOwnerFromTranscript(clause, opts);
+    if (detected) {
+      currentExplicitOwner = detected;
+      return { ...item, owner: detected };
+    }
+    if (currentExplicitOwner) {
+      return { ...item, owner: currentExplicitOwner };
+    }
+    if (item.owner === "me" || item.owner === "partner") {
+      return { ...item, owner: item.owner };
+    }
+    return { ...item, owner: fallbackOwner };
+  });
+}
