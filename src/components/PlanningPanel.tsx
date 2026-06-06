@@ -863,7 +863,7 @@ export function PlanningPanel() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-muted-foreground">
-                        {locale === "ru" ? "Дата платежа" : "Payment date"}
+                        {locale === "ru" ? "Напоминание: дата платежа" : "Reminder: payment date"}
                       </span>
                       <Button
                         type="button"
@@ -883,8 +883,8 @@ export function PlanningPanel() {
                         onClick={() =>
                           window.alert(
                             locale === "ru"
-                              ? "Это дата ближайшего обязательного платежа или день, когда долг нужно отдать. Она нужна, чтобы не пропустить срок."
-                              : "This is the next required payment date or the date when the debt is due. It helps you avoid missing the deadline.",
+                              ? "Это дата ближайшего обязательного платежа или день, когда долг нужно отдать. По этой дате приложение подсветит просрочку, чтобы не пропустить срок."
+                              : "This is the next required payment date or the date when the debt is due. The app will highlight overdue payments based on this date.",
                           )
                         }
                       >
@@ -895,7 +895,11 @@ export function PlanningPanel() {
                       type="date"
                       value={debtDate}
                       onChange={(e) => setDebtDate(e.target.value)}
-                      aria-label={locale === "ru" ? "Дата платежа" : "Payment date"}
+                      aria-label={
+                        locale === "ru"
+                          ? "Напоминание: дата платежа"
+                          : "Reminder: payment date"
+                      }
                     />
                   </div>
                 </div>
