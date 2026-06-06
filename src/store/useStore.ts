@@ -1400,7 +1400,7 @@ export const useStore = create<StoreState>()(
 export const useTransactions = () => useStore((s) => s.transactions);
 export const useCategories = () => useStore((s) => s.categories);
 
-function useViewerMappedTransactions(forBalance = false): Transaction[] {
+export function useViewerMappedTransactions(forBalance = false): Transaction[] {
   const transactions = useStore((s) => s.transactions);
   const cloudUserId = useCloudStore((s) => s.cloudUserId);
   const token = useCloudStore((s) => s.token);

@@ -7,7 +7,7 @@ import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getAiMemoryRules } from "@/lib/ai-memory";
 import { getCategoryLabel } from "@/lib/categories";
 import { formatMoney } from "@/lib/format-money";
-import { useCategories, useStore, useTransactions } from "@/store/useStore";
+import { useCategories, useStore, useViewerMappedTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
 
 type AiMission = {
@@ -222,27 +222,31 @@ export function AiWeeklyMissionTab() {
   const locale = useStore((s) => s.locale);
   const savingsGoals = useStore((s) => s.savingsGoals);
   const categoryBudgets = useStore((s) => s.categoryBudgets);
-  const transactions = useTransactions();
+  const transactions = useViewerMappedTransactions(false);
   const categories = useCategories();
   const [doneMissions, setDoneMissions] = useState(readDoneMissions);
 
   const period = useMemo(() => getCurrentWeekPeriod(), []);
+  const personalTransactions = useMemo(
+    () => transactions.filter((tx) => tx.owner === "me"),
+    [transactions],
+  );
 
   const learnedRulesCount = getAiMemoryRules().length;
   const weekTransactionsCount = useMemo(
     () =>
-      transactions.filter(
+      personalTransactions.filter(
         (tx) =>
           tx.confirmed !== false &&
           tx.date >= period.from &&
           tx.date <= period.to,
       ).length,
-    [period.from, period.to, transactions],
+    [period.from, period.to, personalTransactions],
   );
   const ctx = useMemo(
     () =>
       buildAiCoachingContext(
-        transactions,
+        personalTransactions,
         savingsGoals,
         categoryBudgets,
         (id) => getCategoryLabel(id, categories, locale),
@@ -257,8 +261,8 @@ export function AiWeeklyMissionTab() {
       locale,
       period.from,
       period.to,
+      personalTransactions,
       savingsGoals,
-      transactions,
     ],
   );
 
