@@ -165,6 +165,7 @@ interface StoreState {
     fallbackCategoryId: string;
     affectedTransactions: Transaction[];
   }[];
+  restoreArchivedCategory: (archiveId: string) => boolean;
   vehicles: Vehicle[];
   vehiclePrefs: VehicleGaragePrefs;
   /** Последняя машина в заправке (локально, для подстановки) */
@@ -968,6 +969,35 @@ export const useStore = create<StoreState>()(
         }));
         useCloudStore.getState().removeFromLastSyncedRemoteCategoryIds(id);
         void cloudPushCategoryDelete(id);
+        return true;
+      },
+      restoreArchivedCategory: (archiveId) => {
+        const archive = get().deletedCategoryArchive.find((item) => item.id === archiveId);
+        if (!archive) return false;
+        const existingCategory = get().categories.some((cat) => cat.id === archive.category.id);
+        const affectedIds = new Set(archive.affectedTransactions.map((tx) => tx.id));
+        const restoredTxIds: string[] = [];
+        set((state) => {
+          const categories = existingCategory
+            ? state.categories
+            : [...state.categories, { ...archive.category, keywords: [...archive.category.keywords] }];
+          const transactions = state.transactions.map((tx) => {
+            if (!affectedIds.has(tx.id)) return tx;
+            restoredTxIds.push(tx.id);
+            return { ...tx, categoryId: archive.category.id };
+          });
+          return {
+            categories,
+            transactions,
+            deletedCategoryArchive: state.deletedCategoryArchive.filter(
+              (item) => item.id !== archiveId,
+            ),
+          };
+        });
+        void cloudPushCategory(archive.category);
+        for (const id of restoredTxIds) {
+          void cloudPushTransactionUpdate(id, { categoryId: archive.category.id });
+        }
         return true;
       },
       restoreDefaultCategories: () => {

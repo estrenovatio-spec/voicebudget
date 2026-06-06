@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArchiveRestorePanel } from "@/components/ArchiveRestorePanel";
 import { CloudSyncActions } from "@/components/CloudSyncActions";
 import { PaywallPanel } from "@/components/PaywallPanel";
 import { PromoCodeRedeem } from "@/components/PromoCodeRedeem";
@@ -159,6 +160,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
         </p>
 
         <CloudSyncActions embedded />
+        <ArchiveRestorePanel />
 
         {subscription?.enforced && subscription.active && (
           <>

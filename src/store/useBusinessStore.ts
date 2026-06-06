@@ -62,6 +62,7 @@ type BusinessStore = {
   setTaxRatePct: (pct: number) => void;
   addUnit: (name: string) => string | null;
   removeUnit: (id: string) => boolean;
+  restoreDeletedUnitArchive: (archiveId: string) => boolean;
   renameUnit: (id: string, name: string) => void;
   updateUnitSettings: (
     id: string,
@@ -324,6 +325,40 @@ export const useBusinessStore = create<BusinessStore>()(
           deletedUnitsArchive: [archiveEntry, ...deletedUnitsArchive].slice(0, 30),
           passiveReceipts: passiveReceipts.filter((r) => !removedAssetIds.has(r.assetId)),
           selectedUnitId: nextUnits[0]?.id ?? null,
+        });
+        void pushBusinessToCloud();
+        return true;
+      },
+      restoreDeletedUnitArchive: (archiveId) => {
+        const archive = get().deletedUnitsArchive.find((item) => item.id === archiveId);
+        if (!archive) return false;
+        if (get().units.some((unit) => unit.id === archive.unit.id)) return false;
+        set((s) => {
+          const txIds = new Set(s.transactions.map((tx) => tx.id));
+          const assetIds = new Set(s.assets.map((asset) => asset.id));
+          const debtIds = new Set(s.debts.map((debt) => debt.id));
+          const receiptIds = new Set(s.passiveReceipts.map((receipt) => receipt.id));
+          return {
+            units: [archive.unit, ...s.units],
+            transactions: [
+              ...archive.transactions.filter((tx) => !txIds.has(tx.id)),
+              ...s.transactions,
+            ],
+            assets: [
+              ...archive.assets.filter((asset) => !assetIds.has(asset.id)),
+              ...s.assets,
+            ],
+            debts: [
+              ...archive.debts.filter((debt) => !debtIds.has(debt.id)),
+              ...s.debts,
+            ],
+            passiveReceipts: [
+              ...archive.passiveReceipts.filter((receipt) => !receiptIds.has(receipt.id)),
+              ...s.passiveReceipts,
+            ],
+            selectedUnitId: archive.unit.id,
+            deletedUnitsArchive: s.deletedUnitsArchive.filter((item) => item.id !== archiveId),
+          };
         });
         void pushBusinessToCloud();
         return true;
