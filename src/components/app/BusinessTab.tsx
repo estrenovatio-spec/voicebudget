@@ -1024,6 +1024,50 @@ function BusinessQuickEntry({
   );
 }
 
+function BusinessFamilyWithdrawal({
+  amount,
+  locale,
+  onTransfer,
+}: {
+  amount: number;
+  locale: "ru" | "en";
+  onTransfer: () => void;
+}) {
+  const canTransfer = amount > 0;
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">
+            {locale === "ru" ? "Вывод в семью" : "Family withdrawal"}
+          </p>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            {canTransfer
+              ? locale === "ru"
+                ? "Перенести доступную сумму из бизнеса в семейный бюджет."
+                : "Move the available business money to the family budget."
+              : locale === "ru"
+                ? "После налога и обязательств пока нет безопасной суммы к выводу."
+                : "There is no safe withdrawal after tax and obligations yet."}
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          className="max-w-[11rem] shrink-0 whitespace-normal text-right leading-tight"
+          variant={canTransfer ? "default" : "outline"}
+          disabled={!canTransfer}
+          onClick={onTransfer}
+        >
+          {t(locale, "bizUnitToFamily")}{" "}
+          {formatMoney(Math.max(0, amount), locale)}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) {
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
@@ -1401,6 +1445,21 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               );
             }}
           />
+          <BusinessFamilyWithdrawal
+            amount={safeWithdraw}
+            locale={locale}
+            onTransfer={() => {
+              const ok = transferToFamily(activeUnit.id, safeWithdraw);
+              toast(
+                ok
+                  ? t(locale, "bizVoiceFamilyOk", {
+                      amount: formatMoney(safeWithdraw, locale),
+                    })
+                  : t(locale, "bizVoiceFamilyFail"),
+                ok ? "success" : "error",
+              );
+            }}
+          />
 
           <div className="space-y-3 border-t border-border/60 pt-3">
             <div className="grid grid-cols-5 gap-1 rounded-lg bg-muted p-1">
@@ -1700,18 +1759,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   >
                     {t(locale, "bizTaxSetup")}
                   </Button>
-                  {safeWithdraw > 0 ? (
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={() =>
-                        transferToFamily(activeUnit.id, safeWithdraw)
-                      }
-                    >
-                      {t(locale, "bizUnitToFamily")}{" "}
-                      {formatMoney(safeWithdraw, locale)}
-                    </Button>
-                  ) : null}
                 </CardContent>
               </Card>
             ) : null}
