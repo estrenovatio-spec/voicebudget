@@ -27,6 +27,19 @@ const bodySchema = z.object({
     .max(3),
 });
 
+function fallbackMission(input: z.infer<typeof bodySchema>) {
+  return (
+    input.ruleMissions[0] ?? {
+      title: input.locale === "ru" ? "5 дней без пропусков" : "5 days without gaps",
+      detail:
+        input.locale === "ru"
+          ? "Записывайте хотя бы одну операцию в день. Цель — не идеальный бюджет, а непрерывность и привычка."
+          : "Record at least one entry per day. The goal is continuity and habit, not a perfect budget.",
+      tone: "habit" as const,
+    }
+  );
+}
+
 function missionPrompt(input: z.infer<typeof bodySchema>): string {
   const isRu = input.locale === "ru";
   return `
@@ -70,12 +83,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isLlmConfigured()) {
-      return NextResponse.json({ success: false, fallback: true }, { status: 503 });
+      return NextResponse.json({
+        success: true,
+        mission: fallbackMission(parsed.data),
+        fallback: true,
+      });
     }
 
     const openai = getLlmClient();
     if (!openai) {
-      return NextResponse.json({ success: false, fallback: true }, { status: 503 });
+      return NextResponse.json({
+        success: true,
+        mission: fallbackMission(parsed.data),
+        fallback: true,
+      });
     }
 
     try {
@@ -101,7 +122,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, mission: validated.data });
     } catch (error) {
       console.error("[weekly-mission]", error);
-      return NextResponse.json({ success: false, fallback: true }, { status: 200 });
+      return NextResponse.json({
+        success: true,
+        mission: fallbackMission(parsed.data),
+        fallback: true,
+      });
     }
   } catch (error) {
     console.error("[weekly-mission POST]", error);

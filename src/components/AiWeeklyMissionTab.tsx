@@ -19,6 +19,7 @@ type AiMission = {
 
 const MISSION_DONE_KEY = "voicebudget-ai-missions-done-v1";
 const AI_MISSION_CACHE_KEY = "voicebudget-ai-weekly-mission-v1";
+const AI_MISSION_MIN_TRANSACTIONS = 1;
 
 function toIsoDate(d: Date): string {
   const y = d.getFullYear();
@@ -428,7 +429,7 @@ export function AiWeeklyMissionTab() {
       setAiMission(cached);
       return;
     }
-    if (weekTransactionsCount < 3) return;
+    if (weekTransactionsCount < AI_MISSION_MIN_TRANSACTIONS) return;
 
     const controller = new AbortController();
     const run = async () => {
@@ -489,14 +490,13 @@ export function AiWeeklyMissionTab() {
     weekTransactionsCount,
   ]);
 
-  const missions = aiMission
-    ? [
-        aiMission,
-        ...ruleMissions
-          .filter((mission) => mission.title !== aiMission.title)
-          .slice(0, 2),
-      ]
-    : ruleMissions;
+  const mainMission = aiMission ?? ruleMissions[0] ?? null;
+  const supportMissions = mainMission
+    ? ruleMissions
+        .filter((mission) => mission.id !== mainMission.id && mission.title !== mainMission.title)
+        .slice(0, 2)
+    : [];
+  const missions = mainMission ? [mainMission, ...supportMissions] : ruleMissions;
   const allMissionsDone =
     missions.length > 0 && missions.every((mission) => doneMissions.has(mission.id));
 
@@ -522,22 +522,27 @@ export function AiWeeklyMissionTab() {
             ? "Одна неделя - один понятный финансовый шаг. Советник выбирает его по вашим операциям, лимитам, целям и памяти."
             : "One week, one clear money move. The advisor chooses it from your entries, limits, goals, and memory."}
         </p>
-        {aiMission ? (
-          <p className="mt-2 text-xs leading-snug text-primary">
-            {locale === "ru"
+        <p className="mt-2 text-xs leading-snug text-primary">
+          {aiMission
+            ? locale === "ru"
               ? "Главная миссия выбрана ИИ по вашему поведению за неделю."
-              : "The main mission was chosen from your weekly behavior."}
-          </p>
-        ) : null}
+              : "The main mission was chosen from your weekly behavior."
+            : locale === "ru"
+              ? "Главная миссия уже выбрана по вашим данным. ИИ усилит её, когда накопится достаточно свежих операций."
+              : "The main mission is selected from your data. AI will strengthen it when there is enough fresh activity."}
+        </p>
       </div>
 
       <ul className="space-y-1.5">
-        {missions.map((mission) => {
+        {missions.map((mission, index) => {
           const done = doneMissions.has(mission.id);
+          const isMain = index === 0;
           return (
             <li
               key={mission.id}
-              className={`flex items-start gap-2 rounded-md border p-2.5 ${missionToneClass(mission.tone)} ${
+              className={`flex items-start gap-2 rounded-md border ${
+                isMain ? "p-3 ring-1 ring-primary/15" : "p-2.5"
+              } ${missionToneClass(mission.tone)} ${
                 done ? "opacity-65" : ""
               }`}
             >
@@ -562,6 +567,11 @@ export function AiWeeklyMissionTab() {
                 )}
               </Button>
               <div className="min-w-0 text-sm leading-snug">
+                {isMain ? (
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-normal text-primary">
+                    {locale === "ru" ? "Главная миссия недели" : "Main weekly mission"}
+                  </p>
+                ) : null}
                 <p className={`font-medium ${done ? "line-through" : ""}`}>
                   {mission.title}
                 </p>
