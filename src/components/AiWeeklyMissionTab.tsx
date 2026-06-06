@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle, Sparkles, Target } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getAiMemoryRules } from "@/lib/ai-memory";
@@ -18,6 +18,7 @@ type AiMission = {
 };
 
 const MISSION_DONE_KEY = "voicebudget-ai-missions-done-v1";
+const AI_MISSION_CACHE_KEY = "voicebudget-ai-weekly-mission-v1";
 
 function toIsoDate(d: Date): string {
   const y = d.getFullYear();
@@ -51,6 +52,26 @@ function readDoneMissions(): Set<string> {
 function writeDoneMissions(done: Set<string>): void {
   try {
     window.localStorage.setItem(MISSION_DONE_KEY, JSON.stringify([...done]));
+  } catch {
+    /* localStorage may be blocked */
+  }
+}
+
+function readCachedAiMission(cacheId: string): AiMission | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(AI_MISSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { cacheId?: string; mission?: AiMission };
+    return parsed.cacheId === cacheId && parsed.mission ? parsed.mission : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAiMission(cacheId: string, mission: AiMission): void {
+  try {
+    window.localStorage.setItem(AI_MISSION_CACHE_KEY, JSON.stringify({ cacheId, mission }));
   } catch {
     /* localStorage may be blocked */
   }
@@ -319,6 +340,7 @@ export function AiWeeklyMissionTab() {
   const transactions = useViewerMappedTransactions(false);
   const categories = useCategories();
   const [doneMissions, setDoneMissions] = useState(readDoneMissions);
+  const [aiMission, setAiMission] = useState<AiMission | null>(null);
 
   const period = useMemo(() => getCurrentWeekPeriod(), []);
   const personalTransactions = useMemo(
@@ -371,18 +393,110 @@ export function AiWeeklyMissionTab() {
     })[0];
   }, [debts]);
 
-  const missions = buildWeeklyMissions({
-    locale,
-    periodStart: period.from,
-    periodEnd: period.to,
-    habit: ctx.personalMemory?.categoryHabits[0] ?? null,
-    signals: ctx.smartSignals,
-    categoryBudgets: ctx.categoryBudgets,
-    savingsGoals: ctx.savingsGoals,
+  const ruleMissions = useMemo(
+    () =>
+      buildWeeklyMissions({
+        locale,
+        periodStart: period.from,
+        periodEnd: period.to,
+        habit: ctx.personalMemory?.categoryHabits[0] ?? null,
+        signals: ctx.smartSignals,
+        categoryBudgets: ctx.categoryBudgets,
+        savingsGoals: ctx.savingsGoals,
+        debtFocus,
+        learnedRulesCount,
+        transactionsCount: weekTransactionsCount,
+      }),
+    [
+      ctx.categoryBudgets,
+      ctx.personalMemory?.categoryHabits,
+      ctx.savingsGoals,
+      ctx.smartSignals,
+      debtFocus,
+      learnedRulesCount,
+      locale,
+      period.from,
+      period.to,
+      weekTransactionsCount,
+    ],
+  );
+  const aiMissionCacheId = `${period.from}:${period.to}:${locale}:v2`;
+
+  useEffect(() => {
+    const cached = readCachedAiMission(aiMissionCacheId);
+    if (cached) {
+      setAiMission(cached);
+      return;
+    }
+    if (weekTransactionsCount < 3) return;
+
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        const res = await fetch("/api/weekly-mission", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locale,
+            periodStart: period.from,
+            periodEnd: period.to,
+            transactionsCount: weekTransactionsCount,
+            learnedRulesCount,
+            context: {
+              personalMemory: ctx.personalMemory,
+              smartSignals: ctx.smartSignals,
+              categoryBudgets: ctx.categoryBudgets,
+              savingsGoals: ctx.savingsGoals,
+              debtFocus,
+            },
+            ruleMissions: ruleMissions.map(({ title, detail, tone }) => ({
+              title,
+              detail,
+              tone,
+            })),
+          }),
+          signal: controller.signal,
+        });
+        const json = (await res.json()) as {
+          success?: boolean;
+          mission?: Omit<AiMission, "id">;
+        };
+        if (!res.ok || !json.success || !json.mission) return;
+        const mission: AiMission = {
+          id: `${period.from}:${period.to}:ai-fin-advisor`,
+          ...json.mission,
+        };
+        setAiMission(mission);
+        writeCachedAiMission(aiMissionCacheId, mission);
+      } catch {
+        /* Rules remain as a stable fallback. */
+      }
+    };
+    void run();
+    return () => controller.abort();
+  }, [
+    aiMissionCacheId,
+    ctx.categoryBudgets,
+    ctx.personalMemory,
+    ctx.savingsGoals,
+    ctx.smartSignals,
     debtFocus,
     learnedRulesCount,
-    transactionsCount: weekTransactionsCount,
-  });
+    locale,
+    period.from,
+    period.to,
+    ruleMissions,
+    weekTransactionsCount,
+  ]);
+
+  const missions = aiMission
+    ? [
+        aiMission,
+        ...ruleMissions
+          .filter((mission) => mission.title !== aiMission.title)
+          .slice(0, 2),
+      ]
+    : ruleMissions;
   const allMissionsDone =
     missions.length > 0 && missions.every((mission) => doneMissions.has(mission.id));
 
@@ -408,6 +522,13 @@ export function AiWeeklyMissionTab() {
             ? "Одна неделя - один понятный финансовый шаг. Советник выбирает его по вашим операциям, лимитам, целям и памяти."
             : "One week, one clear money move. The advisor chooses it from your entries, limits, goals, and memory."}
         </p>
+        {aiMission ? (
+          <p className="mt-2 text-xs leading-snug text-primary">
+            {locale === "ru"
+              ? "Главная миссия выбрана ИИ по вашему поведению за неделю."
+              : "The main mission was chosen from your weekly behavior."}
+          </p>
+        ) : null}
       </div>
 
       <ul className="space-y-1.5">
