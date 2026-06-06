@@ -9,16 +9,16 @@ import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
 import {
   buildBudgetExcelXml,
   buildTransactionsPdfBlob,
-  downloadBlobFile,
-  downloadTextFile,
   filterBusinessTransactionsByPeriod,
   filterTransactionsByPeriod,
+  saveBlobFile,
 } from "@/lib/export/transactions-export";
 import { formatIsoPeriod } from "@/lib/format-date";
 import { t } from "@/lib/i18n";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
+import { useToast } from "@/components/ui/toast";
 
 function defaultPeriod(): { from: string; to: string } {
   const to = new Date();
@@ -100,6 +100,7 @@ export function MoreReportsTab() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [tableReady, setTableReady] = useState(true);
   const [historyKind, setHistoryKind] = useState<"weekly" | "monthly">("weekly");
+  const { toast } = useToast();
 
   const periodTxs = useMemo(
     () => filterTransactionsByPeriod(transactions, period.from, period.to),
@@ -137,7 +138,29 @@ export function MoreReportsTab() {
     return () => window.clearInterval(id);
   }, [loadHistory]);
 
-  const exportExcel = () => {
+  const showSaveResult = (result: "shared" | "downloaded" | "opened" | "failed") => {
+    if (result === "failed") {
+      toast(
+        locale === "ru"
+          ? "Телефон не дал сохранить файл. Попробуйте открыть приложение во внешнем браузере."
+          : "The phone did not allow saving the file. Try opening the app in an external browser.",
+        "error",
+      );
+      return;
+    }
+    toast(
+      result === "shared"
+        ? locale === "ru"
+          ? "Файл готов — выберите, куда сохранить или отправить."
+          : "File is ready — choose where to save or send it."
+        : locale === "ru"
+          ? "Файл сформирован. Если скачивание не видно — проверьте загрузки браузера."
+          : "File created. If you do not see it, check browser downloads.",
+      "success",
+    );
+  };
+
+  const exportExcel = async () => {
     const workbook = buildBudgetExcelXml({
       transactions: periodTxs,
       categories,
@@ -148,15 +171,23 @@ export function MoreReportsTab() {
       periodStart: period.from,
       periodEnd: period.to,
     });
-    downloadTextFile(
+    const result = await saveBlobFile(
       `prosto-budget-${period.from}_${period.to}.xls`,
-      workbook,
-      "application/vnd.ms-excel;charset=utf-8",
+      new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" }),
     );
+    showSaveResult(result);
   };
 
-  const exportPdf = () => {
-    if (periodTxs.length + periodBusinessTxs.length === 0) return;
+  const exportPdf = async () => {
+    if (periodTxs.length + periodBusinessTxs.length === 0) {
+      toast(
+        locale === "ru"
+          ? "За выбранный период нет операций для PDF."
+          : "There are no entries for PDF in the selected period.",
+        "default",
+      );
+      return;
+    }
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
@@ -167,7 +198,8 @@ export function MoreReportsTab() {
       periodEnd: period.to,
       title: t(locale, "moreReportsExportTitle"),
     });
-    downloadBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf);
+    const result = await saveBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf);
+    showSaveResult(result);
   };
 
   return (
@@ -202,7 +234,7 @@ export function MoreReportsTab() {
             variant="default"
             className="gap-1.5 opacity-100"
             disabled={false}
-            onClick={exportExcel}
+            onClick={() => void exportExcel()}
           >
             <FileSpreadsheet className="h-4 w-4" aria-hidden />
             {t(locale, "moreReportsExcel")}
@@ -211,8 +243,8 @@ export function MoreReportsTab() {
             type="button"
             variant="outline"
             className="gap-1.5"
-            disabled={periodTxs.length + periodBusinessTxs.length === 0}
-            onClick={exportPdf}
+            disabled={false}
+            onClick={() => void exportPdf()}
           >
             <FileText className="h-4 w-4" aria-hidden />
             {t(locale, "moreReportsPdf")}

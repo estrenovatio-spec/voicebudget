@@ -431,6 +431,64 @@ export function downloadBlobFile(filename: string, blob: Blob): void {
   }, 60_000);
 }
 
+async function shareBlobFile(filename: string, blob: Blob): Promise<boolean> {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & {
+    canShare?: (data?: ShareData) => boolean;
+    share?: (data: ShareData) => Promise<void>;
+  };
+  if (!nav.share || typeof File === "undefined") return false;
+  const file = new File([blob], filename, { type: blob.type || "application/octet-stream" });
+  try {
+    if (nav.canShare && !nav.canShare({ files: [file] })) return false;
+    await nav.share({ files: [file], title: filename });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isTelegramOrMobileWebView(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.Telegram?.WebApp) return true;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+export async function saveBlobFile(
+  filename: string,
+  blob: Blob,
+): Promise<"shared" | "downloaded" | "opened" | "failed"> {
+  if (isTelegramOrMobileWebView() && (await shareBlobFile(filename, blob))) {
+    return "shared";
+  }
+
+  const url = URL.createObjectURL(blob);
+  let opened = false;
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    if (isTelegramOrMobileWebView()) {
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      opened = Boolean(win);
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return opened ? "opened" : "downloaded";
+  } catch {
+    URL.revokeObjectURL(url);
+  }
+
+  if (await shareBlobFile(filename, blob)) return "shared";
+  return "failed";
+}
+
 export function downloadTextFile(filename: string, content: string, mime: string): void {
   downloadBlobFile(filename, new Blob([content], { type: mime }));
 }
