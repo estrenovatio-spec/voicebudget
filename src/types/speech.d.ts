@@ -48,6 +48,10 @@ interface TelegramWebApp {
   initData?: string;
   platform?: string;
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  downloadFile?: (
+    params: { url: string; file_name: string },
+    callback?: (accepted: boolean) => void,
+  ) => void;
   colorScheme?: "light" | "dark";
   themeParams: Record<string, string | undefined>;
   onEvent?: (eventType: string, eventHandler: () => void) => void;

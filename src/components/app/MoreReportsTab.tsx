@@ -162,6 +162,7 @@ export function MoreReportsTab() {
 
   const openServerExport = (type: "xls" | "pdf") => {
     if (!token) return false;
+    const fileName = `prosto-budget-${period.from}_${period.to}.${type}`;
     const params = new URLSearchParams({
       type,
       from: period.from,
@@ -170,15 +171,36 @@ export function MoreReportsTab() {
       token,
     });
     const url = `${window.location.origin}/api/reports/export?${params.toString()}`;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.downloadFile) {
+      try {
+        tg.downloadFile({ url, file_name: fileName }, (accepted) => {
+          toast(
+            accepted
+              ? locale === "ru"
+                ? "Telegram начал скачивание файла."
+                : "Telegram started downloading the file."
+              : locale === "ru"
+                ? "Telegram не дал скачать файл. Открою ссылку в браузере."
+                : "Telegram did not allow downloading. Opening the file link.",
+            accepted ? "success" : "default",
+          );
+          if (!accepted) window.open(url, "_blank", "noopener,noreferrer");
+        });
+        return true;
+      } catch {
+        /* fallback below */
+      }
+    }
+
     toast(
       locale === "ru"
-        ? "Открываю файл. Если Telegram спросит — выберите «Скачать» или «Поделиться»."
-        : "Opening file. If Telegram asks, choose Download or Share.",
+        ? "Открываю файл ссылкой. Если Telegram спросит — выберите «Скачать» или «Поделиться»."
+        : "Opening file link. If Telegram asks, choose Download or Share.",
       "default",
     );
-    window.setTimeout(() => {
-      window.location.assign(url);
-    }, 80);
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.href = url;
     return true;
   };
 
