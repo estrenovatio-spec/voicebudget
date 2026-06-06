@@ -9,6 +9,7 @@ import {
   listAiAnalysisReports,
   saveAiAnalysisReport,
 } from "@/lib/household/ai-reports";
+import { notifyAiReportReady } from "@/lib/household/ai-report-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -66,16 +67,26 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const report = await saveAiAnalysisReport({
+    const saved = await saveAiAnalysisReport({
       userId: session.userId,
       ...body,
     });
-    if (!report) {
+    if (!saved) {
       return NextResponse.json(
         { ok: false, error: "ai_reports_db_not_migrated" },
         { status: 503 },
       );
     }
+    if (saved.created && !body.fallback) {
+      notifyAiReportReady({
+        userId: session.userId,
+        kind: body.kind,
+        locale: body.locale,
+      }).catch((error) => {
+        console.error("[household/ai-reports notify]", error);
+      });
+    }
+    const report = saved.report;
     return NextResponse.json({ ok: true, report });
   } catch (e) {
     console.error("[household/ai-reports POST]", e);

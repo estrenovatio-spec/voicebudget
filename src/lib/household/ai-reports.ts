@@ -12,6 +12,11 @@ export type AiReportPublic = {
   createdAt: string;
 };
 
+export type SaveAiAnalysisReportResult = {
+  report: AiReportPublic;
+  created: boolean;
+};
+
 export async function isAiReportsTableReady(): Promise<boolean> {
   try {
     const rows = await prisma.$queryRaw<{ n: number }[]>`
@@ -34,10 +39,21 @@ export async function saveAiAnalysisReport(input: {
   tips: string[];
   fallback?: boolean;
   summaryJson?: unknown;
-}): Promise<AiReportPublic | null> {
+}): Promise<SaveAiAnalysisReportResult | null> {
   if (!(await isAiReportsTableReady())) return null;
 
   const kind = input.kind === "monthly" ? AiAnalysisKind.monthly : AiAnalysisKind.weekly;
+
+  const existing = await prisma.aiAnalysisReport.findFirst({
+    where: {
+      userId: input.userId,
+      kind,
+      periodStart: input.periodStart,
+      periodEnd: input.periodEnd,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) return { report: toPublic(existing), created: false };
 
   const row = await prisma.aiAnalysisReport.create({
     data: {
@@ -52,7 +68,7 @@ export async function saveAiAnalysisReport(input: {
     },
   });
 
-  return toPublic(row);
+  return { report: toPublic(row), created: true };
 }
 
 export async function listAiAnalysisReports(
