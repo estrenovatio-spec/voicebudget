@@ -90,9 +90,7 @@ export function AiMemoryCenter() {
   const transactions = useTransactions();
   const categories = useCategories();
   const [learnedRules, setLearnedRules] = useState(() => getAiMemoryRules());
-  const [openDateKey, setOpenDateKey] = useState<string | null>(
-    () => groupRulesByDate(getAiMemoryRules())[0]?.dateKey ?? null,
-  );
+  const [openDateKey, setOpenDateKey] = useState<string | null>(null);
   const memorySignature = learnedRules
     .map((rule) => `${rule.phrase}:${rule.categoryId}:${rule.type}:${rule.weight}`)
     .join("|");
@@ -132,12 +130,8 @@ export function AiMemoryCenter() {
   const ruleGroups = groupRulesByDate(learnedRules);
 
   useEffect(() => {
-    if (ruleGroups.length === 0) {
+    if (openDateKey && !ruleGroups.some((group) => group.dateKey === openDateKey)) {
       setOpenDateKey(null);
-      return;
-    }
-    if (!openDateKey || !ruleGroups.some((group) => group.dateKey === openDateKey)) {
-      setOpenDateKey(ruleGroups[0].dateKey);
     }
   }, [openDateKey, ruleGroups]);
 
