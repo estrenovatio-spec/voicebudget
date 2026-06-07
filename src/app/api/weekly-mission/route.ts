@@ -5,6 +5,7 @@ import { extractJsonFromLlmContent } from "@/lib/llm-json";
 
 const missionSchema = z.object({
   title: z.string().min(6).max(140),
+  principle: z.string().min(10).max(220),
   detail: z.string().min(20).max(700),
   tone: z.enum(["focus", "save", "learn", "habit"]),
 });
@@ -20,6 +21,7 @@ const bodySchema = z.object({
     .array(
       z.object({
         title: z.string(),
+        principle: z.string().optional(),
         detail: z.string(),
         tone: z.enum(["focus", "save", "learn", "habit"]),
       }),
@@ -31,6 +33,10 @@ function fallbackMission(input: z.infer<typeof bodySchema>) {
   return (
     input.ruleMissions[0] ?? {
       title: input.locale === "ru" ? "5 дней без пропусков" : "5 days without gaps",
+      principle:
+        input.locale === "ru"
+          ? "Бюджет работает не от идеальности, а от регулярности."
+          : "A budget works when records are regular, not perfect.",
       detail:
         input.locale === "ru"
           ? "Записывайте хотя бы одну операцию в день. Цель — не идеальный бюджет, а непрерывность и привычка."
@@ -47,6 +53,8 @@ You are a senior financial advisor with 20 years of practical family-finance exp
 Choose ONE weekly mission that builds financial literacy and a useful money habit.
 
 Strict principles:
+- The mission must teach ONE small financial-literacy rule through action.
+- Include "principle": a simple rule a 10-year-old can understand. No jargon.
 - No shame, no fear, no harsh austerity.
 - Do not suggest cutting health, children, education, emergency, debt minimum payments, taxes, or mandatory bills.
 - If a sensitive category is visible, suggest planning, checking documents, splitting payments, insurance/tax deduction, or building reserve.
@@ -54,7 +62,7 @@ Strict principles:
 - Prefer behavior change over generic advice.
 - Use the user's own behavior: categories, repeated phrases, goals, limits, debts, cashflow risk, AI memory.
 - Do not mention that you are an AI.
-- Return JSON only: { "title": string, "detail": string, "tone": "focus" | "save" | "learn" | "habit" }.
+- Return JSON only: { "title": string, "principle": string, "detail": string, "tone": "focus" | "save" | "learn" | "habit" }.
 - Language: ${isRu ? "Russian" : "English"}.
 
 Good mission examples in Russian:
@@ -62,6 +70,12 @@ Good mission examples in Russian:
 - "Проверить обязательный платёж"
 - "Закрепить правило для ИИ"
 - "Пополнить резерв малой суммой"
+
+Good principle examples in Russian:
+- "Сначала обязательные платежи, потом комфорт."
+- "Капитал строится маленькими повторяемыми взносами."
+- "Важные расходы не режут вслепую — их планируют."
+- "Бюджет работает не от идеальности, а от регулярности."
 
 Period: ${input.periodStart} — ${input.periodEnd}
 Transactions this week: ${input.transactionsCount}
@@ -105,7 +119,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              'You choose one weekly financial habit mission. JSON only: { "title": string, "detail": string, "tone": "focus" | "save" | "learn" | "habit" }.',
+              'You choose one weekly financial habit mission. JSON only: { "title": string, "principle": string, "detail": string, "tone": "focus" | "save" | "learn" | "habit" }.',
           },
           { role: "user", content: missionPrompt(parsed.data) },
         ],

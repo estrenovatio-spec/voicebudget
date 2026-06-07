@@ -13,6 +13,7 @@ import type { Locale } from "@/types";
 type AiMission = {
   id: string;
   title: string;
+  principle?: string;
   detail: string;
   tone: "focus" | "save" | "learn" | "habit";
 };
@@ -184,6 +185,47 @@ function essentialHabitDetail(
   return `Средний чек ${amount}. Детские расходы не режем вслепую: проверьте, что входит в сумму, план платежей и где можно оптимизировать без вреда для ребёнка.`;
 }
 
+function literacyPrinciple(
+  kind:
+    | "over_budget"
+    | "cashflow_pause"
+    | "habit"
+    | "essential"
+    | "debt"
+    | "goal"
+    | "memory"
+    | "consistency"
+    | "limit",
+  locale: Locale,
+): string {
+  if (locale !== "ru") {
+    const en: Record<typeof kind, string> = {
+      over_budget: "A limit is not punishment. It is an early signal to adjust.",
+      cashflow_pause: "First required payments, then comfort spending.",
+      habit: "Small repeated expenses matter more than rare big decisions.",
+      essential: "Important spending is planned, not blindly cut.",
+      debt: "Minimum debt payments come before comfort and savings.",
+      goal: "Capital is built by small repeated deposits.",
+      memory: "Correcting mistakes teaches the app your real money language.",
+      consistency: "A budget works when records are regular, not perfect.",
+      limit: "One clear limit is easier to keep than ten vague promises.",
+    };
+    return en[kind];
+  }
+  const ru: Record<typeof kind, string> = {
+    over_budget: "Лимит — не наказание, а ранний сигнал поправить план.",
+    cashflow_pause: "Сначала обязательные платежи, потом комфорт.",
+    habit: "Маленькие повторяющиеся траты часто важнее редких крупных решений.",
+    essential: "Важные расходы не режут вслепую — их планируют.",
+    debt: "Минимальный платёж по долгу важнее комфорта и копилок.",
+    goal: "Капитал строится маленькими повторяемыми взносами.",
+    memory: "Исправления учат приложение вашему настоящему языку денег.",
+    consistency: "Бюджет работает не от идеальности, а от регулярности.",
+    limit: "Один понятный лимит легче удержать, чем десять обещаний себе.",
+  };
+  return ru[kind];
+}
+
 function buildWeeklyMissions(params: {
   locale: Locale;
   periodStart: string;
@@ -222,6 +264,7 @@ function buildWeeklyMissions(params: {
     add({
       id: `over:${overBudget.category}`,
       tone: "focus",
+      principle: literacyPrinciple("over_budget", locale),
       title: isRu
         ? `Пауза в «${overBudget.category}»`
         : `Pause ${overBudget.category}`,
@@ -236,6 +279,7 @@ function buildWeeklyMissions(params: {
     add({
       id: "cashflow-pause",
       tone: "focus",
+      principle: literacyPrinciple("cashflow_pause", locale),
       title: isRu ? "48 часов финансовой паузы" : "48-hour spending pause",
       detail: isRu
         ? "Проверьте обязательные платежи и отложите необязательные покупки на два дня."
@@ -248,6 +292,7 @@ function buildWeeklyMissions(params: {
     add({
       id: `habit:${habit.category}`,
       tone: "habit",
+      principle: literacyPrinciple(essentialKind ? "essential" : "habit", locale),
       title: isRu
         ? essentialKind
           ? `Проверить статью «${habit.category}»`
@@ -269,6 +314,7 @@ function buildWeeklyMissions(params: {
     add({
       id: `debt:${debtFocus.name}`,
       tone: "focus",
+      principle: literacyPrinciple("debt", locale),
       title: isRu ? `Проверить долг «${debtFocus.name}»` : `Review debt "${debtFocus.name}"`,
       detail: isRu
         ? `Остаток ${formatMoney(debtFocus.balance, locale)}, минимальный платёж ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, ставка ${debtFocus.ratePct}%` : ""}. Сначала обязательный платёж, затем копилки и комфорт.`
@@ -290,6 +336,7 @@ function buildWeeklyMissions(params: {
     add({
       id: `goal:${goal.name}`,
       tone: "save",
+      principle: literacyPrinciple("goal", locale),
       title: isRu ? `Пополнить «${goal.name}»` : `Top up "${goal.name}"`,
       detail: isRu
         ? `Мягкая цель недели: ${formatMoney(amount, locale)}. Даже маленькое пополнение закрепляет привычку.`
@@ -301,6 +348,7 @@ function buildWeeklyMissions(params: {
     add({
       id: "teach-ai",
       tone: "learn",
+      principle: literacyPrinciple("memory", locale),
       title: isRu ? "Научить ИИ двум словам" : "Teach AI two phrases",
       detail: isRu
         ? "Запишите пару расходов обычными словами. Если категория ошиблась - исправьте, это усилит память."
@@ -312,6 +360,7 @@ function buildWeeklyMissions(params: {
     add({
       id: "five-days",
       tone: "habit",
+      principle: literacyPrinciple("consistency", locale),
       title: isRu ? "5 дней без пропусков" : "5 days without gaps",
       detail: isRu
         ? "Записывайте хотя бы одну операцию в день. Цель - не идеальный бюджет, а непрерывность."
@@ -323,6 +372,7 @@ function buildWeeklyMissions(params: {
     add({
       id: "one-limit",
       tone: "focus",
+      principle: literacyPrinciple("limit", locale),
       title: isRu ? "Выбрать один лимит недели" : "Pick one weekly limit",
       detail: isRu
         ? "Выберите категорию, которую хотите удержать, и проверяйте её каждый вечер."
@@ -421,7 +471,7 @@ export function AiWeeklyMissionTab() {
       weekTransactionsCount,
     ],
   );
-  const aiMissionCacheId = `${period.from}:${period.to}:${locale}:v2`;
+  const aiMissionCacheId = `${period.from}:${period.to}:${locale}:v3`;
 
   useEffect(() => {
     const cached = readCachedAiMission(aiMissionCacheId);
@@ -450,8 +500,9 @@ export function AiWeeklyMissionTab() {
               savingsGoals: ctx.savingsGoals,
               debtFocus,
             },
-            ruleMissions: ruleMissions.map(({ title, detail, tone }) => ({
+            ruleMissions: ruleMissions.map(({ title, principle, detail, tone }) => ({
               title,
+              principle,
               detail,
               tone,
             })),
@@ -575,6 +626,14 @@ export function AiWeeklyMissionTab() {
                 <p className={`font-medium ${done ? "line-through" : ""}`}>
                   {mission.title}
                 </p>
+                {mission.principle ? (
+                  <p className="mt-1 rounded-sm bg-background/70 px-2 py-1 text-[11px] leading-snug text-foreground/85">
+                    <span className="font-semibold">
+                      {locale === "ru" ? "Правило: " : "Rule: "}
+                    </span>
+                    {mission.principle}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {mission.detail}
                 </p>
