@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { requireSession } from "@/lib/api/household-auth";
 import { buildBudgetExcelWorkbook, filterBusinessTransactionsByPeriod, filterTransactionsByPeriod } from "@/lib/export/transactions-export";
 import { fetchUserBusinessPayload } from "@/lib/business/db";
@@ -9,6 +11,31 @@ import type { BusinessTransaction, BusinessUnit } from "@/lib/business/types";
 import { getCategoryLabel } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
+
+let pdfFontCssCache: string | null = null;
+
+function getPdfFontCss(): string {
+  if (pdfFontCssCache) return pdfFontCssCache;
+  try {
+    const regular = readFileSync(join(process.cwd(), "public/fonts/inter-400.woff")).toString("base64");
+    const semibold = readFileSync(join(process.cwd(), "public/fonts/inter-600.woff")).toString("base64");
+    pdfFontCssCache = `
+      @font-face {
+        font-family: "InterExport";
+        src: url("data:font/woff;base64,${regular}") format("woff");
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: "InterExport";
+        src: url("data:font/woff;base64,${semibold}") format("woff");
+        font-weight: 700;
+      }
+    `;
+  } catch {
+    pdfFontCssCache = "";
+  }
+  return pdfFontCssCache;
+}
 
 function sessionFromRequest(req: NextRequest) {
   const headerSession = requireSession(req);
@@ -275,12 +302,13 @@ async function makePdf(params: {
       const svg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
           <style>
-            .title { font: 700 38px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
-            .meta { font: 24px Arial, "DejaVu Sans", sans-serif; fill: #4b5563; }
-            .head { font: 700 22px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
-            .cell { font: 22px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
+            ${getPdfFontCss()}
+            .title { font: 700 38px "InterExport", Arial, sans-serif; fill: #111827; }
+            .meta { font: 24px "InterExport", Arial, sans-serif; fill: #4b5563; }
+            .head { font: 700 22px "InterExport", Arial, sans-serif; fill: #111827; }
+            .cell { font: 22px "InterExport", Arial, sans-serif; fill: #111827; }
             .bold { font-weight: 700; }
-            .footer { font: 20px Arial, "DejaVu Sans", sans-serif; fill: #6b7280; }
+            .footer { font: 20px "InterExport", Arial, sans-serif; fill: #6b7280; }
           </style>
           <rect width="100%" height="100%" fill="#ffffff"/>
           <text x="72" y="86" class="title">Просто Бюджет</text>
