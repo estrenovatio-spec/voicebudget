@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
 import {
-  buildBudgetExcelXml,
+  buildBudgetExcelWorkbook,
   buildTransactionsPdfBlob,
   filterBusinessTransactionsByPeriod,
   filterTransactionsByPeriod,
@@ -211,7 +211,7 @@ export function MoreReportsTab() {
     );
   };
 
-  const openServerExport = (type: "xls") => {
+  const openServerExport = (type: "xlsx") => {
     if (!token) return false;
     const fileName = `prosto-budget-${period.from}_${period.to}.${type}`;
     const params = new URLSearchParams({
@@ -256,8 +256,8 @@ export function MoreReportsTab() {
   };
 
   const exportExcel = async () => {
-    if (openServerExport("xls")) return;
-    const workbook = buildBudgetExcelXml({
+    if (openServerExport("xlsx")) return;
+    const workbook = buildBudgetExcelWorkbook({
       transactions: periodTxs,
       categories,
       businessTransactions: periodBusinessTxs,
@@ -268,8 +268,18 @@ export function MoreReportsTab() {
       periodEnd: period.to,
     });
     const result = await saveBlobFile(
-      `prosto-budget-${period.from}_${period.to}.xls`,
-      new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" }),
+      `prosto-budget-${period.from}_${period.to}.xlsx`,
+      new Blob(
+        [
+          workbook.buffer.slice(
+            workbook.byteOffset,
+            workbook.byteOffset + workbook.byteLength,
+          ) as ArrayBuffer,
+        ],
+        {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      ),
     );
     showSaveResult(result);
   };

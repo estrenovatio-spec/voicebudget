@@ -94,18 +94,6 @@ function escapeXmlCell(value: string | number): string {
     .replace(/"/g, "&quot;");
 }
 
-function htmlTable(title: string, rows: (string | number)[][]): string {
-  const body = rows
-    .map((row, rowIndex) => {
-      const tag = rowIndex === 0 ? "th" : "td";
-      return `<tr>${row
-        .map((cell) => `<${tag}>${escapeXmlCell(cell)}</${tag}>`)
-        .join("")}</tr>`;
-    })
-    .join("");
-  return `<h2>${escapeXmlCell(title)}</h2><table>${body}</table>`;
-}
-
 function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): string {
   const isRu = locale === "ru";
   switch (kind) {
@@ -124,7 +112,206 @@ function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
-export function buildBudgetExcelXml(params: {
+function sheetName(name: string): string {
+  return name.replace(/[\[\]:*?/\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 31) || "Sheet";
+}
+
+function worksheetXml(rows: (string | number)[][]): string {
+  const rowXml = rows
+    .map((row, rowIndex) => {
+      const cells = row
+        .map((cell) => {
+          if (typeof cell === "number" && Number.isFinite(cell)) {
+            return `<c><v>${cell}</v></c>`;
+          }
+          return `<c t="inlineStr"><is><t>${escapeXmlCell(String(cell))}</t></is></c>`;
+        })
+        .join("");
+      return `<row r="${rowIndex + 1}">${cells}</row>`;
+    })
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>${rowXml}</sheetData>
+</worksheet>`;
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function dosDateTime(date = new Date()): { date: number; time: number } {
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+  };
+}
+
+function concatZipParts(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function u16(value: number): Uint8Array {
+  return new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+}
+
+function u32(value: number): Uint8Array {
+  return new Uint8Array([
+    value & 0xff,
+    (value >>> 8) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 24) & 0xff,
+  ]);
+}
+
+function buildZip(files: { path: string; content: string }[]): Uint8Array {
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  const { date, time } = dosDateTime();
+  let offset = 0;
+
+  for (const file of files) {
+    const name = enc.encode(file.path);
+    const content = enc.encode(file.content);
+    const crc = crc32(content);
+    const localHeader = concatZipParts([
+      u32(0x04034b50),
+      u16(20),
+      u16(0x0800),
+      u16(0),
+      u16(time),
+      u16(date),
+      u32(crc),
+      u32(content.length),
+      u32(content.length),
+      u16(name.length),
+      u16(0),
+      name,
+    ]);
+    parts.push(localHeader, content);
+
+    centralParts.push(
+      concatZipParts([
+        u32(0x02014b50),
+        u16(20),
+        u16(20),
+        u16(0x0800),
+        u16(0),
+        u16(time),
+        u16(date),
+        u32(crc),
+        u32(content.length),
+        u32(content.length),
+        u16(name.length),
+        u16(0),
+        u16(0),
+        u16(0),
+        u16(0),
+        u32(0),
+        u32(offset),
+        name,
+      ]),
+    );
+    offset += localHeader.length + content.length;
+  }
+
+  const central = concatZipParts(centralParts);
+  const end = concatZipParts([
+    u32(0x06054b50),
+    u16(0),
+    u16(0),
+    u16(files.length),
+    u16(files.length),
+    u32(central.length),
+    u32(offset),
+    u16(0),
+  ]);
+  return concatZipParts([...parts, central, end]);
+}
+
+function buildXlsxWorkbook(sheets: { name: string; rows: (string | number)[][] }[]): Uint8Array {
+  const normalized = sheets.map((sheet, index) => ({
+    ...sheet,
+    name: sheetName(sheet.name) || `Sheet ${index + 1}`,
+  }));
+  const sheetOverrides = normalized
+    .map(
+      (_, index) =>
+        `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+    )
+    .join("");
+  const workbookSheets = normalized
+    .map(
+      (sheet, index) =>
+        `<sheet name="${escapeXmlCell(sheet.name)}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`,
+    )
+    .join("");
+  const rels = normalized
+    .map(
+      (_, index) =>
+        `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`,
+    )
+    .join("");
+
+  return buildZip([
+    {
+      path: "[Content_Types].xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  ${sheetOverrides}
+</Types>`,
+    },
+    {
+      path: "_rels/.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`,
+    },
+    {
+      path: "xl/workbook.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>${workbookSheets}</sheets>
+</workbook>`,
+    },
+    {
+      path: "xl/_rels/workbook.xml.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`,
+    },
+    ...normalized.map((sheet, index) => ({
+      path: `xl/worksheets/sheet${index + 1}.xml`,
+      content: worksheetXml(sheet.rows),
+    })),
+  ]);
+}
+
+export function buildBudgetExcelWorkbook(params: {
   transactions: Transaction[];
   categories: CategoryDefinition[];
   businessTransactions: BusinessTransaction[];
@@ -133,7 +320,7 @@ export function buildBudgetExcelXml(params: {
   locale: Locale;
   periodStart: string;
   periodEnd: string;
-}): string {
+}): Uint8Array {
   const {
     transactions,
     categories,
@@ -255,28 +442,13 @@ export function buildBudgetExcelXml(params: {
     ],
   ];
 
-  return `\uFEFF<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; color: #111827; }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    h2 { font-size: 15px; margin: 18px 0 6px; }
-    table { border-collapse: collapse; margin-bottom: 12px; }
-    th, td { border: 1px solid #d1d5db; padding: 6px 8px; font-size: 12px; mso-number-format:"\\@"; }
-    th { background: #f3f4f6; font-weight: 700; }
-  </style>
-</head>
-<body>
-  <h1>${isRu ? "Просто Бюджет" : "Prosto Budget"}</h1>
-  ${htmlTable(isRu ? "Итог" : "Summary", metaRows)}
-  ${htmlTable(isRu ? "Семья" : "Family", familyRows)}
-  ${htmlTable(isRu ? "Бизнес" : "Business", businessRows)}
-  ${htmlTable(isRu ? "Итог бизнеса" : "Business summary", businessSummary)}
-  ${htmlTable(isRu ? "Проекты" : "Projects", projectRows)}
-</body>
-</html>`;
+  return buildXlsxWorkbook([
+    { name: isRu ? "Итог" : "Summary", rows: metaRows },
+    { name: isRu ? "Семья" : "Family", rows: familyRows },
+    { name: isRu ? "Бизнес" : "Business", rows: businessRows },
+    { name: isRu ? "Итог бизнеса" : "Business summary", rows: businessSummary },
+    { name: isRu ? "Проекты" : "Projects", rows: projectRows },
+  ]);
 }
 
 function concatBytes(parts: Uint8Array[]): Uint8Array {

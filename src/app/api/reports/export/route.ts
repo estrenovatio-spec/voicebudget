@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/api/household-auth";
-import { buildBudgetExcelXml, filterBusinessTransactionsByPeriod, filterTransactionsByPeriod } from "@/lib/export/transactions-export";
+import { buildBudgetExcelWorkbook, filterBusinessTransactionsByPeriod, filterTransactionsByPeriod } from "@/lib/export/transactions-export";
 import { fetchUserBusinessPayload } from "@/lib/business/db";
 import { isDatabaseConfigured } from "@/lib/db";
 import { buildSyncPayload, assertMember } from "@/lib/household/service";
@@ -323,7 +323,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const type = req.nextUrl.searchParams.get("type") === "pdf" ? "pdf" : "xls";
+  const type = req.nextUrl.searchParams.get("type") === "pdf" ? "pdf" : "xlsx";
   const locale: Locale = req.nextUrl.searchParams.get("locale") === "en" ? "en" : "ru";
   const from = req.nextUrl.searchParams.get("from")?.slice(0, 10) || new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
   const to = req.nextUrl.searchParams.get("to")?.slice(0, 10) || new Date().toISOString().slice(0, 10);
@@ -358,7 +358,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const xls = buildBudgetExcelXml({
+  const xlsx = buildBudgetExcelWorkbook({
     transactions,
     categories: sync.categories,
     businessTransactions,
@@ -368,10 +368,10 @@ export async function GET(req: NextRequest) {
     periodStart: from,
     periodEnd: to,
   });
-  return new NextResponse(xls, {
+  return new NextResponse(Buffer.from(xlsx), {
     headers: {
-      "Content-Type": "application/vnd.ms-excel; charset=utf-8",
-      "Content-Disposition": encodeContentDisposition(`${base}.xls`),
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": encodeContentDisposition(`${base}.xlsx`),
       "Cache-Control": "no-store",
     },
   });
