@@ -256,7 +256,6 @@ export function MoreReportsTab() {
   };
 
   const exportExcel = async () => {
-    if (openServerExport("xlsx")) return;
     const workbook = buildBudgetExcelWorkbook({
       transactions: periodTxs,
       categories,
@@ -281,6 +280,7 @@ export function MoreReportsTab() {
         },
       ),
     );
+    if (result === "failed" && openServerExport("xlsx")) return;
     showSaveResult(result);
   };
 
