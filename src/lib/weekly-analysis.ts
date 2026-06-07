@@ -56,12 +56,15 @@ export function buildWeeklySummary(
 
   const base = buildBudgetSummary(weekTxs, trackingStartedAt, resolveCategoryLabel);
   const daysTrackedAll = getDaysTracked(trackingStartedAt, transactions);
+  const periodNet = base.totalIncome - base.totalExpense;
 
   return {
     ...base,
     daysTracked: daysTrackedAll,
     transactionCount: weekTxs.length,
     weekTransactionCount: weekTxs.length,
+    periodNet,
+    balance: periodNet,
     periodStart: start.toISOString().slice(0, 10),
     periodEnd: end.toISOString().slice(0, 10),
   };
@@ -160,7 +163,10 @@ Critical rules:
 - Give ${limited ? "2–3" : "4–5"} tips only.
 - Tone: warm, zero shame, zero lecturing. User is learning to track money, not failing a test.
 - ${limited ? "Data is LIMITED — say that explicitly. Do NOT invent patterns. No dramatic warnings." : "Use real numbers from data."}
-- Never scold for one big expense or negative balance alone — suggest one small next step.
+- summary.periodNet is the period result: totalIncome - totalExpense for these 7 days. It is NOT the user's account balance.
+- Do NOT use the word "balance" / "баланс" for summary.periodNet. Say "итог периода", "разница доходов и расходов", or "денежный поток периода".
+- If periodNet is negative, explain only that expenses exceeded income during this 7-day period. Never say the user's account/card balance is negative.
+- Never scold for one big expense or negative period result alone — suggest one small next step.
 - Do NOT tell user to cut everything; max one gentle limit idea.
 - Russia context: RUB, optional mention of subscriptions/inflation — no tax/legal advice.
 - Do not add advisor contacts, Telegram handles, sales phrases, or consultation invitations in the weekly report.

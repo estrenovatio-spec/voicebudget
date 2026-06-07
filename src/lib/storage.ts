@@ -2,12 +2,12 @@ const RECOMMENDATIONS_KEY = "voicebudget-recommendations";
 const RECOMMENDATIONS_TS_KEY = "voicebudget-recommendations-ts";
 export const RECOMMENDATIONS_TTL_MS = 24 * 60 * 60 * 1000;
 
-const WEEKLY_KEY = "voicebudget-weekly-analysis-v2";
-const WEEKLY_TS_KEY = "voicebudget-weekly-analysis-ts-v2";
+const WEEKLY_KEY = "voicebudget-weekly-analysis-v3";
+const WEEKLY_TS_KEY = "voicebudget-weekly-analysis-ts-v3";
 export const WEEKLY_ANALYSIS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const MONTHLY_KEY = "voicebudget-monthly-analysis-v1";
-const MONTHLY_TS_KEY = "voicebudget-monthly-analysis-ts-v1";
+const MONTHLY_KEY = "voicebudget-monthly-analysis-v2";
+const MONTHLY_TS_KEY = "voicebudget-monthly-analysis-ts-v2";
 const MONTHLY_CHAT_KEY = "voicebudget-monthly-chat-v1";
 export const MONTHLY_ANALYSIS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

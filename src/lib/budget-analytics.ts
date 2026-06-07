@@ -9,6 +9,8 @@ export interface BudgetSummary {
   transactionCount: number;
   totalIncome: number;
   totalExpense: number;
+  periodNet?: number;
+  goalAllocated?: number;
   balance: number;
   expenseByCategory: { category: string; amount: number; sharePercent: number }[];
   incomeByCategory: { category: string; amount: number }[];
@@ -106,6 +108,8 @@ export function buildBudgetSummary(
     transactionCount: transactions.length,
     totalIncome,
     totalExpense,
+    periodNet: totalIncome - totalExpense,
+    goalAllocated: toGoals,
     balance: totalIncome - toGoals - totalExpense,
     expenseByCategory,
     incomeByCategory,

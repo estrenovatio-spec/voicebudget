@@ -18,6 +18,8 @@ const summarySchema = z.object({
   monthTransactionCount: z.number(),
   totalIncome: z.number(),
   totalExpense: z.number(),
+  periodNet: z.number().optional(),
+  goalAllocated: z.number().optional(),
   balance: z.number(),
   expenseByCategory: z.array(
     z.object({

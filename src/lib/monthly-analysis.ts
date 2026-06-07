@@ -136,12 +136,15 @@ export function buildPeriodSummary(
 
   const base = buildBudgetSummary(periodTxs, trackingStartedAt, resolveCategoryLabel);
   const daysTrackedAll = getDaysTracked(trackingStartedAt, transactions);
+  const periodNet = base.totalIncome - base.totalExpense;
 
   return {
     ...base,
     daysTracked: daysTrackedAll,
     transactionCount: periodTxs.length,
     monthTransactionCount: periodTxs.length,
+    periodNet,
+    balance: periodNet,
     periodStart: start.toISOString().slice(0, 10),
     periodEnd: end.toISOString().slice(0, 10),
   };
@@ -265,6 +268,9 @@ Critical rules:
 - Give ${limited ? "3–4" : "5–7"} tips: overview of month, main categories, one trend, one gentle next step.
 - Tone: warm, zero shame. User may ask follow-up questions in chat — write tips they can refer to.
 - ${limited ? "Data is LIMITED — say so. No invented patterns." : "Use real numbers from data."}
+- summary.periodNet is the period result: totalIncome - totalExpense for this report period. It is NOT the user's account balance.
+- Do NOT use the word "balance" / "баланс" for summary.periodNet. Say "итог периода", "разница доходов и расходов", or "денежный поток периода".
+- If periodNet is negative, explain only that expenses exceeded income during this report period. Never say the user's account/card balance is negative.
 - Russia context: RUB. No tax/legal advice.
 - Last tip (optional, soft): ${locale === "ru" ? advisorPlanningWithRu(advisor) : `Need advice — contact a financial advisor: ${advisor.contact}`}.
 ${coaching ? coachingPromptBlock(coaching, locale) : ""}
@@ -278,6 +284,7 @@ export function ruleBasedMonthlyAnalysis(
 ): string[] {
   const isRu = locale === "ru";
   const top = summary.expenseByCategory[0];
+  const periodNet = summary.periodNet ?? summary.totalIncome - summary.totalExpense;
 
   const periodLabel = isRu
     ? `За период ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)}`
@@ -285,8 +292,8 @@ export function ruleBasedMonthlyAnalysis(
 
   const tips: string[] = [
     isRu
-      ? `${periodLabel}: доход ${summary.totalIncome.toLocaleString("ru-RU")} ₽, расход ${summary.totalExpense.toLocaleString("ru-RU")} ₽, баланс ${summary.balance.toLocaleString("ru-RU")} ₽.`
-      : `${periodLabel}: income ${summary.totalIncome}, expenses ${summary.totalExpense}, balance ${summary.balance}.`,
+      ? `${periodLabel}: доход ${summary.totalIncome.toLocaleString("ru-RU")} ₽, расход ${summary.totalExpense.toLocaleString("ru-RU")} ₽, итог периода ${periodNet.toLocaleString("ru-RU")} ₽.`
+      : `${periodLabel}: income ${summary.totalIncome}, expenses ${summary.totalExpense}, period result ${periodNet}.`,
   ];
 
   if (top) {
@@ -328,6 +335,9 @@ Answer ONLY about their finances using the data below. Respond in ${lang}.
 Be concise (2–5 short paragraphs max). No shame, no lecturing.
 If the question is outside their data, say what you can infer and what you cannot know.
 No tax/legal/investment product advice — general budgeting only.
+summary.periodNet is totalIncome - totalExpense for the Summary JSON period. It is NOT the user's account balance.
+Do NOT call summary.periodNet "balance" / "баланс"; use period result, cash flow, or income-expense difference.
+If periodNet is negative, say expenses exceeded income in the period, not that the user's account balance is negative.
 ${extendedPeriod ? "The user asked about a LONGER period than the short monthly report — base your answer on the Summary JSON period, not only the report bullets." : ""}
 ${trendHint}
 
