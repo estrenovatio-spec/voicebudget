@@ -1,12 +1,13 @@
 "use client";
 
-import { BrainCircuit, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BrainCircuit, ChevronDown, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getCategoryLabel } from "@/lib/categories";
 import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { formatIsoDate } from "@/lib/format-date";
+import { cn } from "@/lib/utils";
 import {
   deleteAiMemoryRule,
   getAiMemoryRules,
@@ -89,6 +90,9 @@ export function AiMemoryCenter() {
   const transactions = useTransactions();
   const categories = useCategories();
   const [learnedRules, setLearnedRules] = useState(() => getAiMemoryRules());
+  const [openDateKey, setOpenDateKey] = useState<string | null>(
+    () => groupRulesByDate(getAiMemoryRules())[0]?.dateKey ?? null,
+  );
   const memorySignature = learnedRules
     .map((rule) => `${rule.phrase}:${rule.categoryId}:${rule.type}:${rule.weight}`)
     .join("|");
@@ -126,6 +130,16 @@ export function AiMemoryCenter() {
   const signals = ctx.smartSignals;
   const advisoryText = advisorySignalText(signals, locale);
   const ruleGroups = groupRulesByDate(learnedRules);
+
+  useEffect(() => {
+    if (ruleGroups.length === 0) {
+      setOpenDateKey(null);
+      return;
+    }
+    if (!openDateKey || !ruleGroups.some((group) => group.dateKey === openDateKey)) {
+      setOpenDateKey(ruleGroups[0].dateKey);
+    }
+  }, [openDateKey, ruleGroups]);
 
   const removeRule = (rule: AiMemoryRule) => {
     deleteAiMemoryRule(rule);
@@ -186,45 +200,67 @@ export function AiMemoryCenter() {
               : "Memory is empty. Add a few entries by voice or text, and correct the category when needed."}
           </p>
         ) : (
-          <div className="max-h-[min(420px,52vh)] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border/70 p-2">
+          <div className="max-h-[min(420px,52vh)] space-y-2 overflow-y-auto overscroll-contain rounded-md border border-border/70 p-2">
             {ruleGroups.map((group) => (
-              <div key={group.dateKey} className="space-y-1.5">
-                <div className="sticky top-0 z-10 bg-background/95 py-1 backdrop-blur">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {dateHeading(group.dateKey, locale)} · {group.rules.length}
-                  </p>
-                </div>
-                <ul className="space-y-1.5">
-                  {group.rules.map((rule) => (
-                    <li
-                      key={`${rule.phrase}-${rule.categoryId}-${rule.type}`}
-                      className="flex items-center justify-between gap-2 rounded-md border border-border/70 p-2.5"
-                    >
-                      <div className="min-w-0 text-xs leading-snug">
-                        <p className="truncate">
-                          <span className="font-medium text-foreground">“{rule.phrase}”</span>
-                          <span className="mx-1 text-muted-foreground" aria-hidden>
-                            →
-                          </span>
-                          <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
-                        </p>
-                        <p className="text-muted-foreground">
-                          {sourceLabel(rule.source, locale)} · вес {rule.weight}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground"
-                        onClick={() => removeRule(rule)}
-                        aria-label={locale === "ru" ? "Удалить правило" : "Delete rule"}
+              <div key={group.dateKey} className="rounded-md border border-border/70 bg-background">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left"
+                  onClick={() =>
+                    setOpenDateKey((current) => (current === group.dateKey ? null : group.dateKey))
+                  }
+                >
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-foreground">
+                      {dateHeading(group.dateKey, locale)}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {locale === "ru"
+                        ? `${group.rules.length} правил`
+                        : `${group.rules.length} rules`}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                      openDateKey === group.dateKey && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {openDateKey === group.dateKey ? (
+                  <ul className="max-h-64 space-y-1.5 overflow-y-auto border-t border-border/70 p-2">
+                    {group.rules.map((rule) => (
+                      <li
+                        key={`${rule.phrase}-${rule.categoryId}-${rule.type}`}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border/70 p-2.5"
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+                        <div className="min-w-0 text-xs leading-snug">
+                          <p className="truncate">
+                            <span className="font-medium text-foreground">“{rule.phrase}”</span>
+                            <span className="mx-1 text-muted-foreground" aria-hidden>
+                              →
+                            </span>
+                            <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
+                          </p>
+                          <p className="text-muted-foreground">
+                            {sourceLabel(rule.source, locale)} · вес {rule.weight}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground"
+                          onClick={() => removeRule(rule)}
+                          aria-label={locale === "ru" ? "Удалить правило" : "Delete rule"}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ))}
           </div>
