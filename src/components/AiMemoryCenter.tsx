@@ -49,6 +49,15 @@ function sourceLabel(source: AiMemoryRule["source"], locale: "ru" | "en"): strin
   return "текст";
 }
 
+function ruleCountLabel(count: number, locale: Locale): string {
+  if (locale !== "ru") return `${count} ${count === 1 ? "rule" : "rules"}`;
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} правило`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} правила`;
+  return `${count} правил`;
+}
+
 function localDateKey(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
@@ -184,7 +193,7 @@ export function AiMemoryCenter() {
             {locale === "ru" ? "Финансовая память" : "Financial memory"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {locale === "ru" ? `${learnedRules.length} правил` : `${learnedRules.length} rules`}
+            {ruleCountLabel(learnedRules.length, locale)}
           </p>
         </div>
         {learnedRules.length === 0 ? (
@@ -209,9 +218,7 @@ export function AiMemoryCenter() {
                       {dateHeading(group.dateKey, locale)}
                     </span>
                     <span className="block text-[11px] text-muted-foreground">
-                      {locale === "ru"
-                        ? `${group.rules.length} правил`
-                        : `${group.rules.length} rules`}
+                      {ruleCountLabel(group.rules.length, locale)}
                     </span>
                   </span>
                   <ChevronDown
