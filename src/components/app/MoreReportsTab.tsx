@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSpreadsheet, FileText, Sparkles } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { useBusinessStore } from "@/store/useBusinessStore";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 function defaultPeriod(): { from: string; to: string } {
   const to = new Date();
@@ -42,6 +43,32 @@ function AiReportHistory({
   loading: boolean;
 }) {
   const filtered = reports.filter((r) => r.kind === kind);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const dateLocale = locale === "ru" ? "ru-RU" : "en-GB";
+  const grouped = filtered.reduce<Array<{ key: string; label: string; reports: AiReportRecord[] }>>(
+    (acc, report) => {
+      const createdAt = new Date(report.createdAt);
+      const key = `${createdAt.getFullYear()}-${createdAt.getMonth()}-${createdAt.getDate()}`;
+      let group = acc.find((item) => item.key === key);
+
+      if (!group) {
+        group = {
+          key,
+          label: new Intl.DateTimeFormat(dateLocale, {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }).format(createdAt),
+          reports: [],
+        };
+        acc.push(group);
+      }
+
+      group.reports.push(report);
+      return acc;
+    },
+    [],
+  );
 
   if (loading) {
     return <p className="text-xs text-muted-foreground">{t(locale, "moreReportsHistoryLoading")}</p>;
@@ -56,28 +83,52 @@ function AiReportHistory({
   }
 
   return (
-    <ul className="max-h-64 space-y-2 overflow-y-auto">
-      {filtered.map((r) => (
-        <li
-          key={r.id}
-          className="rounded-md border border-border/70 bg-muted/20 px-3 py-2.5 text-sm"
-        >
-          <p className="text-xs font-medium text-muted-foreground">
-            {formatIsoPeriod(r.periodStart, r.periodEnd, locale)}
-            {" · "}
-            {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).format(new Date(r.createdAt))}
-            {r.fallback ? ` · ${t(locale, "moreReportsFallback")}` : ""}
+    <ul className="max-h-64 space-y-3 overflow-y-auto pr-1">
+      {grouped.map((group) => (
+        <li key={group.key} className="space-y-1.5">
+          <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {group.label}
           </p>
-          <ul className="mt-2 space-y-1 text-xs leading-snug">
-            {r.tips.map((tip, i) => (
-              <li key={`${r.id}-${i}`} className="rounded bg-primary/5 px-2 py-1">
-                {tip}
+          <ul className="space-y-2">
+            {group.reports.map((r) => (
+              <li
+                key={r.id}
+                className="rounded-md border border-border/70 bg-muted/20 text-sm"
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+                  onClick={() => setOpenId((current) => (current === r.id ? null : r.id))}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-foreground">
+                      {new Intl.DateTimeFormat(dateLocale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(new Date(r.createdAt))}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      {formatIsoPeriod(r.periodStart, r.periodEnd, locale)}
+                      {r.fallback ? ` · ${t(locale, "moreReportsFallback")}` : ""}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                      openId === r.id && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {openId === r.id ? (
+                  <ul className="space-y-1 px-3 pb-3 text-xs leading-snug">
+                    {r.tips.map((tip, i) => (
+                      <li key={`${r.id}-${i}`} className="rounded bg-primary/5 px-2 py-1">
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>
