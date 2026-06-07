@@ -609,10 +609,10 @@ function BusinessKpis({
           : "text-muted-foreground",
     },
     {
-      label: locale === "ru" ? "Долги" : "Debts",
-      value: formatMoney(metrics.debtMinPayment, locale),
+      label: locale === "ru" ? "Долг" : "Debt",
+      value: formatMoney(metrics.debtBalance, locale),
       tone:
-        metrics.debtMinPayment > 0
+        metrics.debtBalance > 0
           ? "text-amber-700 dark:text-amber-300"
           : "text-muted-foreground",
     },
