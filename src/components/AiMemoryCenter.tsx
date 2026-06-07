@@ -245,7 +245,7 @@ export function AiMemoryCenter() {
                             <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
                           </p>
                           <p className="text-muted-foreground">
-                            {sourceLabel(rule.source, locale)} · вес {rule.weight}
+                            {sourceLabel(rule.source, locale)}
                           </p>
                         </div>
                         <Button

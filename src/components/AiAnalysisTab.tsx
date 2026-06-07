@@ -41,7 +41,7 @@ export function AiAnalysisTab({ active, reportsOnly = false }: AiAnalysisTabProp
               )}
             </TabsTrigger>
             <TabsTrigger value="memory" className="h-auto min-h-10 px-1 text-xs leading-tight">
-              {locale === "ru" ? "Память" : "Memory"}
+              {locale === "ru" ? "Фин+память" : "Fin+memory"}
             </TabsTrigger>
           </>
         ) : null}
