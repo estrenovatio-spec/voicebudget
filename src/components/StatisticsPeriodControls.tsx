@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatBudgetPeriodLabel } from "@/lib/budget-period";
+import { formatBudgetPeriodLabel, getPreviousBudgetPeriod } from "@/lib/budget-period";
 import { t } from "@/lib/i18n";
 import { useStatsPeriod, useStore } from "@/store/useStore";
 
@@ -13,7 +13,14 @@ export function StatisticsPeriodControls() {
   const setStatsPeriodRange = useStore((s) => s.setStatsPeriodRange);
   const resetStatsPeriod = useStore((s) => s.resetStatsPeriod);
   const setStatsPreviousBudgetPeriod = useStore((s) => s.setStatsPreviousBudgetPeriod);
+  const budgetMonthStartDay = useStore((s) => s.budgetMonthStartDay);
   const period = useStatsPeriod();
+  const previousPeriod = getPreviousBudgetPeriod(budgetMonthStartDay);
+  const isPrevious =
+    statsPeriodOverride?.from === previousPeriod.from &&
+    statsPeriodOverride?.to === previousPeriod.to;
+  const isCustom = Boolean(statsPeriodOverride) && !isPrevious;
+  const [customOpen, setCustomOpen] = useState(isCustom);
 
   const [draftFrom, setDraftFrom] = useState(period.from);
   const [draftTo, setDraftTo] = useState(period.to);
@@ -23,68 +30,82 @@ export function StatisticsPeriodControls() {
     setDraftTo(period.to);
   }, [period.from, period.to]);
 
+  useEffect(() => {
+    if (isCustom) setCustomOpen(true);
+  }, [isCustom]);
+
   return (
-    <div className="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-2.5">
-      <p className="text-xs font-medium text-muted-foreground">
-        {t(locale, "statsPeriodLabel", {
-          period: formatBudgetPeriodLabel(period, locale),
-        })}
-      </p>
-      <div className="flex flex-wrap gap-1.5">
+    <div className="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-2">
+      <div className="grid grid-cols-3 gap-1.5">
         <Button
           type="button"
           size="sm"
           variant={statsPeriodOverride === null ? "default" : "outline"}
-          className="h-8 text-xs"
-          onClick={resetStatsPeriod}
+          className="h-8 px-1 text-[11px]"
+          onClick={() => {
+            resetStatsPeriod();
+            setCustomOpen(false);
+          }}
         >
           {t(locale, "statsPeriodCurrent")}
         </Button>
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="h-8 text-xs"
-          onClick={setStatsPreviousBudgetPeriod}
+          variant={isPrevious ? "default" : "outline"}
+          className="h-8 px-1 text-[11px]"
+          onClick={() => {
+            setStatsPreviousBudgetPeriod();
+            setCustomOpen(false);
+          }}
         >
           {t(locale, "statsPeriodPrevious")}
         </Button>
-      </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
-          {t(locale, "statsPeriodFrom")}
-          <Input
-            type="date"
-            className="h-8 text-xs"
-            value={draftFrom}
-            onChange={(e) => setDraftFrom(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
-          {t(locale, "statsPeriodTo")}
-          <Input
-            type="date"
-            className="h-8 text-xs"
-            value={draftTo}
-            onChange={(e) => setDraftTo(e.target.value)}
-          />
-        </label>
         <Button
           type="button"
           size="sm"
-          className="h-8 shrink-0 text-xs"
-          onClick={() => {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(draftFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(draftTo)) return;
-            if (draftFrom > draftTo) return;
-            setStatsPeriodRange(draftFrom, draftTo);
-          }}
+          variant={customOpen || isCustom ? "default" : "outline"}
+          className="h-8 px-1 text-[11px]"
+          onClick={() => setCustomOpen((value) => !value)}
         >
-          {t(locale, "statsPeriodApply")}
+          {t(locale, "statsPeriodCustom")}
         </Button>
       </div>
-      {statsPeriodOverride ? (
-        <p className="text-[10px] text-muted-foreground">{t(locale, "statsPeriodCustomHint")}</p>
+      {customOpen ? (
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+          <Input
+            type="date"
+            aria-label={t(locale, "statsPeriodFrom")}
+            className="h-8 px-2 text-[11px]"
+            value={draftFrom}
+            onChange={(e) => setDraftFrom(e.target.value)}
+          />
+          <Input
+            type="date"
+            aria-label={t(locale, "statsPeriodTo")}
+            className="h-8 px-2 text-[11px]"
+            value={draftTo}
+            onChange={(e) => setDraftTo(e.target.value)}
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 shrink-0 px-2 text-[11px]"
+            onClick={() => {
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(draftFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(draftTo)) return;
+              if (draftFrom > draftTo) return;
+              setStatsPeriodRange(draftFrom, draftTo);
+            }}
+          >
+            {t(locale, "statsPeriodApply")}
+          </Button>
+        </div>
       ) : null}
+      <p className="truncate text-[10px] text-muted-foreground">
+        {t(locale, "statsPeriodLabel", {
+          period: formatBudgetPeriodLabel(period, locale),
+        })}
+      </p>
     </div>
   );
 }

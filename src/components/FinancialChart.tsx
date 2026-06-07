@@ -248,42 +248,47 @@ export function FinancialChart() {
         }
       />
       <CardContent className={`overflow-hidden ${homeSectionContentClassName}`}>
-        <StatisticsPeriodControls />
         {!hasAnyData ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{t(locale, "chartEmpty")}</p>
+          <>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t(locale, "chartEmpty")}</p>
+            <StatisticsPeriodControls />
+          </>
         ) : (
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="mb-3 grid w-full grid-cols-2">
-              <TabsTrigger value="expenses">
-                <TrendingDown className="mr-1 inline h-3.5 w-3.5" />
-                {t(locale, "chartTabExpenses")}
-              </TabsTrigger>
-              <TabsTrigger value="income">
-                <TrendingUp className="mr-1 inline h-3.5 w-3.5" />
-                {t(locale, "chartTabIncome")}
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-3">
+            <Tabs value={tab} onValueChange={setTab}>
+              <TabsList className="mb-3 grid w-full grid-cols-2">
+                <TabsTrigger value="expenses">
+                  <TrendingDown className="mr-1 inline h-3.5 w-3.5" />
+                  {t(locale, "chartTabExpenses")}
+                </TabsTrigger>
+                <TabsTrigger value="income">
+                  <TrendingUp className="mr-1 inline h-3.5 w-3.5" />
+                  {t(locale, "chartTabIncome")}
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="expenses">
-              {hasExpenseData ? (
-                <TotalsPanel variant="expense" />
-              ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  {t(locale, "chartEmpty")}
-                </p>
-              )}
-            </TabsContent>
+              <TabsContent value="expenses">
+                {hasExpenseData ? (
+                  <TotalsPanel variant="expense" />
+                ) : (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    {t(locale, "chartEmpty")}
+                  </p>
+                )}
+              </TabsContent>
 
-            <TabsContent value="income">
-              {hasIncomeData ? (
-                <TotalsPanel variant="income" />
-              ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  {t(locale, "chartEmpty")}
-                </p>
-              )}
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="income">
+                {hasIncomeData ? (
+                  <TotalsPanel variant="income" />
+                ) : (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    {t(locale, "chartEmpty")}
+                  </p>
+                )}
+              </TabsContent>
+            </Tabs>
+            <StatisticsPeriodControls />
+          </div>
         )}
       </CardContent>
     </Card>
