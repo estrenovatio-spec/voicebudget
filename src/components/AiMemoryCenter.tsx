@@ -4,10 +4,14 @@ import { BrainCircuit, ChevronDown, CircleAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getCategoryLabel } from "@/lib/categories";
-import { buildAiCoachingContext, buildFamilyAdvisorSpotlight } from "@/lib/ai-coaching-context";
+import {
+  buildAiCoachingContext,
+  buildFamilyAdvisorSpotlight,
+} from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { formatIsoDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
+import { useFamilyAdvisorSpotlight } from "@/components/useFamilyAdvisorSpotlight";
 import {
   deleteAiMemoryRule,
   getAiMemoryRules,
@@ -16,7 +20,10 @@ import {
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
 
-function sourceLabel(source: AiMemoryRule["source"], locale: "ru" | "en"): string {
+function sourceLabel(
+  source: AiMemoryRule["source"],
+  locale: "ru" | "en",
+): string {
   if (locale !== "ru") return source;
   if (source === "correction") return "исправление";
   if (source === "voice") return "голос";
@@ -28,7 +35,8 @@ function ruleCountLabel(count: number, locale: Locale): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
   if (mod10 === 1 && mod100 !== 11) return `${count} правило`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} правила`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+    return `${count} правила`;
   return `${count} правил`;
 }
 
@@ -51,7 +59,9 @@ function dateHeading(dateKey: string, locale: Locale): string {
   return formatIsoDate(dateKey, locale);
 }
 
-function groupRulesByDate(rules: AiMemoryRule[]): { dateKey: string; rules: AiMemoryRule[] }[] {
+function groupRulesByDate(
+  rules: AiMemoryRule[],
+): { dateKey: string; rules: AiMemoryRule[] }[] {
   const groups = new Map<string, AiMemoryRule[]>();
   for (const rule of rules) {
     const dateKey = localDateKey(rule.lastSeenAt);
@@ -61,7 +71,10 @@ function groupRulesByDate(rules: AiMemoryRule[]): { dateKey: string; rules: AiMe
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([dateKey, groupedRules]) => ({
       dateKey,
-      rules: groupedRules.sort((a, b) => b.weight - a.weight || b.lastSeenAt.localeCompare(a.lastSeenAt)),
+      rules: groupedRules.sort(
+        (a, b) =>
+          b.weight - a.weight || b.lastSeenAt.localeCompare(a.lastSeenAt),
+      ),
     }));
 }
 
@@ -76,7 +89,9 @@ export function AiMemoryCenter() {
   const [openDateKey, setOpenDateKey] = useState<string | null>(null);
   const [memoryInfoOpen, setMemoryInfoOpen] = useState(false);
   const memorySignature = learnedRules
-    .map((rule) => `${rule.phrase}:${rule.categoryId}:${rule.type}:${rule.weight}`)
+    .map(
+      (rule) => `${rule.phrase}:${rule.categoryId}:${rule.type}:${rule.weight}`,
+    )
     .join("|");
 
   const period = useMemo(
@@ -107,11 +122,15 @@ export function AiMemoryCenter() {
     transactions,
   ]);
 
-  const spotlight = buildFamilyAdvisorSpotlight(ctx, locale);
+  const baseSpotlight = buildFamilyAdvisorSpotlight(ctx, locale);
+  const spotlight = useFamilyAdvisorSpotlight(baseSpotlight, ctx, locale);
   const ruleGroups = groupRulesByDate(learnedRules);
 
   useEffect(() => {
-    if (openDateKey && !ruleGroups.some((group) => group.dateKey === openDateKey)) {
+    if (
+      openDateKey &&
+      !ruleGroups.some((group) => group.dateKey === openDateKey)
+    ) {
       setOpenDateKey(null);
     }
   }, [openDateKey, ruleGroups]);
@@ -143,7 +162,9 @@ export function AiMemoryCenter() {
           >
             <p className="font-medium">{spotlight.title}</p>
             <p className="mt-1 text-muted-foreground">{spotlight.text}</p>
-            <p className="mt-2 text-xs font-medium text-foreground">{spotlight.action}</p>
+            <p className="mt-2 text-xs font-medium text-foreground">
+              {spotlight.action}
+            </p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -185,25 +206,27 @@ export function AiMemoryCenter() {
               <>
                 <p className="font-medium text-foreground">Что это?</p>
                 <p className="mt-1">
-                  Приложение запоминает ваши слова из текста, голоса и исправлений категорий:
-                  например, “обед”, “сад”, “реклама”. Потом эти слова помогают точнее
-                  определять категорию новых операций.
+                  Приложение запоминает ваши слова из текста, голоса и
+                  исправлений категорий: например, “обед”, “сад”, “реклама”.
+                  Потом эти слова помогают точнее определять категорию новых
+                  операций.
                 </p>
                 <p className="mt-2">
-                  Самый сильный сигнал — когда вы исправили категорию вручную. Лишнее правило
-                  можно удалить из списка ниже.
+                  Самый сильный сигнал — когда вы исправили категорию вручную.
+                  Лишнее правило можно удалить из списка ниже.
                 </p>
               </>
             ) : (
               <>
                 <p className="font-medium text-foreground">What is this?</p>
                 <p className="mt-1">
-                  The app remembers words from text, voice, and category corrections so future
-                  entries land in the right category more often.
+                  The app remembers words from text, voice, and category
+                  corrections so future entries land in the right category more
+                  often.
                 </p>
                 <p className="mt-2">
-                  Manual category corrections are the strongest signal. You can delete any rule
-                  from the list below.
+                  Manual category corrections are the strongest signal. You can
+                  delete any rule from the list below.
                 </p>
               </>
             )}
@@ -218,12 +241,17 @@ export function AiMemoryCenter() {
         ) : (
           <div className="max-h-[min(420px,52vh)] space-y-2 overflow-y-auto overscroll-contain rounded-md border border-border/70 p-2">
             {ruleGroups.map((group) => (
-              <div key={group.dateKey} className="rounded-md border border-border/70 bg-background">
+              <div
+                key={group.dateKey}
+                className="rounded-md border border-border/70 bg-background"
+              >
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left"
                   onClick={() =>
-                    setOpenDateKey((current) => (current === group.dateKey ? null : group.dateKey))
+                    setOpenDateKey((current) =>
+                      current === group.dateKey ? null : group.dateKey,
+                    )
                   }
                 >
                   <span className="min-w-0">
@@ -251,11 +279,22 @@ export function AiMemoryCenter() {
                       >
                         <div className="min-w-0 text-xs leading-snug">
                           <p className="truncate">
-                            <span className="font-medium text-foreground">“{rule.phrase}”</span>
-                            <span className="mx-1 text-muted-foreground" aria-hidden>
+                            <span className="font-medium text-foreground">
+                              “{rule.phrase}”
+                            </span>
+                            <span
+                              className="mx-1 text-muted-foreground"
+                              aria-hidden
+                            >
                               →
                             </span>
-                            <span>{getCategoryLabel(rule.categoryId, categories, locale)}</span>
+                            <span>
+                              {getCategoryLabel(
+                                rule.categoryId,
+                                categories,
+                                locale,
+                              )}
+                            </span>
                           </p>
                           <p className="text-muted-foreground">
                             {sourceLabel(rule.source, locale)}
@@ -267,7 +306,9 @@ export function AiMemoryCenter() {
                           size="icon"
                           className="h-8 w-8 shrink-0 text-muted-foreground"
                           onClick={() => removeRule(rule)}
-                          aria-label={locale === "ru" ? "Удалить правило" : "Delete rule"}
+                          aria-label={
+                            locale === "ru" ? "Удалить правило" : "Delete rule"
+                          }
                         >
                           <Trash2 className="h-4 w-4" aria-hidden />
                         </Button>

@@ -9,10 +9,14 @@ import {
 } from "@/components/HomeSectionCardHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { buildAiCoachingContext, buildFamilyAdvisorSpotlight } from "@/lib/ai-coaching-context";
+import {
+  buildAiCoachingContext,
+  buildFamilyAdvisorSpotlight,
+} from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { cn } from "@/lib/utils";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
+import { useFamilyAdvisorSpotlight } from "@/components/useFamilyAdvisorSpotlight";
 
 const AI_COACH_CARD_HIDDEN_KEY = "voicebudget-ai-coach-card-hidden";
 
@@ -58,10 +62,18 @@ export function PersonalAiCoachCard() {
       categories,
       locale,
     );
-  }, [budgetMonthStartDay, categories, categoryBudgets, locale, savingsGoals, transactions]);
+  }, [
+    budgetMonthStartDay,
+    categories,
+    categoryBudgets,
+    locale,
+    savingsGoals,
+    transactions,
+  ]);
 
   const rulesCount = ctx.personalMemory?.learnedRules.length ?? 0;
-  const spotlight = buildFamilyAdvisorSpotlight(ctx, locale);
+  const baseSpotlight = buildFamilyAdvisorSpotlight(ctx, locale);
+  const spotlight = useFamilyAdvisorSpotlight(baseSpotlight, ctx, locale);
   const title = locale === "ru" ? "Финсоветник заметил" : "Advisor noticed";
 
   if (!spotlight || (transactions.length < 3 && rulesCount === 0)) return null;
@@ -128,7 +140,9 @@ export function PersonalAiCoachCard() {
         >
           <p className="font-medium">{spotlight.title}</p>
           <p className="mt-1 text-muted-foreground">{spotlight.text}</p>
-          <p className="mt-2 text-xs font-medium text-foreground">{spotlight.action}</p>
+          <p className="mt-2 text-xs font-medium text-foreground">
+            {spotlight.action}
+          </p>
         </div>
       </CardContent>
     </Card>
