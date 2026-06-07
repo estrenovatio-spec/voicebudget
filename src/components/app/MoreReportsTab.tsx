@@ -211,6 +211,56 @@ export function MoreReportsTab() {
     );
   };
 
+  const blobToBase64 = async (blob: Blob): Promise<string> => {
+    const buffer = await blob.arrayBuffer();
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+    }
+    return window.btoa(binary);
+  };
+
+  const downloadPreparedBlob = async (filename: string, blob: Blob): Promise<boolean> => {
+    const tg = window.Telegram?.WebApp;
+    if (!token || !tg?.downloadFile) return false;
+    try {
+      const res = await fetch("/api/reports/file", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename,
+          mime: blob.type || "application/octet-stream",
+          base64: await blobToBase64(blob),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { id?: string };
+      if (!res.ok || !data.id) return false;
+      const params = new URLSearchParams({ id: data.id, token });
+      const url = `${window.location.origin}/api/reports/file?${params.toString()}`;
+      tg.downloadFile({ url, file_name: filename }, (accepted) => {
+        toast(
+          accepted
+            ? locale === "ru"
+              ? "Telegram начал скачивание файла."
+              : "Telegram started downloading the file."
+            : locale === "ru"
+              ? "Telegram не дал скачать файл. Открою ссылку."
+              : "Telegram did not allow downloading. Opening the file link.",
+          accepted ? "success" : "default",
+        );
+        if (!accepted) window.open(url, "_blank", "noopener,noreferrer");
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const openServerExport = (type: "xlsx" | "pdf") => {
     if (!token) return false;
     const fileName = `prosto-budget-${period.from}_${period.to}.${type}`;
@@ -256,12 +306,6 @@ export function MoreReportsTab() {
   };
 
   const exportExcel = async () => {
-    const tg = window.Telegram?.WebApp;
-    if (token && tg?.downloadFile) {
-      await apiPushBusiness(token, useBusinessStore.getState().exportPayload()).catch(() => null);
-      if (openServerExport("xlsx")) return;
-    }
-
     const workbook = buildBudgetExcelWorkbook({
       transactions: periodTxs,
       categories,
@@ -272,19 +316,26 @@ export function MoreReportsTab() {
       periodStart: period.from,
       periodEnd: period.to,
     });
+    const fileName = `prosto-budget-${period.from}_${period.to}.xlsx`;
+    const blob = new Blob(
+      [
+        workbook.buffer.slice(
+          workbook.byteOffset,
+          workbook.byteOffset + workbook.byteLength,
+        ) as ArrayBuffer,
+      ],
+      {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    );
+    if (await downloadPreparedBlob(fileName, blob)) return;
+
+    if (token) {
+      await apiPushBusiness(token, useBusinessStore.getState().exportPayload()).catch(() => null);
+    }
     const result = await saveBlobFile(
-      `prosto-budget-${period.from}_${period.to}.xlsx`,
-      new Blob(
-        [
-          workbook.buffer.slice(
-            workbook.byteOffset,
-            workbook.byteOffset + workbook.byteLength,
-          ) as ArrayBuffer,
-        ],
-        {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      ),
+      fileName,
+      blob,
       {
         openBlobInWebView: false,
       },
@@ -303,7 +354,6 @@ export function MoreReportsTab() {
       );
       return;
     }
-    if (openServerExport("pdf")) return;
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
@@ -314,7 +364,10 @@ export function MoreReportsTab() {
       periodEnd: period.to,
       title: t(locale, "moreReportsExportTitle"),
     });
-    const result = await saveBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf, {
+    const fileName = `prosto-budget-${period.from}_${period.to}.pdf`;
+    if (await downloadPreparedBlob(fileName, pdf)) return;
+    if (openServerExport("pdf")) return;
+    const result = await saveBlobFile(fileName, pdf, {
       openBlobInWebView: false,
     });
     showSaveResult(result);
