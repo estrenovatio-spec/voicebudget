@@ -121,9 +121,9 @@ export function buildAiCoachingContext(
   const nextStep =
     locale === "ru"
       ? cashflowRisk === "high"
-        ? "Сначала сверить обязательные платежи до конца периода и отделить их от гибких расходов."
+        ? "Сначала выписать обязательные платежи до конца периода, а потом решить, какие покупки можно отложить."
         : cashflowRisk === "medium"
-          ? "Держать покупки в режиме паузы 24 часа: сначала обязательное, потом комфорт."
+          ? "На 24 часа поставить лишние покупки на паузу: сначала обязательное, потом комфорт."
           : "Выбрать одну категорию недели и удержать её без жёстких запретов."
       : cashflowRisk === "high"
         ? "First reconcile required payments until the period ends and separate them from flexible spending."
@@ -155,12 +155,12 @@ export function buildFamilyAdvisorSpotlight(
   if (overLimit) {
     const over = Math.max(0, Math.round(overLimit.spent - overLimit.limit));
     return {
-      title: isRu ? "Категория требует внимания" : "Category needs attention",
+      title: isRu ? "Тут потратили больше плана" : "Spent over plan here",
       text: isRu
-        ? `${overLimit.category}: выше лимита на ${over.toLocaleString("ru-RU")} ₽. Это не повод ругать себя, а сигнал проверить, лимит реалистичный или расход разовый.`
+        ? `В категории «${overLimit.category}» уже на ${over.toLocaleString("ru-RU")} ₽ больше лимита. Ничего страшного: надо понять, это разовая покупка или лимит слишком маленький.`
         : `${overLimit.category}: ${over.toLocaleString("en-US")} RUB over limit. Not a reason to blame yourself — check if the limit is realistic or the spend was one-off.`,
       action: isRu
-        ? `До конца недели держать ${overLimit.category} без новых необязательных покупок.`
+        ? `До конца недели не добавлять лишние траты в «${overLimit.category}».`
         : `Keep ${overLimit.category} free of new non-essential purchases until week end.`,
       tone: "risk",
     };
@@ -169,12 +169,12 @@ export function buildFamilyAdvisorSpotlight(
   const habit = ctx.personalMemory?.categoryHabits[0] ?? null;
   if (habit && habit.sharePercent >= 40) {
     return {
-      title: isRu ? "Главная зона расходов" : "Main spending zone",
+      title: isRu ? "Сюда уходит много денег" : "A lot goes here",
       text: isRu
-        ? `${habit.category}: ${habit.sharePercent}% расходов периода, средний чек ${habit.avgAmount.toLocaleString("ru-RU")} ₽. Важно понять: это плановый блок или утечка.`
+        ? `«${habit.category}» заняла ${habit.sharePercent}% всех расходов. Средний чек — ${habit.avgAmount.toLocaleString("ru-RU")} ₽. Проверьте: это нужные траты или что-то повторяется по привычке.`
         : `${habit.category}: ${habit.sharePercent}% of period expenses, avg ${habit.avgAmount.toLocaleString("en-US")} RUB. Check whether this is planned or leaking money.`,
       action: isRu
-        ? `Посмотреть 3 последние операции в категории «${habit.category}» и отметить одну, которую можно повторять реже.`
+        ? `Откройте 3 последние операции в «${habit.category}» и найдите одну, которую можно делать реже.`
         : `Review the last 3 ${habit.category} entries and pick one to repeat less often.`,
       tone: "watch",
     };
@@ -185,12 +185,12 @@ export function buildFamilyAdvisorSpotlight(
     .sort((a, b) => b.progressPercent - a.progressPercent)[0];
   if (strongGoal?.onTrack) {
     return {
-      title: isRu ? "Хороший финансовый темп" : "Good financial pace",
+      title: isRu ? "Цель движется хорошо" : "Goal is moving well",
       text: isRu
-        ? `Цель «${strongGoal.name}» уже закрыта на ${strongGoal.progressPercent}%. Это как раз та привычка, которая строит капитал без рывков.`
+        ? `По цели «${strongGoal.name}» уже есть ${strongGoal.progressPercent}%. Так и работает накопление: не рывками, а маленькими шагами.`
         : `Goal "${strongGoal.name}" is ${strongGoal.progressPercent}% funded. This is the kind of habit that builds capital steadily.`,
       action: isRu
-        ? "Сохранить автопополнение или тот же взнос в следующем периоде."
+        ? "На следующей неделе повторить такой же взнос, даже если он небольшой."
         : "Keep the same transfer or contribution next period.",
       tone: "ok",
     };
@@ -198,12 +198,12 @@ export function buildFamilyAdvisorSpotlight(
 
   if (ctx.smartSignals?.cashflowRisk === "high") {
     return {
-      title: isRu ? "Нужна ревизия периода" : "Period review needed",
+      title: isRu ? "Нужно проверить ближайшие платежи" : "Check upcoming payments",
       text: isRu
-        ? "По операциям свободный запас периода не виден. Это не оценка реального баланса: доход мог прийти раньше, а расходы идут сейчас."
+        ? "По записям видно: траты идут активно, а новых доходов в этом периоде мало или нет. Это не значит, что баланс плохой. Просто стоит проверить, хватит ли денег на обязательные платежи."
         : "The entries do not show a free buffer for this period. This is not your real account balance: income may have arrived earlier while expenses are current.",
       action: isRu
-        ? "Отделить обязательные платежи до конца периода от гибких расходов и выбрать одну категорию для паузы на 48 часов."
+        ? "Выпишите, что точно нужно оплатить до конца недели, и поставьте одну необязательную категорию на паузу на 2 дня."
         : "Separate required payments from flexible spending and pause one category for 48 hours.",
       tone: "watch",
     };
@@ -212,12 +212,12 @@ export function buildFamilyAdvisorSpotlight(
   const rulesCount = ctx.personalMemory?.learnedRules.length ?? 0;
   if (rulesCount >= 3) {
     return {
-      title: isRu ? "Память уже помогает" : "Memory is already helping",
+      title: isRu ? "Приложение лучше вас понимает" : "Memory is already helping",
       text: isRu
-        ? `Финансовая память знает ${rulesCount} правил: привычные слова будут точнее попадать в категории.`
+        ? `Финансовая память уже знает ${rulesCount} правил. Например, привычные слова из ваших трат будут точнее попадать в нужные категории.`
         : `Financial memory knows ${rulesCount} rules: familiar words should land in better categories.`,
       action: isRu
-        ? "Если категория ошиблась — исправьте её. Это самый сильный сигнал для обучения."
+        ? "Если приложение ошиблось с категорией — просто исправьте. Так оно учится быстрее всего."
         : "If a category is wrong, correct it. That is the strongest learning signal.",
       tone: "ok",
     };
@@ -225,12 +225,12 @@ export function buildFamilyAdvisorSpotlight(
 
   if (habit) {
     return {
-      title: isRu ? "Появляется картина привычек" : "Habit picture is forming",
+      title: isRu ? "Уже видно первые привычки" : "Habit picture is forming",
       text: isRu
-        ? `${habit.category}: ${habit.sharePercent}% расходов периода. Пока это наблюдение, не вывод.`
+        ? `Пока чаще всего встречается «${habit.category}»: ${habit.sharePercent}% расходов. Это не плохо и не хорошо — просто первая подсказка.`
         : `${habit.category}: ${habit.sharePercent}% of period expenses. For now this is an observation, not a verdict.`,
       action: isRu
-        ? "Продолжить записывать обычные траты: через неделю совет будет точнее."
+        ? "Продолжайте записывать обычные траты. Через неделю подсказки станут точнее."
         : "Keep logging everyday expenses: next week the advice will be sharper.",
       tone: "ok",
     };
