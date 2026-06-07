@@ -32,6 +32,13 @@ export type AiCoachingContext = {
   };
 };
 
+export type FamilyAdvisorSpotlight = {
+  title: string;
+  text: string;
+  action: string;
+  tone: "ok" | "watch" | "risk";
+};
+
 function daysBetween(from: string, to: string): number {
   const a = new Date(from);
   const b = new Date(to);
@@ -135,6 +142,101 @@ export function buildAiCoachingContext(
       nextStep,
     },
   };
+}
+
+export function buildFamilyAdvisorSpotlight(
+  ctx: AiCoachingContext,
+  locale: Locale,
+): FamilyAdvisorSpotlight | null {
+  const isRu = locale === "ru";
+  const overLimit = ctx.categoryBudgets
+    .filter((budget) => budget.overLimit)
+    .sort((a, b) => b.spent - b.limit - (a.spent - a.limit))[0];
+  if (overLimit) {
+    const over = Math.max(0, Math.round(overLimit.spent - overLimit.limit));
+    return {
+      title: isRu ? "Категория требует внимания" : "Category needs attention",
+      text: isRu
+        ? `${overLimit.category}: выше лимита на ${over.toLocaleString("ru-RU")} ₽. Это не повод ругать себя, а сигнал проверить, лимит реалистичный или расход разовый.`
+        : `${overLimit.category}: ${over.toLocaleString("en-US")} RUB over limit. Not a reason to blame yourself — check if the limit is realistic or the spend was one-off.`,
+      action: isRu
+        ? `До конца недели держать ${overLimit.category} без новых необязательных покупок.`
+        : `Keep ${overLimit.category} free of new non-essential purchases until week end.`,
+      tone: "risk",
+    };
+  }
+
+  const habit = ctx.personalMemory?.categoryHabits[0] ?? null;
+  if (habit && habit.sharePercent >= 40) {
+    return {
+      title: isRu ? "Главная зона расходов" : "Main spending zone",
+      text: isRu
+        ? `${habit.category}: ${habit.sharePercent}% расходов периода, средний чек ${habit.avgAmount.toLocaleString("ru-RU")} ₽. Важно понять: это плановый блок или утечка.`
+        : `${habit.category}: ${habit.sharePercent}% of period expenses, avg ${habit.avgAmount.toLocaleString("en-US")} RUB. Check whether this is planned or leaking money.`,
+      action: isRu
+        ? `Посмотреть 3 последние операции в категории «${habit.category}» и отметить одну, которую можно повторять реже.`
+        : `Review the last 3 ${habit.category} entries and pick one to repeat less often.`,
+      tone: "watch",
+    };
+  }
+
+  const strongGoal = ctx.savingsGoals
+    .filter((goal) => goal.progressPercent > 0)
+    .sort((a, b) => b.progressPercent - a.progressPercent)[0];
+  if (strongGoal?.onTrack) {
+    return {
+      title: isRu ? "Хороший финансовый темп" : "Good financial pace",
+      text: isRu
+        ? `Цель «${strongGoal.name}» уже закрыта на ${strongGoal.progressPercent}%. Это как раз та привычка, которая строит капитал без рывков.`
+        : `Goal "${strongGoal.name}" is ${strongGoal.progressPercent}% funded. This is the kind of habit that builds capital steadily.`,
+      action: isRu
+        ? "Сохранить автопополнение или тот же взнос в следующем периоде."
+        : "Keep the same transfer or contribution next period.",
+      tone: "ok",
+    };
+  }
+
+  if (ctx.smartSignals?.cashflowRisk === "high") {
+    return {
+      title: isRu ? "Нужна ревизия периода" : "Period review needed",
+      text: isRu
+        ? "По операциям свободный запас периода не виден. Это не оценка реального баланса: доход мог прийти раньше, а расходы идут сейчас."
+        : "The entries do not show a free buffer for this period. This is not your real account balance: income may have arrived earlier while expenses are current.",
+      action: isRu
+        ? "Отделить обязательные платежи до конца периода от гибких расходов и выбрать одну категорию для паузы на 48 часов."
+        : "Separate required payments from flexible spending and pause one category for 48 hours.",
+      tone: "watch",
+    };
+  }
+
+  const rulesCount = ctx.personalMemory?.learnedRules.length ?? 0;
+  if (rulesCount >= 3) {
+    return {
+      title: isRu ? "Память уже помогает" : "Memory is already helping",
+      text: isRu
+        ? `Финансовая память знает ${rulesCount} правил: привычные слова будут точнее попадать в категории.`
+        : `Financial memory knows ${rulesCount} rules: familiar words should land in better categories.`,
+      action: isRu
+        ? "Если категория ошиблась — исправьте её. Это самый сильный сигнал для обучения."
+        : "If a category is wrong, correct it. That is the strongest learning signal.",
+      tone: "ok",
+    };
+  }
+
+  if (habit) {
+    return {
+      title: isRu ? "Появляется картина привычек" : "Habit picture is forming",
+      text: isRu
+        ? `${habit.category}: ${habit.sharePercent}% расходов периода. Пока это наблюдение, не вывод.`
+        : `${habit.category}: ${habit.sharePercent}% of period expenses. For now this is an observation, not a verdict.`,
+      action: isRu
+        ? "Продолжить записывать обычные траты: через неделю совет будет точнее."
+        : "Keep logging everyday expenses: next week the advice will be sharper.",
+      tone: "ok",
+    };
+  }
+
+  return null;
 }
 
 export function coachingPromptBlock(ctx: AiCoachingContext, locale: Locale): string {

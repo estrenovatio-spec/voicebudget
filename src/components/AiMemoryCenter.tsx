@@ -4,7 +4,7 @@ import { BrainCircuit, ChevronDown, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getCategoryLabel } from "@/lib/categories";
-import { buildAiCoachingContext } from "@/lib/ai-coaching-context";
+import { buildAiCoachingContext, buildFamilyAdvisorSpotlight } from "@/lib/ai-coaching-context";
 import { getCurrentBudgetPeriod } from "@/lib/budget-period";
 import { formatIsoDate } from "@/lib/format-date";
 import { cn } from "@/lib/utils";
@@ -15,32 +15,6 @@ import {
 } from "@/lib/ai-memory";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
 import type { Locale } from "@/types";
-
-function advisorySignalText(
-  signals: ReturnType<typeof buildAiCoachingContext>["smartSignals"],
-  locale: Locale,
-): string | null {
-  if (!signals) return null;
-  const isRu = locale === "ru";
-  if (signals.cashflowRisk === "high") {
-    return isRu
-      ? `Денежный поток напряжён. Советник бы начал не с запретов, а с ревизии: что точно нужно оплатить до конца периода, а что можно перенести. ${signals.nextStep}`
-      : `Cash flow is tight. Start with a review, not a ban: what must be paid before period end, and what can move. ${signals.nextStep}`;
-  }
-  if (signals.safeDailySpend === null) {
-    return isRu
-      ? `Запас на свободные траты пока не сформирован. Это не повод паниковать: отделите обязательные платежи от гибких расходов и выберите один рычаг на неделю.`
-      : `There is no clear free-spending buffer yet. No panic: separate required payments from flexible spending and choose one lever for the week.`;
-  }
-  if (signals.cashflowRisk === "medium") {
-    return isRu
-      ? `Запас небольшой: ориентир на свободные траты около ${signals.safeDailySpend.toLocaleString("ru-RU")} ₽/день. ${signals.nextStep}`
-      : `Buffer is modest: flexible-spend guide is about ${signals.safeDailySpend.toLocaleString("en-US")} RUB/day. ${signals.nextStep}`;
-  }
-  return isRu
-    ? `Картина спокойная: ориентир на свободные траты около ${signals.safeDailySpend.toLocaleString("ru-RU")} ₽/день. ${signals.nextStep}`
-    : `Picture is steady: flexible-spend guide is about ${signals.safeDailySpend.toLocaleString("en-US")} RUB/day. ${signals.nextStep}`;
-}
 
 function sourceLabel(source: AiMemoryRule["source"], locale: "ru" | "en"): string {
   if (locale !== "ru") return source;
@@ -132,10 +106,7 @@ export function AiMemoryCenter() {
     transactions,
   ]);
 
-  const habit = ctx.personalMemory?.categoryHabits[0] ?? null;
-  const insights = ctx.personalMemory?.insights ?? [];
-  const signals = ctx.smartSignals;
-  const advisoryText = advisorySignalText(signals, locale);
+  const spotlight = buildFamilyAdvisorSpotlight(ctx, locale);
   const ruleGroups = groupRulesByDate(learnedRules);
 
   useEffect(() => {
@@ -158,33 +129,28 @@ export function AiMemoryCenter() {
             {locale === "ru" ? "Финсоветник заметил" : "Advisor noticed"}
           </p>
         </div>
-        <div className="space-y-2 text-sm">
-          {habit ? (
-            <p className="rounded-md bg-background/70 p-2.5 leading-snug">
-              {locale === "ru"
-                ? `${habit.category}: ${habit.sharePercent}% расходов периода, средний чек ${habit.avgAmount} ₽.`
-                : `${habit.category}: ${habit.sharePercent}% of period expenses, avg ${habit.avgAmount} RUB.`}
-            </p>
-          ) : null}
-          {signals ? (
-            <p className="rounded-md bg-background/70 p-2.5 leading-snug">
-              {advisoryText}
-            </p>
-          ) : null}
-          {insights.slice(0, 2).map((item) => (
-            <p key={item.title} className="rounded-md bg-background/70 p-2.5 leading-snug">
-              <span className="font-medium">{item.title}: </span>
-              {item.detail}
-            </p>
-          ))}
-          {!habit && !signals && insights.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {locale === "ru"
-                ? "Пока мало операций. ИИ начнёт замечать привычки после нескольких записей."
-                : "Not enough entries yet. AI will notice habits after a few records."}
-            </p>
-          ) : null}
-        </div>
+        {spotlight ? (
+          <div
+            className={cn(
+              "rounded-md border bg-background/70 p-2.5 text-sm leading-snug",
+              spotlight.tone === "risk"
+                ? "border-red-500/20"
+                : spotlight.tone === "watch"
+                  ? "border-amber-500/25"
+                  : "border-emerald-500/20",
+            )}
+          >
+            <p className="font-medium">{spotlight.title}</p>
+            <p className="mt-1 text-muted-foreground">{spotlight.text}</p>
+            <p className="mt-2 text-xs font-medium text-foreground">{spotlight.action}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {locale === "ru"
+              ? "Пока мало операций. Советник начнёт замечать привычки после нескольких записей."
+              : "Not enough entries yet. The advisor will notice habits after a few records."}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
