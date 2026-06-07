@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, ChevronDown, Trash2 } from "lucide-react";
+import { BrainCircuit, ChevronDown, CircleAlert, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getCategoryLabel } from "@/lib/categories";
@@ -74,6 +74,7 @@ export function AiMemoryCenter() {
   const categories = useCategories();
   const [learnedRules, setLearnedRules] = useState(() => getAiMemoryRules());
   const [openDateKey, setOpenDateKey] = useState<string | null>(null);
+  const [memoryInfoOpen, setMemoryInfoOpen] = useState(false);
   const memorySignature = learnedRules
     .map((rule) => `${rule.phrase}:${rule.categoryId}:${rule.type}:${rule.weight}`)
     .join("|");
@@ -155,13 +156,59 @@ export function AiMemoryCenter() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium">
-            {locale === "ru" ? "Финансовая память" : "Financial memory"}
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="text-sm font-medium">
+              {locale === "ru" ? "Финансовая память" : "Financial memory"}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 text-muted-foreground"
+              onClick={() => setMemoryInfoOpen((open) => !open)}
+              aria-label={
+                locale === "ru"
+                  ? "Что такое финансовая память"
+                  : "What financial memory means"
+              }
+            >
+              <CircleAlert className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">
             {ruleCountLabel(learnedRules.length, locale)}
           </p>
         </div>
+        {memoryInfoOpen ? (
+          <div className="rounded-md border border-border/70 bg-muted/40 p-2.5 text-xs leading-snug text-muted-foreground">
+            {locale === "ru" ? (
+              <>
+                <p className="font-medium text-foreground">Что это?</p>
+                <p className="mt-1">
+                  Приложение запоминает ваши слова из текста, голоса и исправлений категорий:
+                  например, “обед”, “сад”, “реклама”. Потом эти слова помогают точнее
+                  определять категорию новых операций.
+                </p>
+                <p className="mt-2">
+                  Самый сильный сигнал — когда вы исправили категорию вручную. Лишнее правило
+                  можно удалить из списка ниже.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-foreground">What is this?</p>
+                <p className="mt-1">
+                  The app remembers words from text, voice, and category corrections so future
+                  entries land in the right category more often.
+                </p>
+                <p className="mt-2">
+                  Manual category corrections are the strongest signal. You can delete any rule
+                  from the list below.
+                </p>
+              </>
+            )}
+          </div>
+        ) : null}
         {learnedRules.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-sm leading-snug text-muted-foreground">
             {locale === "ru"
