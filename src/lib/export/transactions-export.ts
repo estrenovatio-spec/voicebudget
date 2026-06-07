@@ -124,6 +124,10 @@ function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): s
   }
 }
 
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
 export function buildBudgetExcelXml(params: {
   transactions: Transaction[];
   categories: CategoryDefinition[];
@@ -147,53 +151,112 @@ export function buildBudgetExcelXml(params: {
   const isRu = locale === "ru";
   const unitName = (unitId: string) =>
     businessUnits.find((unit) => unit.id === unitId)?.name ?? (isRu ? "Бизнес" : "Business");
+  const familyIncome = sum(transactions.filter((tx) => tx.type === "income").map((tx) => tx.amount));
+  const familyExpense = sum(transactions.filter((tx) => tx.type === "expense").map((tx) => tx.amount));
+  const businessIncome = sum(
+    businessTransactions.filter((tx) => tx.kind === "operating_income").map((tx) => tx.amount),
+  );
+  const businessExpense = sum(
+    businessTransactions.filter((tx) => tx.kind === "operating_expense").map((tx) => tx.amount),
+  );
+  const reserveDeposits = sum(
+    businessTransactions.filter((tx) => tx.kind === "cushion_deposit").map((tx) => tx.amount),
+  );
+  const familyWithdrawals = sum(
+    businessTransactions.filter((tx) => tx.kind === "family_withdrawal").map((tx) => tx.amount),
+  );
+  const businessSummaryRows = businessUnits.flatMap((unit) => {
+    const rows = businessTransactions.filter((tx) => tx.unitId === unit.id);
+    const unitIncome = sum(rows.filter((tx) => tx.kind === "operating_income").map((tx) => tx.amount));
+    const unitExpense = sum(rows.filter((tx) => tx.kind === "operating_expense").map((tx) => tx.amount));
+    const unitReserve = sum(rows.filter((tx) => tx.kind === "cushion_deposit").map((tx) => tx.amount));
+    const unitWithdrawal = sum(rows.filter((tx) => tx.kind === "family_withdrawal").map((tx) => tx.amount));
+    return [[
+      unit.name,
+      unitIncome,
+      unitExpense,
+      unitIncome - unitExpense,
+      unitReserve,
+      unitWithdrawal,
+      rows.length,
+    ]];
+  });
 
   const familyRows: (string | number)[][] = [
     isRu
       ? ["Дата", "Тип", "Сумма", "Категория", "Заметка", "Кто"]
       : ["Date", "Type", "Amount", "Category", "Note", "Owner"],
-    ...transactions.map((tx) => [
-      tx.date,
-      tx.type === "income" ? (isRu ? "Доход" : "Income") : isRu ? "Расход" : "Expense",
-      tx.amount,
-      getCategoryLabel(tx.categoryId, categories, locale),
-      tx.note ?? "",
-      tx.owner === "partner" ? (isRu ? "Партнёр" : "Partner") : isRu ? "Я" : "Me",
-    ]),
+    ...(transactions.length
+      ? transactions.map((tx) => [
+          tx.date,
+          tx.type === "income" ? (isRu ? "Доход" : "Income") : isRu ? "Расход" : "Expense",
+          tx.amount,
+          getCategoryLabel(tx.categoryId, categories, locale),
+          tx.note ?? "",
+          tx.owner === "partner" ? (isRu ? "Партнёр" : "Partner") : isRu ? "Я" : "Me",
+        ])
+      : [[isRu ? "Нет семейных операций за выбранный период" : "No family entries for selected period", "", "", "", "", ""]]),
   ];
 
   const businessRows: (string | number)[][] = [
     isRu
       ? ["Дата", "Бизнес", "Тип", "Сумма", "Заметка"]
       : ["Date", "Business", "Type", "Amount", "Note"],
-    ...businessTransactions.map((tx) => [
-      tx.date,
-      unitName(tx.unitId),
-      businessKindLabel(tx.kind, locale),
-      tx.amount,
-      tx.note ?? "",
-    ]),
+    ...(businessTransactions.length
+      ? businessTransactions.map((tx) => [
+          tx.date,
+          unitName(tx.unitId),
+          businessKindLabel(tx.kind, locale),
+          tx.amount,
+          tx.note ?? "",
+        ])
+      : [[isRu ? "Нет бизнес-операций за выбранный период" : "No business entries for selected period", "", "", "", ""]]),
   ];
 
   const projectRows: (string | number)[][] = [
     isRu
       ? ["Бизнес", "Проект/актив", "Тип", "Капитал", "Плановый доход в месяц", "Часов в месяц"]
       : ["Business", "Project/asset", "Type", "Capital", "Planned monthly income", "Hours per month"],
-    ...businessAssets.map((asset) => [
-      unitName(asset.unitId),
-      asset.name,
-      asset.type,
-      asset.capitalValue,
-      asset.monthlyNet,
-      asset.hoursPerMonth ?? "",
-    ]),
+    ...(businessAssets.length
+      ? businessAssets.map((asset) => [
+          unitName(asset.unitId),
+          asset.name,
+          asset.type,
+          asset.capitalValue,
+          asset.monthlyNet,
+          asset.hoursPerMonth ?? "",
+        ])
+      : [[isRu ? "Проекты и активы пока не добавлены" : "No projects/assets yet", "", "", "", "", ""]]),
+  ];
+
+  const businessSummary: (string | number)[][] = [
+    isRu
+      ? ["Бизнес", "Выручка", "Расходы", "Прибыль", "В резерв", "Выведено в семью", "Операций"]
+      : ["Business", "Revenue", "Expenses", "Profit", "To reserve", "Withdrawn to family", "Entries"],
+    ...(businessSummaryRows.length
+      ? businessSummaryRows
+      : [[isRu ? "Бизнесы пока не добавлены" : "No businesses yet", 0, 0, 0, 0, 0, 0]]),
   ];
 
   const metaRows: (string | number)[][] = [
     [isRu ? "Период" : "Period", `${periodStart} — ${periodEnd}`],
     [isRu ? "Семейных операций" : "Family entries", transactions.length],
+    [isRu ? "Доход семьи" : "Family income", familyIncome],
+    [isRu ? "Расходы семьи" : "Family expenses", familyExpense],
+    [isRu ? "Итог семьи" : "Family net", familyIncome - familyExpense],
     [isRu ? "Бизнес-операций" : "Business entries", businessTransactions.length],
+    [isRu ? "Выручка бизнеса" : "Business revenue", businessIncome],
+    [isRu ? "Расходы бизнеса" : "Business expenses", businessExpense],
+    [isRu ? "Прибыль бизнеса" : "Business profit", businessIncome - businessExpense],
+    [isRu ? "Переложено в резерв бизнеса" : "Moved to business reserve", reserveDeposits],
+    [isRu ? "Выведено из бизнеса в семью" : "Withdrawn from business to family", familyWithdrawals],
     [isRu ? "Проектов/активов" : "Projects/assets", businessAssets.length],
+    [
+      isRu ? "Что входит в файл" : "What is included",
+      isRu
+        ? "Семейные операции, бизнес-операции и список проектов/активов. Нули означают, что за выбранный период операций не было."
+        : "Family entries, business entries, and projects/assets. Zero values mean there were no entries for the selected period.",
+    ],
   ];
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -205,6 +268,7 @@ export function buildBudgetExcelXml(params: {
 ${worksheet(isRu ? "Итог" : "Summary", metaRows)}
 ${worksheet(isRu ? "Семья" : "Family", familyRows)}
 ${worksheet(isRu ? "Бизнес" : "Business", businessRows)}
+${worksheet(isRu ? "Итог бизнеса" : "Business summary", businessSummary)}
 ${worksheet(isRu ? "Проекты" : "Projects", projectRows)}
 </Workbook>`;
 }

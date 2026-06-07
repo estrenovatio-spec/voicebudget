@@ -29,6 +29,14 @@ function encodeContentDisposition(filename: string): string {
   return `attachment; filename="${safeFilename(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
+function escapeSvg(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function translit(input: string): string {
   const map: Record<string, string> = {
     а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
@@ -64,39 +72,54 @@ function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): s
   }
 }
 
-function makePdf(params: {
+type ExportPdfRow = {
+  date: string;
+  amount: string;
+  category: string;
+  note: string;
+};
+
+function makeRows(params: {
   transactions: Transaction[];
   categories: CategoryDefinition[];
   businessTransactions: BusinessTransaction[];
   businessUnits: BusinessUnit[];
   locale: Locale;
+}): ExportPdfRow[] {
+  const isRu = params.locale === "ru";
+  const unitName = (unitId: string) =>
+    params.businessUnits.find((unit) => unit.id === unitId)?.name ?? (isRu ? "Бизнес" : "Business");
+
+  return [
+    ...params.transactions.map((tx) => ({
+      date: tx.date,
+      amount: `${tx.type === "income" ? "+" : "-"}${tx.amount} RUB`,
+      category: getCategoryLabel(tx.categoryId, params.categories, params.locale),
+      note: tx.note ?? "",
+    })),
+    ...params.businessTransactions.map((tx) => ({
+      date: tx.date,
+      amount: `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" ? "-" : "+"}${tx.amount} RUB`,
+      category: `${isRu ? "Бизнес" : "Business"}: ${unitName(tx.unitId)}`,
+      note: `${businessKindLabel(tx.kind, params.locale)}${tx.note ? ` - ${tx.note}` : ""}`,
+    })),
+  ];
+}
+
+function makeTextPdf(params: {
+  rows: ExportPdfRow[];
+  locale: Locale;
   periodStart: string;
   periodEnd: string;
 }): Buffer {
   const isRu = params.locale === "ru";
-  const unitName = (unitId: string) =>
-    params.businessUnits.find((unit) => unit.id === unitId)?.name ?? (isRu ? "Бизнес" : "Business");
-  const rows = [
-    ...params.transactions.map((tx) => [
-      tx.date,
-      `${tx.type === "income" ? "+" : "-"}${tx.amount} RUB`,
-      getCategoryLabel(tx.categoryId, params.categories, params.locale),
-      tx.note ?? "",
-    ]),
-    ...params.businessTransactions.map((tx) => [
-      tx.date,
-      `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" ? "-" : "+"}${tx.amount} RUB`,
-      `${isRu ? "Бизнес" : "Business"}: ${unitName(tx.unitId)}`,
-      `${businessKindLabel(tx.kind, params.locale)}${tx.note ? ` - ${tx.note}` : ""}`,
-    ]),
-  ];
   const lines = [
     "Prosto Budget",
     `${params.periodStart} - ${params.periodEnd}`,
-    `${isRu ? "Operatsiy" : "Entries"}: ${rows.length}`,
+    `${isRu ? "Operatsiy" : "Entries"}: ${params.rows.length}`,
     "",
-    ...(rows.length
-      ? rows.map((row) => `${row[0]} | ${row[1]} | ${row[2]} | ${row[3]}`.slice(0, 112))
+    ...(params.rows.length
+      ? params.rows.map((row) => `${row.date} | ${row.amount} | ${row.category} | ${row.note}`.slice(0, 112))
       : [isRu ? "Za vybrannyy period operatsiy net" : "No entries for selected period"]),
   ];
 
@@ -152,6 +175,144 @@ function makePdf(params: {
   return Buffer.from(chunks.join(""), "binary");
 }
 
+function concatBuffers(parts: Buffer[]): Buffer {
+  return Buffer.concat(parts);
+}
+
+function makeImagePdf(pages: { jpeg: Buffer; width: number; height: number }[]): Buffer {
+  const chunks: Buffer[] = [];
+  const offsets: number[] = [0];
+  let cursor = 0;
+
+  const push = (part: string | Buffer) => {
+    const buffer = typeof part === "string" ? Buffer.from(part, "binary") : part;
+    chunks.push(buffer);
+    cursor += buffer.length;
+  };
+  const startObject = (id: number) => {
+    offsets[id] = cursor;
+    push(`${id} 0 obj\n`);
+  };
+
+  const pageW = 595.28;
+  const pageH = 841.89;
+  const pageIds = pages.map((_, index) => 3 + index * 3);
+  const imageIds = pages.map((_, index) => 4 + index * 3);
+  const contentIds = pages.map((_, index) => 5 + index * 3);
+  const objectCount = 2 + pages.length * 3;
+
+  push("%PDF-1.4\n%\xFF\xFF\xFF\xFF\n");
+  startObject(1);
+  push("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  startObject(2);
+  push(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>\nendobj\n`);
+
+  pages.forEach((page, index) => {
+    const pageId = pageIds[index];
+    const imageId = imageIds[index];
+    const contentId = contentIds[index];
+    const imageName = `Im${index + 1}`;
+    const content = `q\n${pageW} 0 0 ${pageH} 0 0 cm\n/${imageName} Do\nQ\n`;
+
+    startObject(pageId);
+    push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /${imageName} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`);
+    startObject(imageId);
+    push(`<< /Type /XObject /Subtype /Image /Width ${page.width} /Height ${page.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.jpeg.length} >>\nstream\n`);
+    push(page.jpeg);
+    push("\nendstream\nendobj\n");
+    startObject(contentId);
+    push(`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream\nendobj\n`);
+  });
+
+  const xref = cursor;
+  push(`xref\n0 ${objectCount + 1}\n0000000000 65535 f \n`);
+  for (let i = 1; i <= objectCount; i++) {
+    push(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  }
+  push(`trailer\n<< /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return concatBuffers(chunks);
+}
+
+function clipText(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, Math.max(0, max - 1))}…` : value;
+}
+
+function rowSvg(row: ExportPdfRow, y: number): string {
+  return `
+    <line x1="72" y1="${y - 28}" x2="1168" y2="${y - 28}" stroke="#e5e7eb" stroke-width="1"/>
+    <text x="88" y="${y}" class="cell">${escapeSvg(row.date)}</text>
+    <text x="252" y="${y}" class="cell bold">${escapeSvg(row.amount)}</text>
+    <text x="452" y="${y}" class="cell">${escapeSvg(clipText(row.category, 28))}</text>
+    <text x="732" y="${y}" class="cell">${escapeSvg(clipText(row.note, 52))}</text>
+  `;
+}
+
+async function makePdf(params: {
+  transactions: Transaction[];
+  categories: CategoryDefinition[];
+  businessTransactions: BusinessTransaction[];
+  businessUnits: BusinessUnit[];
+  locale: Locale;
+  periodStart: string;
+  periodEnd: string;
+}): Promise<Buffer> {
+  const rows = makeRows(params);
+  const isRu = params.locale === "ru";
+
+  try {
+    const sharp = (await import("sharp")).default;
+    const width = 1240;
+    const height = 1754;
+    const rowH = 54;
+    const headerH = 190;
+    const footerH = 70;
+    const perPage = Math.max(1, Math.floor((height - headerH - footerH) / rowH));
+    const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
+    const pages: { jpeg: Buffer; width: number; height: number }[] = [];
+
+    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+      const pageRows = rows.slice(pageIndex * perPage, pageIndex * perPage + perPage);
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <style>
+            .title { font: 700 38px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
+            .meta { font: 24px Arial, "DejaVu Sans", sans-serif; fill: #4b5563; }
+            .head { font: 700 22px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
+            .cell { font: 22px Arial, "DejaVu Sans", sans-serif; fill: #111827; }
+            .bold { font-weight: 700; }
+            .footer { font: 20px Arial, "DejaVu Sans", sans-serif; fill: #6b7280; }
+          </style>
+          <rect width="100%" height="100%" fill="#ffffff"/>
+          <text x="72" y="86" class="title">Просто Бюджет</text>
+          <text x="72" y="126" class="meta">${escapeSvg(`${params.periodStart} — ${params.periodEnd} · ${rows.length} ${isRu ? "операций" : "entries"}`)}</text>
+          <rect x="72" y="150" width="1096" height="44" fill="#f3f4f6"/>
+          <text x="88" y="179" class="head">${isRu ? "Дата" : "Date"}</text>
+          <text x="252" y="179" class="head">${isRu ? "Сумма" : "Amount"}</text>
+          <text x="452" y="179" class="head">${isRu ? "Категория" : "Category"}</text>
+          <text x="732" y="179" class="head">${isRu ? "Заметка" : "Note"}</text>
+          ${
+            pageRows.length
+              ? pageRows.map((row, index) => rowSvg(row, headerH + index * rowH + 52)).join("")
+              : `<text x="72" y="260" class="cell">${isRu ? "За выбранный период операций нет" : "No entries for selected period"}</text>`
+          }
+          <text x="72" y="${height - 42}" class="footer">Просто Бюджет · ${pageIndex + 1}/${pageCount}</text>
+        </svg>
+      `;
+      const jpeg = await sharp(Buffer.from(svg)).jpeg({ quality: 92 }).toBuffer();
+      pages.push({ jpeg, width, height });
+    }
+
+    return makeImagePdf(pages);
+  } catch {
+    return makeTextPdf({
+      rows,
+      locale: params.locale,
+      periodStart: params.periodStart,
+      periodEnd: params.periodEnd,
+    });
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: "db_unavailable" }, { status: 503 });
@@ -179,7 +340,7 @@ export async function GET(req: NextRequest) {
   const base = `prosto-budget-${from}_${to}`;
 
   if (type === "pdf") {
-    const pdf = makePdf({
+    const pdf = await makePdf({
       transactions,
       categories: sync.categories,
       businessTransactions,
