@@ -752,7 +752,7 @@ export const DICT = {
     weeklyHide: "Скрыть",
     weeklyShow: "Показать",
     weeklyPeriod: "Период: {from} — {to}",
-    weeklyNextIn: "Следующий ИИ-разбор через {daysLabel}",
+    weeklyNextIn: "Следующий разбор через {daysLabel}",
     weeklyRefresh: "Обновить",
     weeklyLoading: "Анализируем неделю…",
     weeklyFallback:
@@ -1798,7 +1798,7 @@ export const DICT = {
     weeklyHide: "Hide",
     weeklyShow: "Show",
     weeklyPeriod: "Period: {from} — {to}",
-    weeklyNextIn: "Next AI review in {daysLabel}",
+    weeklyNextIn: "Next review in {daysLabel}",
     weeklyRefresh: "Refresh",
     weeklyLoading: "Analyzing your week…",
     weeklyFallback: "Basic review without AI — full analysis on next run.",

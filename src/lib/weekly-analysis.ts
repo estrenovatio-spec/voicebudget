@@ -117,8 +117,8 @@ export function getWeeklyWaitingMessages(
     const d = gate.daysUntilFirst ?? WEEKLY_MIN_DAYS_TRACKED;
     return [
       isRu
-        ? `Первый AI-разбор откроется через ${d} ${d === 1 ? "день" : d < 5 ? "дня" : "дней"}. Пока просто записывайте траты — без оценок.`
-        : `First AI review unlocks in ${d} day(s). Just log expenses for now — no judgments.`,
+        ? `Первый разбор откроется через ${d} ${d === 1 ? "день" : d < 5 ? "дня" : "дней"}. Пока просто записывайте траты — без оценок.`
+        : `First review unlocks in ${d} day(s). Just log expenses for now — no judgments.`,
     ];
   }
 
