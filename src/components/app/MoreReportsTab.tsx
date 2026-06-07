@@ -211,7 +211,7 @@ export function MoreReportsTab() {
     );
   };
 
-  const openServerExport = (type: "xlsx") => {
+  const openServerExport = (type: "xlsx" | "pdf") => {
     if (!token) return false;
     const fileName = `prosto-budget-${period.from}_${period.to}.${type}`;
     const params = new URLSearchParams({
@@ -294,6 +294,7 @@ export function MoreReportsTab() {
       );
       return;
     }
+    if (openServerExport("pdf")) return;
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
@@ -304,7 +305,9 @@ export function MoreReportsTab() {
       periodEnd: period.to,
       title: t(locale, "moreReportsExportTitle"),
     });
-    const result = await saveBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf);
+    const result = await saveBlobFile(`prosto-budget-${period.from}_${period.to}.pdf`, pdf, {
+      openBlobInWebView: false,
+    });
     showSaveResult(result);
   };
 

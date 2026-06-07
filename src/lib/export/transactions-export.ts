@@ -721,6 +721,7 @@ function isTelegramOrMobileWebView(): boolean {
 export async function saveBlobFile(
   filename: string,
   blob: Blob,
+  options: { openBlobInWebView?: boolean } = {},
 ): Promise<"shared" | "downloaded" | "opened" | "failed"> {
   if (isTelegramOrMobileWebView() && (await shareBlobFile(filename, blob))) {
     return "shared";
@@ -738,7 +739,7 @@ export async function saveBlobFile(
     a.click();
     a.remove();
 
-    if (isTelegramOrMobileWebView()) {
+    if (options.openBlobInWebView !== false && isTelegramOrMobileWebView()) {
       const win = window.open(url, "_blank", "noopener,noreferrer");
       opened = Boolean(win);
     }
