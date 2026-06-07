@@ -93,11 +93,6 @@ export function getWeeklyGate(
     };
   }
 
-  const onlyExpenses = summary.totalIncome === 0 && summary.totalExpense > 0;
-  if (onlyExpenses && summary.weekTransactionCount < WEEKLY_MIN_TRANSACTIONS + 2) {
-    return { ready: false, reason: "sparse_week" };
-  }
-
   return { ready: true, reason: "ready" };
 }
 
@@ -126,16 +121,16 @@ export function getWeeklyWaitingMessages(
     const n = gate.entriesNeeded ?? 1;
     return [
       isRu
-        ? `За неделю ${summary.weekTransactionCount} ${summary.weekTransactionCount === 1 ? "запись" : "записи"} — для разбора нужно ещё ${n}. Добавьте доходы и расходы, тогда советы будут по делу.`
-        : `${summary.weekTransactionCount} entries this week — add ${n} more (income and expenses) for a fair review.`,
+        ? `За неделю ${summary.weekTransactionCount} ${summary.weekTransactionCount === 1 ? "запись" : "записи"} — для разбора нужно ещё ${n}. Добавьте несколько обычных трат, тогда советы будут по делу.`
+        : `${summary.weekTransactionCount} entries this week — add ${n} more everyday expenses for a fair review.`,
     ];
   }
 
   if (gate.reason === "sparse_week") {
     return [
       isRu
-        ? "Пока видны только расходы без доходов за неделю — рано делать выводы. Отметьте зарплату или поступления, и на следующей неделе разбор будет мягче и точнее."
-        : "Only expenses logged this week — add income entries too before we draw conclusions.",
+        ? "Пока записей за неделю маловато — рано делать выводы. Добавьте несколько обычных трат, и разбор будет мягче и точнее."
+        : "Too few weekly entries yet — add a few everyday expenses before we draw conclusions.",
     ];
   }
 
@@ -155,7 +150,23 @@ export const WEEKLY_ANALYSIS_PROMPT = (
 You are a calm financial mentor. Weekly review for ${formatIsoPeriod(summary.periodStart, summary.periodEnd, locale)}.
 
 Data (JSON):
-${JSON.stringify(summary, null, 2)}
+${JSON.stringify(
+  {
+    daysTracked: summary.daysTracked,
+    transactionCount: summary.transactionCount,
+    weekTransactionCount: summary.weekTransactionCount,
+    totalExpense: summary.totalExpense,
+    expenseByCategory: summary.expenseByCategory,
+    monthlyExpenses: summary.monthlyExpenses,
+    firstDate: summary.firstDate,
+    lastDate: summary.lastDate,
+    currency: summary.currency,
+    periodStart: summary.periodStart,
+    periodEnd: summary.periodEnd,
+  },
+  null,
+  2,
+)}
 
 Critical rules:
 - Respond in ${lang}.
@@ -163,10 +174,10 @@ Critical rules:
 - Give ${limited ? "2–3" : "4–5"} tips only.
 - Tone: warm, zero shame, zero lecturing. User is learning to track money, not failing a test.
 - ${limited ? "Data is LIMITED — say that explicitly. Do NOT invent patterns. No dramatic warnings." : "Use real numbers from data."}
-- summary.periodNet is the period result: totalIncome - totalExpense for these 7 days. It is NOT the user's account balance.
-- Do NOT use the word "balance" / "баланс" for summary.periodNet. Say "итог периода", "разница доходов и расходов", or "денежный поток периода".
-- If periodNet is negative, explain only that expenses exceeded income during this 7-day period. Never say the user's account/card balance is negative.
-- Never scold for one big expense or negative period result alone — suggest one small next step.
+- Weekly review must focus on expenses only: totalExpense, expenseByCategory, transactionCount, habits, and one small action for next week.
+- Do NOT calculate or comment on income minus expenses in the weekly review. Do NOT mention "balance", "баланс", "итог периода", or negative cash flow.
+- Mention income only if it is directly useful as context, never as a verdict.
+- Never scold for one big expense — suggest one small next step.
 - Do NOT tell user to cut everything; max one gentle limit idea.
 - Russia context: RUB, optional mention of subscriptions/inflation — no tax/legal advice.
 - Do not add advisor contacts, Telegram handles, sales phrases, or consultation invitations in the weekly report.
@@ -183,8 +194,8 @@ export function ruleBasedWeeklyAnalysis(
 
   return [
     isRu
-      ? `За 7 дней: доход ${summary.totalIncome.toLocaleString("ru-RU")} ₽, расход ${summary.totalExpense.toLocaleString("ru-RU")} ₽. Это снимок, не приговор — продолжайте вести учёт.`
-      : `7 days: income ${summary.totalIncome}, expenses ${summary.totalExpense}. A snapshot, not a verdict — keep logging.`,
+      ? `За 7 дней записано расходов на ${summary.totalExpense.toLocaleString("ru-RU")} ₽. Это снимок привычек, не оценка — продолжайте вести учёт.`
+      : `7 days: ${summary.totalExpense} in expenses logged. A snapshot of habits, not a verdict — keep logging.`,
     isRu
       ? "На следующей неделе картина станет яснее — главное не бросать записи."
       : "Next week the picture will be clearer — keep logging.",

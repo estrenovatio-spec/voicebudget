@@ -92,11 +92,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "insufficient_week_data", success: false }, { status: 403 });
     }
 
-    const onlyExpenses = weekly.totalIncome === 0 && weekly.totalExpense > 0;
-    if (onlyExpenses && weekly.weekTransactionCount < 7) {
-      return NextResponse.json({ error: "sparse_week", success: false }, { status: 403 });
-    }
-
     if (!isLlmConfigured()) {
       return NextResponse.json({
         success: true,
