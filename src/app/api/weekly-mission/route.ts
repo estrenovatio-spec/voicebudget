@@ -5,7 +5,7 @@ import { extractJsonFromLlmContent } from "@/lib/llm-json";
 
 const missionSchema = z.object({
   title: z.string().min(6).max(140),
-  principle: z.string().min(10).max(220),
+  principle: z.string().min(10).max(220).optional(),
   detail: z.string().min(20).max(700),
   tone: z.enum(["focus", "save", "learn", "habit"]),
 });
@@ -44,6 +44,29 @@ function fallbackMission(input: z.infer<typeof bodySchema>) {
       tone: "habit" as const,
     }
   );
+}
+
+function defaultPrinciple(locale: "ru" | "en", tone: z.infer<typeof missionSchema>["tone"]): string {
+  if (locale !== "ru") {
+    if (tone === "save") return "Capital is built by small repeated deposits.";
+    if (tone === "learn") return "Correcting mistakes teaches the app your real money language.";
+    if (tone === "focus") return "First required payments, then comfort spending.";
+    return "A budget works when records are regular, not perfect.";
+  }
+  if (tone === "save") return "Капитал строится маленькими повторяемыми взносами.";
+  if (tone === "learn") return "Исправления учат приложение вашему настоящему языку денег.";
+  if (tone === "focus") return "Сначала обязательные платежи, потом комфорт.";
+  return "Бюджет работает не от идеальности, а от регулярности.";
+}
+
+function withPrinciple(
+  mission: z.infer<typeof missionSchema>,
+  locale: "ru" | "en",
+): z.infer<typeof missionSchema> & { principle: string } {
+  return {
+    ...mission,
+    principle: mission.principle?.trim() || defaultPrinciple(locale, mission.tone),
+  };
 }
 
 function missionPrompt(input: z.infer<typeof bodySchema>): string {
@@ -99,7 +122,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return NextResponse.json({
         success: true,
-        mission: fallbackMission(parsed.data),
+        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
         fallback: true,
       });
     }
@@ -108,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (!openai) {
       return NextResponse.json({
         success: true,
-        mission: fallbackMission(parsed.data),
+        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
         fallback: true,
       });
     }
@@ -133,12 +156,15 @@ export async function POST(request: NextRequest) {
       const validated = missionSchema.safeParse(raw);
       if (!validated.success) throw new Error("invalid_mission_json");
 
-      return NextResponse.json({ success: true, mission: validated.data });
+      return NextResponse.json({
+        success: true,
+        mission: withPrinciple(validated.data, parsed.data.locale),
+      });
     } catch (error) {
       console.warn("[weekly-mission fallback]", error);
       return NextResponse.json({
         success: true,
-        mission: fallbackMission(parsed.data),
+        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
         fallback: true,
       });
     }
