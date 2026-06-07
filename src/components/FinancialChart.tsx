@@ -1,8 +1,7 @@
 "use client";
 
 import { BarChart3, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   HomeSectionCardHeader,
@@ -26,8 +25,6 @@ import {
 import { CHART_HIDDEN_KEY } from "@/lib/storage-reset";
 import {
   useStatsPeriod,
-  usePeriodCategoryBreakdown,
-  usePeriodOwnerExpenseBreakdown,
   usePeriodOwnerTotals,
   usePeriodTypeCategoryBreakdown,
   useStore,
@@ -49,109 +46,6 @@ function writeHidden(hidden: boolean): void {
   } catch {
     /* ignore */
   }
-}
-
-const CHART_COLORS = [
-  "#22c55e",
-  "#3b82f6",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-  "#14b8a6",
-  "#64748b",
-];
-
-const tooltipStyle = {
-  contentStyle: {
-    background: "hsl(var(--card))",
-    border: "1px solid hsl(var(--border))",
-    borderRadius: "8px",
-    color: "hsl(var(--foreground))",
-    fontSize: 12,
-  },
-  itemStyle: { color: "hsl(var(--foreground))" },
-};
-
-type PieData = { category: string; value: number }[];
-
-function CategoryPie({
-  data,
-  title,
-  compact,
-}: {
-  data: PieData;
-  title: string;
-  compact?: boolean;
-}) {
-  const locale = useStore((s) => s.locale);
-
-  if (data.length === 0) {
-    return (
-      <div className="flex min-h-[200px] flex-col">
-        {title ? (
-          <p className="mb-2 text-center text-xs font-medium text-muted-foreground">{title}</p>
-        ) : null}
-        <p className="flex flex-1 items-center justify-center text-center text-xs text-muted-foreground">
-          {t(locale, "chartEmpty")}
-        </p>
-      </div>
-    );
-  }
-
-  const outer = compact ? 56 : 72;
-  const inner = compact ? 22 : 28;
-  const height = compact ? 200 : 260;
-
-  return (
-    <div className="min-w-0 flex-1">
-      {title ? (
-        <p className="mb-1 truncate text-center text-xs font-medium text-muted-foreground">{title}</p>
-      ) : null}
-      <div className="mx-auto w-full min-w-0" style={{ height }}>
-        <ResponsiveContainer width="100%" height={height}>
-          <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="category"
-              cx="50%"
-              cy="42%"
-              outerRadius={outer}
-              innerRadius={inner}
-              paddingAngle={2}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={entry.category}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                  stroke="transparent"
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              {...tooltipStyle}
-              formatter={(value: number, _name, item) => {
-                const cat = (item.payload as { category?: string })?.category ?? "";
-                return [`${value.toLocaleString()}`, cat];
-              }}
-            />
-            {!compact && (
-              <Legend
-                layout="horizontal"
-                verticalAlign="bottom"
-                wrapperStyle={{
-                  fontSize: 10,
-                  paddingTop: 4,
-                  color: "hsl(var(--foreground))",
-                }}
-              />
-            )}
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
 }
 
 function TotalsPanel({
@@ -271,29 +165,17 @@ function TotalsPanel({
 
 export function FinancialChart() {
   const locale = useStore((s) => s.locale);
-  const userName = useStore((s) => s.userName);
-  const partnerName = useStore((s) => s.partnerName);
-  const partnerKeywords = useStore((s) => s.partnerKeywords);
   const period = useStatsPeriod();
-  const breakdownAll = usePeriodCategoryBreakdown();
-  const breakdownMe = usePeriodOwnerExpenseBreakdown("me");
-  const breakdownPartner = usePeriodOwnerExpenseBreakdown("partner");
   const periodTotals = usePeriodOwnerTotals();
   const [mounted, setMounted] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const [tab, setTab] = useState("categories");
+  const [tab, setTab] = useState("expenses");
 
-  const dualMode = hasPartnerBudget(partnerName, partnerKeywords);
   const periodLabel = formatBudgetPeriodLabel(period, locale);
-
-  const hasCategoryData = useMemo(() => {
-    if (dualMode) return breakdownMe.length > 0 || breakdownPartner.length > 0;
-    return breakdownAll.length > 0;
-  }, [dualMode, breakdownAll.length, breakdownMe.length, breakdownPartner.length]);
 
   const hasExpenseData = periodTotals.me.expense + periodTotals.partner.expense > 0;
   const hasIncomeData = periodTotals.me.income + periodTotals.partner.income > 0;
-  const hasAnyData = hasCategoryData || hasExpenseData || hasIncomeData;
+  const hasAnyData = hasExpenseData || hasIncomeData;
 
   useEffect(() => {
     setMounted(true);
@@ -346,10 +228,6 @@ export function FinancialChart() {
     );
   }
 
-  const partnerLabel =
-    partnerDisplayName(partnerName) || t(locale, "chartTitlePartner");
-  const meChartLabel = myDisplayName(locale, userName);
-
   return (
     <Card className="border-primary/20" data-onboarding="chart">
       <HomeSectionCardHeader
@@ -375,8 +253,7 @@ export function FinancialChart() {
           <p className="py-8 text-center text-sm text-muted-foreground">{t(locale, "chartEmpty")}</p>
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="mb-3 grid w-full grid-cols-3">
-              <TabsTrigger value="categories">{t(locale, "chartTabCategories")}</TabsTrigger>
+            <TabsList className="mb-3 grid w-full grid-cols-2">
               <TabsTrigger value="expenses">
                 <TrendingDown className="mr-1 inline h-3.5 w-3.5" />
                 {t(locale, "chartTabExpenses")}
@@ -386,23 +263,6 @@ export function FinancialChart() {
                 {t(locale, "chartTabIncome")}
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="categories">
-              {hasCategoryData ? (
-                dualMode ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <CategoryPie data={breakdownMe} title={meChartLabel} compact />
-                    <CategoryPie data={breakdownPartner} title={partnerLabel} compact />
-                  </div>
-                ) : (
-                  <CategoryPie data={breakdownAll} title="" />
-                )
-              ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  {t(locale, "chartEmpty")}
-                </p>
-              )}
-            </TabsContent>
 
             <TabsContent value="expenses">
               {hasExpenseData ? (
