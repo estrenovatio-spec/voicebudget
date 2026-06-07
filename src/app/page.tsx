@@ -2,7 +2,6 @@
 
 import { AppVersionBanner } from "@/components/AppVersionBanner";
 import { PreviewAppShell } from "@/components/app/PreviewAppShell";
-import { BalanceNoticeBanner } from "@/components/BalanceNoticeBanner";
 import { HomeSections } from "@/components/HomeSections";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
@@ -37,7 +36,6 @@ function FamilyHomeContent({
 }) {
   return (
     <>
-      <BalanceNoticeBanner />
       <SubscriptionAccessBanner />
       <TrialBanner />
       <SubscriptionExpiredReminder />
