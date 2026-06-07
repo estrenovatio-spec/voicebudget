@@ -252,29 +252,29 @@ function literacyPrinciple(
   if (locale !== "ru") {
     const en: Record<typeof kind, string> = {
       over_budget: "A limit is not punishment. It is an early signal to adjust.",
-      cashflow_pause: "First required payments, then comfort spending.",
-      habit: "Small repeated expenses matter more than rare big decisions.",
-      essential: "Important spending is planned, not blindly cut.",
+      cashflow_pause: "Pay what must be paid first. Decide on nice-to-have buys after that.",
+      habit: "Repeated small expenses can quietly become a big amount.",
+      essential: "Food, health, children, and bills are planned carefully, not cut blindly.",
       small_observation: "Small expenses first need tracking, not dramatic cuts.",
-      debt: "Minimum debt payments come before comfort and savings.",
-      goal: "Capital is built by small repeated deposits.",
+      debt: "Pay the minimum debt payment first. Extra purchases wait.",
+      goal: "Savings grow when you add a little again and again.",
       memory: "Correcting mistakes teaches the app your real money language.",
-      consistency: "A budget works when records are regular, not perfect.",
-      limit: "One clear limit is easier to keep than ten vague promises.",
+      consistency: "It is better to log imperfectly than to stop logging.",
+      limit: "One clear spending limit is easier than many vague promises.",
     };
     return en[kind];
   }
   const ru: Record<typeof kind, string> = {
     over_budget: "Лимит — не наказание, а ранний сигнал поправить план.",
-    cashflow_pause: "Сначала обязательные платежи, потом комфорт.",
-    habit: "Маленькие повторяющиеся траты часто важнее редких крупных решений.",
-    essential: "Важные расходы не режут вслепую — их планируют.",
+    cashflow_pause: "Сначала оплатить то, без чего нельзя. Покупки «хочу» — после этого.",
+    habit: "Маленькие повторяющиеся траты незаметно становятся большой суммой.",
+    essential: "Еду, здоровье, детей и счета не режут вслепую — их планируют.",
     small_observation: "Маленькие расходы сначала наблюдают, а не режут с плеча.",
-    debt: "Минимальный платёж по долгу важнее комфорта и копилок.",
-    goal: "Капитал строится маленькими повторяемыми взносами.",
+    debt: "Сначала минимальный платёж по долгу. Лишние покупки — потом.",
+    goal: "Накопления растут, когда добавляешь понемногу, но регулярно.",
     memory: "Исправления учат приложение вашему настоящему языку денег.",
-    consistency: "Бюджет работает не от идеальности, а от регулярности.",
-    limit: "Один понятный лимит легче удержать, чем десять обещаний себе.",
+    consistency: "Лучше записывать неидеально, чем бросить совсем.",
+    limit: "Один понятный лимит легче удержать, чем много обещаний себе.",
   };
   return ru[kind];
 }
@@ -382,7 +382,7 @@ function buildWeeklyMissions(params: {
       principle: literacyPrinciple("debt", locale),
       title: isRu ? `Проверить долг «${debtFocus.name}»` : `Review debt "${debtFocus.name}"`,
       detail: isRu
-        ? `Остаток ${formatMoney(debtFocus.balance, locale)}, минимальный платёж ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, ставка ${debtFocus.ratePct}%` : ""}. Сначала обязательный платёж, затем копилки и комфорт.`
+        ? `Остаток ${formatMoney(debtFocus.balance, locale)}, минимальный платёж ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, ставка ${debtFocus.ratePct}%` : ""}. Сначала обязательный платёж, потом накопления и покупки «хочу».`
         : `Balance ${formatMoney(debtFocus.balance, locale)}, minimum payment ${formatMoney(debtFocus.minPayment, locale)}${debtFocus.ratePct ? `, rate ${debtFocus.ratePct}%` : ""}. Required payment first, then savings and comfort.`,
     });
   }

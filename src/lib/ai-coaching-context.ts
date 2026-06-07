@@ -123,7 +123,7 @@ export function buildAiCoachingContext(
       ? cashflowRisk === "high"
         ? "Сначала выписать обязательные платежи до конца периода, а потом решить, какие покупки можно отложить."
         : cashflowRisk === "medium"
-          ? "На 24 часа поставить лишние покупки на паузу: сначала обязательное, потом комфорт."
+          ? "На 24 часа поставить лишние покупки на паузу: сначала то, без чего нельзя."
           : "Выбрать одну категорию недели и удержать её без жёстких запретов."
       : cashflowRisk === "high"
         ? "First reconcile required payments until the period ends and separate them from flexible spending."

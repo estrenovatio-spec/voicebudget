@@ -35,8 +35,8 @@ function fallbackMission(input: z.infer<typeof bodySchema>) {
       title: input.locale === "ru" ? "5 дней без пропусков" : "5 days without gaps",
       principle:
         input.locale === "ru"
-          ? "Бюджет работает не от идеальности, а от регулярности."
-          : "A budget works when records are regular, not perfect.",
+          ? "Лучше записывать неидеально, чем бросить совсем."
+          : "It is better to log imperfectly than to stop logging.",
       detail:
         input.locale === "ru"
           ? "Записывайте хотя бы одну операцию в день. Цель — не идеальный бюджет, а непрерывность и привычка."
@@ -48,15 +48,15 @@ function fallbackMission(input: z.infer<typeof bodySchema>) {
 
 function defaultPrinciple(locale: "ru" | "en", tone: z.infer<typeof missionSchema>["tone"]): string {
   if (locale !== "ru") {
-    if (tone === "save") return "Capital is built by small repeated deposits.";
+    if (tone === "save") return "Savings grow when you add a little again and again.";
     if (tone === "learn") return "Correcting mistakes teaches the app your real money language.";
-    if (tone === "focus") return "First required payments, then comfort spending.";
-    return "A budget works when records are regular, not perfect.";
+    if (tone === "focus") return "Pay what must be paid first. Decide on nice-to-have buys after that.";
+    return "It is better to log imperfectly than to stop logging.";
   }
-  if (tone === "save") return "Капитал строится маленькими повторяемыми взносами.";
+  if (tone === "save") return "Накопления растут, когда добавляешь понемногу, но регулярно.";
   if (tone === "learn") return "Исправления учат приложение вашему настоящему языку денег.";
-  if (tone === "focus") return "Сначала обязательные платежи, потом комфорт.";
-  return "Бюджет работает не от идеальности, а от регулярности.";
+  if (tone === "focus") return "Сначала оплатить то, без чего нельзя. Покупки «хочу» — после этого.";
+  return "Лучше записывать неидеально, чем бросить совсем.";
 }
 
 function withPrinciple(
@@ -97,10 +97,10 @@ Good mission examples in Russian:
 - "Пополнить резерв малой суммой"
 
 Good principle examples in Russian:
-- "Сначала обязательные платежи, потом комфорт."
-- "Капитал строится маленькими повторяемыми взносами."
-- "Важные расходы не режут вслепую — их планируют."
-- "Бюджет работает не от идеальности, а от регулярности."
+- "Сначала оплатить то, без чего нельзя. Покупки «хочу» — после этого."
+- "Накопления растут, когда добавляешь понемногу, но регулярно."
+- "Еду, здоровье, детей и счета не режут вслепую — их планируют."
+- "Лучше записывать неидеально, чем бросить совсем."
 
 Period: ${input.periodStart} — ${input.periodEnd}
 Transactions this week: ${input.transactionsCount}
