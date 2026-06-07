@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
+import { pushBusinessToCloud } from "@/lib/cloud/business-sync";
 import {
   buildBudgetExcelWorkbook,
   buildTransactionsPdfBlob,
@@ -256,6 +257,12 @@ export function MoreReportsTab() {
   };
 
   const exportExcel = async () => {
+    const tg = window.Telegram?.WebApp;
+    if (token && tg?.downloadFile) {
+      await pushBusinessToCloud();
+      if (openServerExport("xlsx")) return;
+    }
+
     const workbook = buildBudgetExcelWorkbook({
       transactions: periodTxs,
       categories,
@@ -297,7 +304,6 @@ export function MoreReportsTab() {
       );
       return;
     }
-    if (openServerExport("pdf")) return;
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
