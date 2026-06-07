@@ -366,7 +366,6 @@ export function MoreReportsTab() {
     });
     const fileName = `prosto-budget-${period.from}_${period.to}.pdf`;
     if (await downloadPreparedBlob(fileName, pdf)) return;
-    if (openServerExport("pdf")) return;
     const result = await saveBlobFile(fileName, pdf, {
       openBlobInWebView: false,
     });

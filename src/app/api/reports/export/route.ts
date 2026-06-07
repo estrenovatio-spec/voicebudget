@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { join } from "node:path";
-import PDFDocument from "pdfkit";
 import { requireSession } from "@/lib/api/household-auth";
 import { buildBudgetExcelWorkbook, filterBusinessTransactionsByPeriod, filterTransactionsByPeriod } from "@/lib/export/transactions-export";
 import { fetchUserBusinessPayload } from "@/lib/business/db";
@@ -259,92 +257,11 @@ async function makePdf(params: {
   periodEnd: string;
 }): Promise<Buffer> {
   const rows = makeRows(params);
-  const isRu = params.locale === "ru";
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 40,
-      info: { Title: "Просто Бюджет" },
-    });
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-    doc.on("error", reject);
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-
-    const regularFont = join(process.cwd(), "public/fonts/inter-400.woff");
-    const boldFont = join(process.cwd(), "public/fonts/inter-600.woff");
-    doc.registerFont("Inter", regularFont);
-    doc.registerFont("InterBold", boldFont);
-
-    const pageW = doc.page.width;
-    const pageH = doc.page.height;
-    const margin = 40;
-    const rowH = 27;
-    const footerY = pageH - 30;
-    const col = {
-      date: margin,
-      amount: margin + 78,
-      category: margin + 170,
-      note: margin + 310,
-    };
-
-    const drawHeader = () => {
-      doc.fillColor("#111827").font("InterBold").fontSize(20).text("Просто Бюджет", margin, 36);
-      doc
-        .fillColor("#4b5563")
-        .font("Inter")
-        .fontSize(10)
-        .text(
-          `${params.periodStart} — ${params.periodEnd} · ${rows.length} ${isRu ? "операций" : "entries"}`,
-          margin,
-          64,
-        );
-      doc.rect(margin, 88, pageW - margin * 2, 24).fill("#f3f4f6");
-      doc.fillColor("#111827").font("InterBold").fontSize(9);
-      doc.text(isRu ? "Дата" : "Date", col.date + 4, 96, { width: 70, lineBreak: false });
-      doc.text(isRu ? "Сумма" : "Amount", col.amount, 96, { width: 86, lineBreak: false });
-      doc.text(isRu ? "Категория" : "Category", col.category, 96, { width: 130, lineBreak: false });
-      doc.text(isRu ? "Заметка" : "Note", col.note, 96, { width: pageW - col.note - margin, lineBreak: false });
-    };
-
-    const drawFooter = (page: number) => {
-      doc.fillColor("#6b7280").font("Inter").fontSize(8).text(`Просто Бюджет · ${page}`, margin, footerY);
-    };
-
-    let page = 1;
-    let y = 126;
-    drawHeader();
-
-    const ensureSpace = () => {
-      if (y + rowH <= footerY - 10) return;
-      drawFooter(page);
-      doc.addPage();
-      page += 1;
-      y = 126;
-      drawHeader();
-    };
-
-    if (rows.length === 0) {
-      doc
-        .fillColor("#111827")
-        .font("Inter")
-        .fontSize(10)
-        .text(isRu ? "За выбранный период операций нет" : "No entries for selected period", margin, y);
-    } else {
-      rows.forEach((row) => {
-        ensureSpace();
-        doc.moveTo(margin, y - 7).lineTo(pageW - margin, y - 7).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
-        doc.fillColor("#111827").font("Inter").fontSize(8);
-        doc.text(row.date.slice(0, 10), col.date + 4, y, { width: 70, lineBreak: false });
-        doc.font("InterBold").text(row.amount, col.amount, y, { width: 86, lineBreak: false });
-        doc.font("Inter").text(clipText(row.category, 34), col.category, y, { width: 130, lineBreak: false });
-        doc.text(clipText(row.note, 62), col.note, y, { width: pageW - col.note - margin, lineBreak: false });
-        y += rowH;
-      });
-    }
-
-    drawFooter(page);
-    doc.end();
+  return makeTextPdf({
+    rows,
+    locale: params.locale,
+    periodStart: params.periodStart,
+    periodEnd: params.periodEnd,
   });
 }
 
