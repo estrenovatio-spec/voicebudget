@@ -88,8 +88,46 @@ function missionToneClass(tone: AiMission["tone"]): string {
 
 function essentialCategoryKind(
   category: string,
-): "child" | "health" | "debt" | "emergency" | null {
+): "child" | "health" | "debt" | "emergency" | "groceries" | "mandatory" | null {
   const normalized = category.toLowerCase();
+  if ([
+    "продукт",
+    "еда",
+    "пятер",
+    "пятёр",
+    "магнит",
+    "перекрест",
+    "перекрёст",
+    "лента",
+    "ашан",
+    "суперм",
+    "grocery",
+    "groceries",
+    "food",
+    "supermarket",
+  ].some((token) => normalized.includes(token))) {
+    return "groceries";
+  }
+  if ([
+    "жкх",
+    "кварт",
+    "аренд",
+    "коммун",
+    "связ",
+    "интернет",
+    "телефон",
+    "транспорт",
+    "бензин",
+    "проезд",
+    "utilities",
+    "rent",
+    "internet",
+    "phone",
+    "transport",
+    "fuel",
+  ].some((token) => normalized.includes(token))) {
+    return "mandatory";
+  }
   if ([
     "дет",
     "реб",
@@ -171,6 +209,12 @@ function essentialHabitDetail(
     if (kind === "emergency") {
       return `Average check ${amount}. Treat it as an emergency signal: separate one-off fires from recurring risks and rebuild a small reserve.`;
     }
+    if (kind === "groceries") {
+      return `Average check ${amount}. Do not cut food blindly: plan a short shopping list and avoid extra impulse items.`;
+    }
+    if (kind === "mandatory") {
+      return `Average check ${amount}. Mandatory costs are not for random cuts: check the plan and payment dates.`;
+    }
     return `Average check ${amount}. Do not cut child-related spending blindly: check what is included, payment plan, and safe optimizations.`;
   }
   if (kind === "health") {
@@ -182,6 +226,12 @@ function essentialHabitDetail(
   if (kind === "emergency") {
     return `Средний чек ${amount}. Это не статья для жёсткой экономии, а сигнал: отделите разовый пожар от повторяющегося риска и восстановите небольшой резерв.`;
   }
+  if (kind === "groceries") {
+    return `Средний чек ${amount}. Еду не режем вслепую: миссия — один раз сходить в магазин со списком и не докупать лишнее по дороге.`;
+  }
+  if (kind === "mandatory") {
+    return `Средний чек ${amount}. Обязательные расходы не режем наугад: проверьте, когда следующий платёж и заложена ли сумма в план.`;
+  }
   return `Средний чек ${amount}. Детские расходы не режем вслепую: проверьте, что входит в сумму, план платежей и где можно оптимизировать без вреда для ребёнка.`;
 }
 
@@ -191,6 +241,7 @@ function literacyPrinciple(
     | "cashflow_pause"
     | "habit"
     | "essential"
+    | "small_observation"
     | "debt"
     | "goal"
     | "memory"
@@ -204,6 +255,7 @@ function literacyPrinciple(
       cashflow_pause: "First required payments, then comfort spending.",
       habit: "Small repeated expenses matter more than rare big decisions.",
       essential: "Important spending is planned, not blindly cut.",
+      small_observation: "Small expenses first need tracking, not dramatic cuts.",
       debt: "Minimum debt payments come before comfort and savings.",
       goal: "Capital is built by small repeated deposits.",
       memory: "Correcting mistakes teaches the app your real money language.",
@@ -217,6 +269,7 @@ function literacyPrinciple(
     cashflow_pause: "Сначала обязательные платежи, потом комфорт.",
     habit: "Маленькие повторяющиеся траты часто важнее редких крупных решений.",
     essential: "Важные расходы не режут вслепую — их планируют.",
+    small_observation: "Маленькие расходы сначала наблюдают, а не режут с плеча.",
     debt: "Минимальный платёж по долгу важнее комфорта и копилок.",
     goal: "Капитал строится маленькими повторяемыми взносами.",
     memory: "Исправления учат приложение вашему настоящему языку денег.",
@@ -289,24 +342,36 @@ function buildWeeklyMissions(params: {
 
   if (habit && habit.sharePercent >= 25) {
     const essentialKind = essentialCategoryKind(habit.category);
+    const isSmallHabit = habit.avgAmount < 1000;
     add({
       id: `habit:${habit.category}`,
       tone: "habit",
-      principle: literacyPrinciple(essentialKind ? "essential" : "habit", locale),
+      principle: literacyPrinciple(
+        essentialKind ? "essential" : isSmallHabit ? "small_observation" : "habit",
+        locale,
+      ),
       title: isRu
         ? essentialKind
           ? `Проверить статью «${habit.category}»`
-          : `Минус один чек: ${habit.category}`
+          : isSmallHabit
+            ? `Понаблюдать за «${habit.category}»`
+          : `Найти один повтор: ${habit.category}`
         : essentialKind
           ? `Review "${habit.category}"`
+          : isSmallHabit
+            ? `Watch "${habit.category}"`
           : `One less check: ${habit.category}`,
       detail: isRu
         ? essentialKind
           ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
-          : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Если убрать один такой расход в неделю, уже появится запас.`
+          : isSmallHabit
+            ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Миссия: просто записать ещё 3 такие траты и понять, это обычная база или привычка.`
+          : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Миссия: найти один повторяющийся расход и решить, нужен ли он на этой неделе.`
         : essentialKind
           ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
-          : `Average check ${formatMoney(habit.avgAmount, locale)}. Skip one this week to create breathing room.`,
+          : isSmallHabit
+            ? `Average check ${formatMoney(habit.avgAmount, locale)}. Mission: log 3 more similar expenses and learn whether this is a basic need or a habit.`
+          : `Average check ${formatMoney(habit.avgAmount, locale)}. Mission: find one repeated expense and decide whether it is needed this week.`,
     });
   }
 

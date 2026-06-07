@@ -79,7 +79,9 @@ Strict principles:
 - The mission must teach ONE small financial-literacy rule through action.
 - Include "principle": a simple rule a 10-year-old can understand. No jargon.
 - No shame, no fear, no harsh austerity.
-- Do not suggest cutting health, children, education, emergency, debt minimum payments, taxes, or mandatory bills.
+- Do not suggest cutting groceries/food, health, children, education, emergency, debt minimum payments, taxes, transport, utilities, rent, internet, phone, or mandatory bills.
+- For groceries/food, suggest a shopping list, meal plan, checking impulse extras, or simply observing. Never say "skip food", "one less grocery check", or anything that sounds like eating less.
+- For small average checks under 1000 RUB, prefer observation and tracking over cutting.
 - If a sensitive category is visible, suggest planning, checking documents, splitting payments, insurance/tax deduction, or building reserve.
 - The mission must be doable in 7 days and take 5-20 minutes or one small action.
 - Prefer behavior change over generic advice.
