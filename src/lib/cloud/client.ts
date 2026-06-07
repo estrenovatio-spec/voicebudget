@@ -500,3 +500,39 @@ export async function apiPushBusiness(
   }
   return parseJson<{ ok: boolean }>(res);
 }
+
+export type BusinessBackupSummary = {
+  id: string;
+  createdAt: string;
+  reason: string;
+  units: number;
+  transactions: number;
+  assets: number;
+  debts: number;
+  unitNames: string[];
+  assetNames: string[];
+};
+
+export async function apiListBusinessBackups(token: string) {
+  const res = await apiFetch("/api/business/backups", {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  return parseJson<{ ok: boolean; backups: BusinessBackupSummary[] }>(res);
+}
+
+export async function apiRestoreBusinessBackup(token: string, backupId: string) {
+  const res = await apiFetch("/api/business/backups", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ backupId }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  return parseJson<{
+    ok: boolean;
+    business: import("@/lib/business/types").BusinessCloudPayload;
+  }>(res);
+}

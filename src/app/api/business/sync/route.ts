@@ -8,7 +8,9 @@ import {
 } from "@/lib/api/household-response";
 import { requireSession } from "@/lib/api/household-auth";
 import {
+  backupUserBusinessPayload,
   fetchUserBusinessPayload,
+  hasMeaningfulBusinessPayload,
   mergeBusinessPayload,
   saveUserBusinessPayload,
 } from "@/lib/business/db";
@@ -65,8 +67,22 @@ export async function PUT(req: NextRequest) {
     await assertActiveSubscription(session.userId);
     const incoming = parsed.data as BusinessCloudPayload;
     const existing = await fetchUserBusinessPayload(session.userId);
+    if (
+      existing &&
+      hasMeaningfulBusinessPayload(existing) &&
+      !hasMeaningfulBusinessPayload(incoming)
+    ) {
+      await backupUserBusinessPayload(session.userId, existing, "protected_empty_overwrite");
+      return NextResponse.json({
+        ok: true,
+        cloudSaved: false,
+        protected: true,
+        reason: "empty_business_payload_rejected",
+      });
+    }
     let toSave = incoming;
     if (existing) {
+      await backupUserBusinessPayload(session.userId, existing, "before_update");
       toSave = mergeBusinessPayload(incoming, existing);
       if (incoming.assets.length === 0 && existing.assets.length > 0) {
         toSave.assets = existing.assets;
@@ -88,6 +104,9 @@ export async function PUT(req: NextRequest) {
       }
     }
     const saved = await saveUserBusinessPayload(session.userId, toSave);
+    if (saved && !existing && hasMeaningfulBusinessPayload(toSave)) {
+      await backupUserBusinessPayload(session.userId, toSave, "first_save");
+    }
     return NextResponse.json({
       ok: true,
       cloudSaved: saved,

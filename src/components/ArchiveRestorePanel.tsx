@@ -1,9 +1,16 @@
 "use client";
 
-import { ArchiveRestore } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArchiveRestore, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import {
+  apiListBusinessBackups,
+  apiRestoreBusinessBackup,
+  type BusinessBackupSummary,
+} from "@/lib/cloud/client";
 import { formatMoney } from "@/lib/format-money";
+import { useCloudStore } from "@/store/useCloudStore";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStore } from "@/store/useStore";
 
@@ -23,9 +30,36 @@ export function ArchiveRestorePanel() {
   const restoreArchivedCategory = useStore((s) => s.restoreArchivedCategory);
   const businessArchive = useBusinessStore((s) => s.deletedUnitsArchive);
   const restoreDeletedUnitArchive = useBusinessStore((s) => s.restoreDeletedUnitArchive);
+  const importBusinessPayload = useBusinessStore((s) => s.importPayload);
+  const markBusinessCloudSynced = useBusinessStore((s) => s.markCloudSynced);
+  const token = useCloudStore((s) => s.token);
+  const [serverBackups, setServerBackups] = useState<BusinessBackupSummary[]>([]);
+  const [serverLoading, setServerLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const hasArchive = categoryArchive.length > 0 || businessArchive.length > 0;
+  const hasArchive =
+    categoryArchive.length > 0 || businessArchive.length > 0 || serverBackups.length > 0;
+
+  const loadServerBackups = async () => {
+    if (!token) {
+      setServerBackups([]);
+      return;
+    }
+    setServerLoading(true);
+    try {
+      const res = await apiListBusinessBackups(token);
+      setServerBackups(res.backups ?? []);
+    } catch {
+      setServerBackups([]);
+    } finally {
+      setServerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadServerBackups();
+  }, [token]);
 
   const restoreCategory = (id: string) => {
     const ok = restoreArchivedCategory(id);
@@ -55,6 +89,37 @@ export function ArchiveRestorePanel() {
     );
   };
 
+  const restoreServerBackup = async (id: string) => {
+    if (!token) return;
+    if (
+      !window.confirm(
+        locale === "ru"
+          ? "Восстановить бизнес из этой резервной копии? Текущее состояние перед восстановлением тоже сохранится в архив."
+          : "Restore business from this backup? Current state will also be saved as a backup.",
+      )
+    ) {
+      return;
+    }
+    setRestoringId(id);
+    try {
+      const res = await apiRestoreBusinessBackup(token, id);
+      importBusinessPayload(res.business);
+      markBusinessCloudSynced();
+      toast(
+        locale === "ru" ? "Бизнес восстановлен из резервной копии" : "Business restored from backup",
+        "success",
+      );
+      await loadServerBackups();
+    } catch {
+      toast(
+        locale === "ru" ? "Не удалось восстановить резервную копию" : "Could not restore backup",
+        "error",
+      );
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   return (
     <div className="space-y-2 rounded-lg border border-border/80 bg-background p-3">
       <div className="flex items-start gap-2">
@@ -73,8 +138,67 @@ export function ArchiveRestorePanel() {
 
       {!hasArchive ? (
         <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-          {locale === "ru" ? "Архив пока пуст." : "Archive is empty."}
+          {serverLoading
+            ? locale === "ru"
+              ? "Проверяю резервные копии..."
+              : "Checking backups..."
+            : locale === "ru"
+              ? "Архив пока пуст."
+              : "Archive is empty."}
         </p>
+      ) : null}
+
+      {serverBackups.length > 0 ? (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {locale === "ru" ? "Резервные копии бизнеса" : "Business backups"}
+            </p>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void loadServerBackups()}>
+              {locale === "ru" ? "Обновить" : "Refresh"}
+            </Button>
+          </div>
+          <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
+            {serverBackups.map((item) => (
+              <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium leading-tight">
+                      {formatArchiveDate(item.createdAt, locale)} ·{" "}
+                      {locale === "ru" ? "бизнесов: " : "businesses: "}
+                      {item.units} · {locale === "ru" ? "проектов: " : "projects: "}
+                      {item.assets}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {locale === "ru" ? "Операций: " : "Entries: "}
+                      {item.transactions} · {locale === "ru" ? "долгов: " : "debts: "}
+                      {item.debts}
+                    </p>
+                    {[...item.unitNames, ...item.assetNames].length > 0 ? (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {[...item.unitNames, ...item.assetNames].slice(0, 8).join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={Boolean(restoringId)}
+                    onClick={() => void restoreServerBackup(item.id)}
+                  >
+                    {restoringId === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : locale === "ru" ? (
+                      "Вернуть"
+                    ) : (
+                      "Restore"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {categoryArchive.length > 0 ? (

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiListAiReports, apiPushBusiness, type AiReportRecord } from "@/lib/cloud/client";
+import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
 import {
   buildBudgetExcelWorkbook,
   buildTransactionsPdfBlob,
@@ -330,9 +330,6 @@ export function MoreReportsTab() {
     );
     if (await downloadPreparedBlob(fileName, blob)) return;
 
-    if (token) {
-      await apiPushBusiness(token, useBusinessStore.getState().exportPayload()).catch(() => null);
-    }
     const result = await saveBlobFile(
       fileName,
       blob,
