@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import PDFDocument from "pdfkit";
 import { requireSession } from "@/lib/api/household-auth";
 import { buildBudgetExcelWorkbook, filterBusinessTransactionsByPeriod, filterTransactionsByPeriod } from "@/lib/export/transactions-export";
 import { fetchUserBusinessPayload } from "@/lib/business/db";
@@ -11,31 +11,6 @@ import type { BusinessTransaction, BusinessUnit } from "@/lib/business/types";
 import { getCategoryLabel } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
-
-let pdfFontCssCache: string | null = null;
-
-function getPdfFontCss(): string {
-  if (pdfFontCssCache) return pdfFontCssCache;
-  try {
-    const regular = readFileSync(join(process.cwd(), "public/fonts/inter-400.woff")).toString("base64");
-    const semibold = readFileSync(join(process.cwd(), "public/fonts/inter-600.woff")).toString("base64");
-    pdfFontCssCache = `
-      @font-face {
-        font-family: "InterExport";
-        src: url("data:font/woff;base64,${regular}") format("woff");
-        font-weight: 400;
-      }
-      @font-face {
-        font-family: "InterExport";
-        src: url("data:font/woff;base64,${semibold}") format("woff");
-        font-weight: 700;
-      }
-    `;
-  } catch {
-    pdfFontCssCache = "";
-  }
-  return pdfFontCssCache;
-}
 
 function sessionFromRequest(req: NextRequest) {
   const headerSession = requireSession(req);
@@ -285,60 +260,92 @@ async function makePdf(params: {
 }): Promise<Buffer> {
   const rows = makeRows(params);
   const isRu = params.locale === "ru";
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 40,
+      info: { Title: "Просто Бюджет" },
+    });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
 
-  try {
-    const sharp = (await import("sharp")).default;
-    const width = 1240;
-    const height = 1754;
-    const rowH = 54;
-    const headerH = 190;
-    const footerH = 70;
-    const perPage = Math.max(1, Math.floor((height - headerH - footerH) / rowH));
-    const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
-    const pages: { jpeg: Buffer; width: number; height: number }[] = [];
+    const regularFont = join(process.cwd(), "public/fonts/inter-400.woff");
+    const boldFont = join(process.cwd(), "public/fonts/inter-600.woff");
+    doc.registerFont("Inter", regularFont);
+    doc.registerFont("InterBold", boldFont);
 
-    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-      const pageRows = rows.slice(pageIndex * perPage, pageIndex * perPage + perPage);
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-          <style>
-            ${getPdfFontCss()}
-            .title { font: 700 38px "InterExport", Arial, sans-serif; fill: #111827; }
-            .meta { font: 24px "InterExport", Arial, sans-serif; fill: #4b5563; }
-            .head { font: 700 22px "InterExport", Arial, sans-serif; fill: #111827; }
-            .cell { font: 22px "InterExport", Arial, sans-serif; fill: #111827; }
-            .bold { font-weight: 700; }
-            .footer { font: 20px "InterExport", Arial, sans-serif; fill: #6b7280; }
-          </style>
-          <rect width="100%" height="100%" fill="#ffffff"/>
-          <text x="72" y="86" class="title">Просто Бюджет</text>
-          <text x="72" y="126" class="meta">${escapeSvg(`${params.periodStart} — ${params.periodEnd} · ${rows.length} ${isRu ? "операций" : "entries"}`)}</text>
-          <rect x="72" y="150" width="1096" height="44" fill="#f3f4f6"/>
-          <text x="88" y="179" class="head">${isRu ? "Дата" : "Date"}</text>
-          <text x="252" y="179" class="head">${isRu ? "Сумма" : "Amount"}</text>
-          <text x="452" y="179" class="head">${isRu ? "Категория" : "Category"}</text>
-          <text x="732" y="179" class="head">${isRu ? "Заметка" : "Note"}</text>
-          ${
-            pageRows.length
-              ? pageRows.map((row, index) => rowSvg(row, headerH + index * rowH + 52)).join("")
-              : `<text x="72" y="260" class="cell">${isRu ? "За выбранный период операций нет" : "No entries for selected period"}</text>`
-          }
-          <text x="72" y="${height - 42}" class="footer">Просто Бюджет · ${pageIndex + 1}/${pageCount}</text>
-        </svg>
-      `;
-      const jpeg = await sharp(Buffer.from(svg)).jpeg({ quality: 92 }).toBuffer();
-      pages.push({ jpeg, width, height });
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+    const margin = 40;
+    const rowH = 27;
+    const footerY = pageH - 30;
+    const col = {
+      date: margin,
+      amount: margin + 78,
+      category: margin + 170,
+      note: margin + 310,
+    };
+
+    const drawHeader = () => {
+      doc.fillColor("#111827").font("InterBold").fontSize(20).text("Просто Бюджет", margin, 36);
+      doc
+        .fillColor("#4b5563")
+        .font("Inter")
+        .fontSize(10)
+        .text(
+          `${params.periodStart} — ${params.periodEnd} · ${rows.length} ${isRu ? "операций" : "entries"}`,
+          margin,
+          64,
+        );
+      doc.rect(margin, 88, pageW - margin * 2, 24).fill("#f3f4f6");
+      doc.fillColor("#111827").font("InterBold").fontSize(9);
+      doc.text(isRu ? "Дата" : "Date", col.date + 4, 96, { width: 70, lineBreak: false });
+      doc.text(isRu ? "Сумма" : "Amount", col.amount, 96, { width: 86, lineBreak: false });
+      doc.text(isRu ? "Категория" : "Category", col.category, 96, { width: 130, lineBreak: false });
+      doc.text(isRu ? "Заметка" : "Note", col.note, 96, { width: pageW - col.note - margin, lineBreak: false });
+    };
+
+    const drawFooter = (page: number) => {
+      doc.fillColor("#6b7280").font("Inter").fontSize(8).text(`Просто Бюджет · ${page}`, margin, footerY);
+    };
+
+    let page = 1;
+    let y = 126;
+    drawHeader();
+
+    const ensureSpace = () => {
+      if (y + rowH <= footerY - 10) return;
+      drawFooter(page);
+      doc.addPage();
+      page += 1;
+      y = 126;
+      drawHeader();
+    };
+
+    if (rows.length === 0) {
+      doc
+        .fillColor("#111827")
+        .font("Inter")
+        .fontSize(10)
+        .text(isRu ? "За выбранный период операций нет" : "No entries for selected period", margin, y);
+    } else {
+      rows.forEach((row) => {
+        ensureSpace();
+        doc.moveTo(margin, y - 7).lineTo(pageW - margin, y - 7).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
+        doc.fillColor("#111827").font("Inter").fontSize(8);
+        doc.text(row.date.slice(0, 10), col.date + 4, y, { width: 70, lineBreak: false });
+        doc.font("InterBold").text(row.amount, col.amount, y, { width: 86, lineBreak: false });
+        doc.font("Inter").text(clipText(row.category, 34), col.category, y, { width: 130, lineBreak: false });
+        doc.text(clipText(row.note, 62), col.note, y, { width: pageW - col.note - margin, lineBreak: false });
+        y += rowH;
+      });
     }
 
-    return makeImagePdf(pages);
-  } catch {
-    return makeTextPdf({
-      rows,
-      locale: params.locale,
-      periodStart: params.periodStart,
-      periodEnd: params.periodEnd,
-    });
-  }
+    drawFooter(page);
+    doc.end();
+  });
 }
 
 export async function GET(req: NextRequest) {

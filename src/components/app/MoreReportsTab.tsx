@@ -5,8 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiListAiReports, type AiReportRecord } from "@/lib/cloud/client";
-import { pushBusinessToCloud } from "@/lib/cloud/business-sync";
+import { apiListAiReports, apiPushBusiness, type AiReportRecord } from "@/lib/cloud/client";
 import {
   buildBudgetExcelWorkbook,
   buildTransactionsPdfBlob,
@@ -259,7 +258,7 @@ export function MoreReportsTab() {
   const exportExcel = async () => {
     const tg = window.Telegram?.WebApp;
     if (token && tg?.downloadFile) {
-      await pushBusinessToCloud();
+      await apiPushBusiness(token, useBusinessStore.getState().exportPayload()).catch(() => null);
       if (openServerExport("xlsx")) return;
     }
 
@@ -304,6 +303,7 @@ export function MoreReportsTab() {
       );
       return;
     }
+    if (openServerExport("pdf")) return;
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
