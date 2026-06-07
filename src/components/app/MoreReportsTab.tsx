@@ -279,6 +279,9 @@ export function MoreReportsTab() {
           type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         },
       ),
+      {
+        openBlobInWebView: false,
+      },
     );
     if (result === "failed" && openServerExport("xlsx")) return;
     showSaveResult(result);
