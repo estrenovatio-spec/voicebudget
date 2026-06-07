@@ -94,20 +94,16 @@ function escapeXmlCell(value: string | number): string {
     .replace(/"/g, "&quot;");
 }
 
-function worksheet(name: string, rows: (string | number)[][]): string {
-  const safeName = escapeXmlCell(name.slice(0, 31));
+function htmlTable(title: string, rows: (string | number)[][]): string {
   const body = rows
-    .map(
-      (row) =>
-        `<Row>${row
-          .map((cell) => {
-            const type = typeof cell === "number" ? "Number" : "String";
-            return `<Cell><Data ss:Type="${type}">${escapeXmlCell(cell)}</Data></Cell>`;
-          })
-          .join("")}</Row>`,
-    )
+    .map((row, rowIndex) => {
+      const tag = rowIndex === 0 ? "th" : "td";
+      return `<tr>${row
+        .map((cell) => `<${tag}>${escapeXmlCell(cell)}</${tag}>`)
+        .join("")}</tr>`;
+    })
     .join("");
-  return `<Worksheet ss:Name="${safeName}"><Table>${body}</Table></Worksheet>`;
+  return `<h2>${escapeXmlCell(title)}</h2><table>${body}</table>`;
 }
 
 function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): string {
@@ -259,18 +255,28 @@ export function buildBudgetExcelXml(params: {
     ],
   ];
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${worksheet(isRu ? "Итог" : "Summary", metaRows)}
-${worksheet(isRu ? "Семья" : "Family", familyRows)}
-${worksheet(isRu ? "Бизнес" : "Business", businessRows)}
-${worksheet(isRu ? "Итог бизнеса" : "Business summary", businessSummary)}
-${worksheet(isRu ? "Проекты" : "Projects", projectRows)}
-</Workbook>`;
+  return `\uFEFF<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial, sans-serif; color: #111827; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    h2 { font-size: 15px; margin: 18px 0 6px; }
+    table { border-collapse: collapse; margin-bottom: 12px; }
+    th, td { border: 1px solid #d1d5db; padding: 6px 8px; font-size: 12px; mso-number-format:"\\@"; }
+    th { background: #f3f4f6; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>${isRu ? "Просто Бюджет" : "Prosto Budget"}</h1>
+  ${htmlTable(isRu ? "Итог" : "Summary", metaRows)}
+  ${htmlTable(isRu ? "Семья" : "Family", familyRows)}
+  ${htmlTable(isRu ? "Бизнес" : "Business", businessRows)}
+  ${htmlTable(isRu ? "Итог бизнеса" : "Business summary", businessSummary)}
+  ${htmlTable(isRu ? "Проекты" : "Projects", projectRows)}
+</body>
+</html>`;
 }
 
 function concatBytes(parts: Uint8Array[]): Uint8Array {
