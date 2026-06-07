@@ -181,7 +181,7 @@ export function AiMemoryCenter() {
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium">
-            {locale === "ru" ? "Чему ИИ научился" : "What AI learned"}
+            {locale === "ru" ? "Финансовая память" : "Financial memory"}
           </p>
           <p className="text-xs text-muted-foreground">
             {locale === "ru" ? `${learnedRules.length} правил` : `${learnedRules.length} rules`}
