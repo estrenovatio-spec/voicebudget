@@ -525,10 +525,10 @@ export function AiWeeklyMissionTab() {
         <p className="mt-2 text-xs leading-snug text-primary">
           {aiMission
             ? locale === "ru"
-              ? "Главная миссия выбрана ИИ по вашему поведению за неделю."
+              ? "Главная миссия выбрана по вашему поведению за неделю."
               : "The main mission was chosen from your weekly behavior."
             : locale === "ru"
-              ? "Главная миссия уже выбрана по вашим данным. ИИ усилит её, когда накопится достаточно свежих операций."
+              ? "Главная миссия уже выбрана по вашим данным. Она станет точнее, когда накопится достаточно свежих операций."
               : "The main mission is selected from your data. AI will strengthen it when there is enough fresh activity."}
         </p>
       </div>
