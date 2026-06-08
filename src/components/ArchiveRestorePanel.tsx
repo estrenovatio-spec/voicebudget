@@ -175,12 +175,14 @@ export function ArchiveRestorePanel() {
       const res = await apiRestoreHouseholdBackup(token, id);
       useCloudStore.getState().setDeletedTransactionIds([]);
       useCloudStore.getState().setDeletedRecurringIds([]);
+      useCloudStore.getState().setDeletedDebtIds([]);
       useStore.setState({
         transactions: [],
         categories: [],
         savingsGoals: [],
         categoryBudgets: [],
         recurringTransactions: [],
+        debts: [],
         vehicles: [],
       });
       applyHouseholdSync(res.sync, token);
@@ -263,8 +265,8 @@ export function ArchiveRestorePanel() {
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {locale === "ru" ? "Целей: " : "Goals: "}
                         {item.goals} · {locale === "ru" ? "категорий: " : "categories: "}
-                        {item.categories} · {locale === "ru" ? "регулярных: " : "recurring: "}
-                        {item.recurring}
+                        {item.categories} · {locale === "ru" ? "долгов: " : "debts: "}
+                        {item.debts}
                       </p>
                     </div>
                     <Button

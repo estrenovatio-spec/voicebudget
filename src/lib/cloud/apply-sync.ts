@@ -7,6 +7,7 @@ import {
   cloudPushCategory,
   cloudPushCategoryBudget,
   cloudPushGoal,
+  cloudPushDebt,
   cloudPushRecurring,
   cloudPushTransaction,
 } from "@/lib/cloud/push";
@@ -22,6 +23,7 @@ function emptyPlanningDefaults(sync: SyncPayload): SyncPayload {
     savingsGoals: sync.savingsGoals ?? [],
     categoryBudgets: sync.categoryBudgets ?? [],
     recurringTransactions: sync.recurringTransactions ?? [],
+    debts: sync.debts ?? [],
   };
 }
 
@@ -33,6 +35,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
   const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
   const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
+  const deletedDebts = new Set(cloud.deletedDebtIds ?? []);
   const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
   const merged = mergeSyncPayload(
     local.transactions,
@@ -41,6 +44,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
       savingsGoals: local.savingsGoals,
       categoryBudgets: local.categoryBudgets,
       recurringTransactions: local.recurringTransactions,
+      debts: local.debts,
     },
     remote,
     previouslySynced,
@@ -48,14 +52,20 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     undefined,
     deletedRecurring,
     deletedTransactions,
+    deletedDebts,
   );
 
   const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
+  const remoteDebtIds = new Set((remote.debts ?? []).map((d) => d.id));
   const prunedDeletedRecurring = (cloud.deletedRecurringIds ?? []).filter((id) =>
     remoteRecurringIds.has(id),
   );
   if (prunedDeletedRecurring.length !== (cloud.deletedRecurringIds ?? []).length) {
     useCloudStore.getState().setDeletedRecurringIds(prunedDeletedRecurring);
+  }
+  const prunedDeletedDebt = (cloud.deletedDebtIds ?? []).filter((id) => remoteDebtIds.has(id));
+  if (prunedDeletedDebt.length !== (cloud.deletedDebtIds ?? []).length) {
+    useCloudStore.getState().setDeletedDebtIds(prunedDeletedDebt);
   }
 
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
@@ -94,6 +104,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   useCloudStore.getState().setLastSyncedRemoteRecurringIds(
     (remote.recurringTransactions ?? []).map((r) => r.id),
   );
+  useCloudStore.getState().setLastSyncedRemoteDebtIds((remote.debts ?? []).map((d) => d.id));
 
   const balanceOffsets = parseBalanceOffsets(remote.balanceOffsets);
   useCloudStore.getState().setBalanceOffsets(balanceOffsets);
@@ -110,6 +121,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     savingsGoals,
     categoryBudgets: merged.categoryBudgets,
     recurringTransactions: merged.recurringTransactions,
+    debts: merged.debts,
     vehicles: garage.vehicles,
     vehiclePrefs: garage.vehiclePrefs,
     // Имена в балансе (userName / partnerName) — только на этом телефоне, не из облака.
@@ -136,5 +148,9 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   for (const id of merged.localOnlyRecurringIds) {
     const item = merged.recurringTransactions.find((r) => r.id === id);
     if (item) void cloudPushRecurring(item);
+  }
+  for (const id of merged.localOnlyDebtIds) {
+    const item = merged.debts.find((d) => d.id === id);
+    if (item) void cloudPushDebt(item);
   }
 }

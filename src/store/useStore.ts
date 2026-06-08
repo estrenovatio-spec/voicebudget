@@ -57,6 +57,8 @@ import {
   cloudPushCategory,
   cloudPushCategoryBudget,
   cloudPushCategoryBudgetDelete,
+  cloudPushDebt,
+  cloudPushDebtDelete,
   cloudPushCategoryDelete,
   cloudPushGoal,
   cloudPushGoalDelete,
@@ -1207,9 +1209,11 @@ export const useStore = create<StoreState>()(
           updatedAt: new Date().toISOString(),
         };
         set((state) => ({ debts: [debt, ...state.debts] }));
+        void cloudPushDebt(debt);
         return id;
       },
       updateDebt: (id, patch) => {
+        let updated: DebtItem | null = null;
         set((state) => ({
           debts: state.debts.map((debt) => {
             if (debt.id !== id) return debt;
@@ -1222,29 +1226,37 @@ export const useStore = create<StoreState>()(
                 ? null
                 : Math.max(0, Math.min(999, Math.round(next.ratePct * 10) / 10));
             next.nextPaymentDate = next.nextPaymentDate?.trim() || null;
+            updated = next;
             return next;
           }),
         }));
+        if (updated) void cloudPushDebt(updated);
       },
       payDebt: (id, amount) => {
         const amt = roundMoneyUp(amount);
         if (amt <= 0) return false;
         let changed = false;
+        let updated: DebtItem | null = null;
         set((state) => ({
           debts: state.debts.map((debt) => {
             if (debt.id !== id) return debt;
             changed = true;
-            return {
+            updated = {
               ...debt,
               balance: Math.max(0, roundMoneyUp(debt.balance - amt)),
               updatedAt: new Date().toISOString(),
             };
+            return updated;
           }),
         }));
+        if (updated) void cloudPushDebt(updated);
         return changed;
       },
       removeDebt: (id) => {
         set((state) => ({ debts: state.debts.filter((d) => d.id !== id) }));
+        useCloudStore.getState().markDebtDeleted(id);
+        useCloudStore.getState().removeFromLastSyncedRemoteDebtIds(id);
+        void cloudPushDebtDelete(id);
       },
       processRecurringDue: () => {
         const state = get();

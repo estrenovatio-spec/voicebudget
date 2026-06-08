@@ -27,8 +27,11 @@ interface CloudState {
   lastSyncedRemoteGoalIds: string[];
   lastSyncedRemoteBudgetCategoryIds: string[];
   lastSyncedRemoteRecurringIds: string[];
+  lastSyncedRemoteDebtIds: string[];
   /** Локально удалённые регулярные — не поднимать с облака при merge */
   deletedRecurringIds: string[];
+  /** Локально удалённые долги — не поднимать с облака при merge */
+  deletedDebtIds: string[];
   /** Локально удалённые операции — не поднимать с облака при merge */
   deletedTransactionIds: string[];
   /** Последняя ошибка записи в облако (операция остаётся локально) */
@@ -48,13 +51,17 @@ interface CloudState {
   setLastSyncedRemoteGoalIds: (ids: string[]) => void;
   setLastSyncedRemoteBudgetCategoryIds: (ids: string[]) => void;
   setLastSyncedRemoteRecurringIds: (ids: string[]) => void;
+  setLastSyncedRemoteDebtIds: (ids: string[]) => void;
   removeFromLastSyncedRemoteTxIds: (id: string) => void;
   removeFromLastSyncedRemoteCategoryIds: (id: string) => void;
   removeFromLastSyncedRemoteGoalIds: (id: string) => void;
   removeFromLastSyncedRemoteBudgetCategoryIds: (categoryId: string) => void;
   removeFromLastSyncedRemoteRecurringIds: (id: string) => void;
+  removeFromLastSyncedRemoteDebtIds: (id: string) => void;
   markRecurringDeleted: (id: string) => void;
   setDeletedRecurringIds: (ids: string[]) => void;
+  markDebtDeleted: (id: string) => void;
+  setDeletedDebtIds: (ids: string[]) => void;
   markTransactionDeleted: (id: string) => void;
   setDeletedTransactionIds: (ids: string[]) => void;
   setLastWriteError: (error: string | null) => void;
@@ -82,7 +89,9 @@ export const useCloudStore = create<CloudState>()(
       lastSyncedRemoteGoalIds: [],
       lastSyncedRemoteBudgetCategoryIds: [],
       lastSyncedRemoteRecurringIds: [],
+      lastSyncedRemoteDebtIds: [],
       deletedRecurringIds: [],
+      deletedDebtIds: [],
       deletedTransactionIds: [],
       lastWriteError: null,
       setServerConfigured: (serverConfigured) => set({ serverConfigured }),
@@ -102,6 +111,7 @@ export const useCloudStore = create<CloudState>()(
       setLastSyncedRemoteBudgetCategoryIds: (ids) =>
         set({ lastSyncedRemoteBudgetCategoryIds: ids }),
       setLastSyncedRemoteRecurringIds: (ids) => set({ lastSyncedRemoteRecurringIds: ids }),
+      setLastSyncedRemoteDebtIds: (ids) => set({ lastSyncedRemoteDebtIds: ids }),
       removeFromLastSyncedRemoteTxIds: (id) =>
         set((s) => ({
           lastSyncedRemoteTxIds: s.lastSyncedRemoteTxIds.filter((x) => x !== id),
@@ -124,6 +134,10 @@ export const useCloudStore = create<CloudState>()(
         set((s) => ({
           lastSyncedRemoteRecurringIds: s.lastSyncedRemoteRecurringIds.filter((x) => x !== id),
         })),
+      removeFromLastSyncedRemoteDebtIds: (id) =>
+        set((s) => ({
+          lastSyncedRemoteDebtIds: s.lastSyncedRemoteDebtIds.filter((x) => x !== id),
+        })),
       markRecurringDeleted: (id) =>
         set((s) => ({
           deletedRecurringIds: s.deletedRecurringIds.includes(id)
@@ -131,6 +145,13 @@ export const useCloudStore = create<CloudState>()(
             : [...s.deletedRecurringIds, id],
         })),
       setDeletedRecurringIds: (deletedRecurringIds) => set({ deletedRecurringIds }),
+      markDebtDeleted: (id) =>
+        set((s) => ({
+          deletedDebtIds: s.deletedDebtIds.includes(id)
+            ? s.deletedDebtIds
+            : [...s.deletedDebtIds, id],
+        })),
+      setDeletedDebtIds: (deletedDebtIds) => set({ deletedDebtIds }),
       markTransactionDeleted: (id) =>
         set((s) => ({
           deletedTransactionIds: s.deletedTransactionIds.includes(id)
@@ -155,7 +176,9 @@ export const useCloudStore = create<CloudState>()(
           lastSyncedRemoteGoalIds: [],
           lastSyncedRemoteBudgetCategoryIds: [],
           lastSyncedRemoteRecurringIds: [],
+          lastSyncedRemoteDebtIds: [],
           deletedRecurringIds: [],
+          deletedDebtIds: [],
           deletedTransactionIds: [],
           lastWriteError: null,
         }),
@@ -169,11 +192,12 @@ export const useCloudStore = create<CloudState>()(
           lastSyncedRemoteGoalIds: [],
           lastSyncedRemoteBudgetCategoryIds: [],
           lastSyncedRemoteRecurringIds: [],
+          lastSyncedRemoteDebtIds: [],
         }),
     }),
     {
       name: "voicebudget-cloud",
-      version: 6,
+      version: 7,
       migrate: (persisted, version) => {
         const state = persisted as CloudState;
         let next = state;
@@ -216,6 +240,13 @@ export const useCloudStore = create<CloudState>()(
           next = {
             ...next,
             deletedTransactionIds: next.deletedTransactionIds ?? [],
+          };
+        }
+        if (version < 7) {
+          next = {
+            ...next,
+            lastSyncedRemoteDebtIds: next.lastSyncedRemoteDebtIds ?? [],
+            deletedDebtIds: next.deletedDebtIds ?? [],
           };
         }
         return next;

@@ -1,7 +1,7 @@
 import { migrateCategoryId, sanitizeCategories } from "@/lib/categories";
 import type { SyncPayload } from "@/lib/household/types";
 import type { CategoryDefinition, Transaction } from "@/types";
-import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 
 function txTime(tx: Transaction): number {
   const updated = tx.updatedAt ? Date.parse(tx.updatedAt) : NaN;
@@ -193,29 +193,44 @@ export function mergeRecurringTransactions(
   return merged.filter((r) => !deletedIds.has(r.id));
 }
 
+export function mergeDebts(
+  local: DebtItem[],
+  remote: DebtItem[],
+  _previouslySynced?: ReadonlySet<string>,
+  deletedIds?: ReadonlySet<string>,
+): DebtItem[] {
+  const merged = mergePlanningByKey(local, remote, (d) => d.id);
+  if (!deletedIds?.size) return merged;
+  return merged.filter((d) => !deletedIds.has(d.id));
+}
+
 export interface MergedSyncResult {
   transactions: Transaction[];
   categories: CategoryDefinition[];
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   recurringTransactions: RecurringTransaction[];
+  debts: DebtItem[];
   localOnlyTransactionIds: string[];
   localOnlyCategories: CategoryDefinition[];
   localOnlyGoalIds: string[];
   localOnlyBudgetCategoryIds: string[];
   localOnlyRecurringIds: string[];
+  localOnlyDebtIds: string[];
 }
 
 export interface PlanningLocalState {
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   recurringTransactions: RecurringTransaction[];
+  debts: DebtItem[];
 }
 
 export interface PreviouslySyncedPlanning {
   goalIds?: ReadonlySet<string>;
   budgetCategoryIds?: ReadonlySet<string>;
   recurringIds?: ReadonlySet<string>;
+  debtIds?: ReadonlySet<string>;
 }
 
 export function mergeSyncPayload(
@@ -228,12 +243,14 @@ export function mergeSyncPayload(
   previouslySyncedPlanning?: PreviouslySyncedPlanning,
   deletedRecurringIds?: ReadonlySet<string>,
   deletedTransactionIds?: ReadonlySet<string>,
+  deletedDebtIds?: ReadonlySet<string>,
 ): MergedSyncResult {
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const remoteCategoryIds = new Set(remote.categories.map((c) => c.id));
   const remoteGoalIds = new Set((remote.savingsGoals ?? []).map((g) => g.id));
   const remoteBudgetIds = new Set((remote.categoryBudgets ?? []).map((b) => b.categoryId));
   const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
+  const remoteDebtIds = new Set((remote.debts ?? []).map((d) => d.id));
 
   const transactions = mergeTransactions(
     localTransactions,
@@ -262,6 +279,12 @@ export function mergeSyncPayload(
     previouslySyncedPlanning?.recurringIds,
     deletedRecurringIds,
   );
+  const debts = mergeDebts(
+    localPlanning.debts,
+    remote.debts ?? [],
+    previouslySyncedPlanning?.debtIds,
+    deletedDebtIds,
+  );
 
   const localOnlyTransactionIds = localTransactions
     .map((t) => t.id)
@@ -284,6 +307,9 @@ export function mergeSyncPayload(
   const localOnlyRecurringIds = localPlanning.recurringTransactions
     .map((r) => r.id)
     .filter((id) => !remoteRecurringIds.has(id));
+  const localOnlyDebtIds = localPlanning.debts
+    .map((d) => d.id)
+    .filter((id) => !remoteDebtIds.has(id) && !deletedDebtIds?.has(id));
 
   return {
     transactions,
@@ -291,10 +317,12 @@ export function mergeSyncPayload(
     savingsGoals,
     categoryBudgets,
     recurringTransactions,
+    debts,
     localOnlyTransactionIds,
     localOnlyCategories,
     localOnlyGoalIds,
     localOnlyBudgetCategoryIds,
     localOnlyRecurringIds,
+    localOnlyDebtIds,
   };
 }

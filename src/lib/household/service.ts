@@ -4,7 +4,7 @@ import { getDefaultCategories, getFallbackCategoryId } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { assertActiveSubscription } from "@/lib/payments/subscription";
 import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
-import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
   appCategoryBudgetToDb,
   appGoalToDb,
@@ -19,6 +19,11 @@ import {
   VehicleGarageDbNotConfiguredError,
 } from "./vehicle-garage-db";
 export { VehicleGarageDbNotConfiguredError };
+import {
+  deleteDebtForHousehold,
+  fetchDebtsForHousehold,
+  upsertDebtForHousehold,
+} from "./debts-db";
 import { isMissingDbObject } from "./db-capabilities";
 import {
   createTransactionForHousehold,
@@ -401,10 +406,11 @@ export async function buildSyncPayload(
     include: { members: true },
   });
 
-  const [transactions, categories, planning, garage] = await Promise.all([
+  const [transactions, categories, planning, debts, garage] = await Promise.all([
     fetchTransactionsForHousehold(householdId),
     prisma.category.findMany({ where: { householdId } }),
     fetchPlanningForHousehold(householdId),
+    fetchDebtsForHousehold(householdId),
     fetchVehicleGarageForHousehold(householdId),
   ]);
 
@@ -420,6 +426,7 @@ export async function buildSyncPayload(
     vehicles: garage.vehicles,
     vehiclePrefs: garage.vehiclePrefs,
     vehicleGarageAvailable: garage.available,
+    debts,
     ...planning,
   };
 }
@@ -741,4 +748,18 @@ export async function deleteCloudRecurring(userId: string, householdId: string, 
   const existing = await prisma.recurringTransaction.findFirst({ where: { id, householdId } });
   if (!existing) throw new Error("not_found");
   await prisma.recurringTransaction.delete({ where: { id } });
+}
+
+export async function upsertCloudDebt(
+  userId: string,
+  householdId: string,
+  debt: DebtItem,
+) {
+  await assertMember(userId, householdId);
+  await upsertDebtForHousehold(householdId, debt);
+}
+
+export async function deleteCloudDebt(userId: string, householdId: string, id: string) {
+  await assertMember(userId, householdId);
+  await deleteDebtForHousehold(householdId, id);
 }

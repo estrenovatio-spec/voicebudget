@@ -1,8 +1,9 @@
-import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
   apiCreateTransaction,
   apiDeleteCategory,
   apiDeleteCategoryBudget,
+  apiDeleteDebt,
   apiDeleteGoal,
   apiDeleteRecurring,
   apiDeleteTransaction,
@@ -10,6 +11,7 @@ import {
   apiUpdateTransaction,
   apiUpsertCategory,
   apiUpsertCategoryBudget,
+  apiUpsertDebt,
   apiUpsertGoal,
   apiUpsertRecurring,
 } from "@/lib/cloud/client";
@@ -212,6 +214,26 @@ export async function cloudPushRecurringDelete(id: string): Promise<void> {
   if (!t) return;
   try {
     await apiDeleteRecurring(t, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function cloudPushDebt(item: DebtItem): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    await apiUpsertDebt(t, item);
+  } catch {
+    /* ignore — долг останется локально и дотолкнётся при следующем pull */
+  }
+}
+
+export async function cloudPushDebtDelete(id: string): Promise<void> {
+  const t = token();
+  if (!t) return;
+  try {
+    await apiDeleteDebt(t, id);
   } catch {
     /* ignore */
   }

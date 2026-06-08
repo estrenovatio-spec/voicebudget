@@ -2,7 +2,7 @@ import type { HouseholdPublic, SyncPayload } from "@/lib/household/types";
 import type { AccessSummaryPublic, SubscriptionPublic } from "@/lib/payments/types";
 import type { ReferralProfilePublic } from "@/lib/referrals/service";
 import type { CategoryDefinition, Transaction } from "@/types";
-import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 import { fetchWithRetry } from "@/lib/fetch-retry";
 
@@ -368,6 +368,32 @@ export async function apiDeleteRecurring(token: string, id: string) {
   }
 }
 
+export async function apiUpsertDebt(token: string, item: DebtItem) {
+  const res = await apiFetch("/api/household/debts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(item),
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error ?? `http_${res.status}`);
+  }
+}
+
+export async function apiDeleteDebt(token: string, id: string) {
+  const res = await apiFetch(`/api/household/debts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error ?? `http_${res.status}`);
+  }
+}
+
 export async function apiEducationAccess(token: string) {
   const res = await apiFetch("/api/payments/education", {
     headers: { Authorization: `Bearer ${token}` },
@@ -545,6 +571,7 @@ export type HouseholdBackupSummary = {
   categories: number;
   goals: number;
   recurring: number;
+  debts: number;
   budgets: number;
   vehicles: number;
 };

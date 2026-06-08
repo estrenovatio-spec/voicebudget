@@ -3,7 +3,7 @@ import { parseBalanceOffsets } from "@/lib/balance-offsets";
 import { prisma } from "@/lib/db";
 import { defaultVehicleGaragePrefs } from "@/lib/vehicle";
 import type { CategoryDefinition, Transaction } from "@/types";
-import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/planning";
+import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 import {
   appCategoryBudgetToDb,
@@ -24,6 +24,7 @@ const HOUSEHOLD_BACKUP_TABLE_CACHE_MS = 60_000;
 export type HouseholdBackupPayload = Omit<SyncPayload, "viewerUserId"> & {
   version: 1;
   createdAt: string;
+  debts: DebtItem[];
 };
 
 export type HouseholdBackupSummary = {
@@ -34,6 +35,7 @@ export type HouseholdBackupSummary = {
   categories: number;
   goals: number;
   recurring: number;
+  debts: number;
   budgets: number;
   vehicles: number;
 };
@@ -57,6 +59,7 @@ function normalizeBackupPayload(raw: unknown): HouseholdBackupPayload | null {
     savingsGoals: asArray<SavingsGoal>(o.savingsGoals),
     categoryBudgets: asArray<CategoryBudget>(o.categoryBudgets),
     recurringTransactions: asArray<RecurringTransaction>(o.recurringTransactions),
+    debts: asArray<DebtItem>(o.debts),
     balanceOffsets: parseBalanceOffsets(o.balanceOffsets),
     vehicles: asArray<Vehicle>(o.vehicles),
     vehiclePrefs: (o.vehiclePrefs ?? defaultVehicleGaragePrefs()) as VehicleGaragePrefs,
@@ -80,6 +83,7 @@ function hasMeaningfulHouseholdPayload(payload: HouseholdBackupPayload): boolean
     payload.savingsGoals.length > 0 ||
     payload.categoryBudgets.length > 0 ||
     payload.recurringTransactions.length > 0 ||
+    payload.debts.length > 0 ||
     Object.keys(payload.balanceOffsets ?? {}).length > 0 ||
     (payload.vehicles?.length ?? 0) > 0
   );
@@ -168,6 +172,7 @@ function summaryFromRow(row: {
     categories: payload?.categories.length ?? 0,
     goals: payload?.savingsGoals.length ?? 0,
     recurring: payload?.recurringTransactions.length ?? 0,
+    debts: payload?.debts.length ?? 0,
     budgets: payload?.categoryBudgets.length ?? 0,
     vehicles: payload?.vehicles?.length ?? 0,
   };
@@ -208,6 +213,9 @@ async function restoreHouseholdFromPayload(
   await prisma.transaction.deleteMany({ where: { householdId } });
   await prisma.categoryBudget.deleteMany({ where: { householdId } }).catch(() => null);
   await prisma.recurringTransaction.deleteMany({ where: { householdId } }).catch(() => null);
+  await prisma.$executeRaw`
+    DELETE FROM "HouseholdDebt" WHERE "householdId" = ${householdId}
+  `.catch(() => null);
   await prisma.savingsGoal.deleteMany({ where: { householdId } }).catch(() => null);
   await prisma.category.deleteMany({ where: { householdId } });
 
@@ -267,6 +275,11 @@ async function restoreHouseholdFromPayload(
         skippedDates: item.skippedDates ?? [],
       },
     }).catch(() => null);
+  }
+
+  const { upsertDebtForHousehold } = await import("@/lib/household/debts-db");
+  for (const debt of payload.debts) {
+    await upsertDebtForHousehold(householdId, debt);
   }
 
   for (const tx of payload.transactions) {
