@@ -5,10 +5,15 @@ import { ArchiveRestore, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import {
+  apiCreateHouseholdBackup,
   apiListBusinessBackups,
+  apiListHouseholdBackups,
   apiRestoreBusinessBackup,
+  apiRestoreHouseholdBackup,
   type BusinessBackupSummary,
+  type HouseholdBackupSummary,
 } from "@/lib/cloud/client";
+import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { formatMoney } from "@/lib/format-money";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useBusinessStore } from "@/store/useBusinessStore";
@@ -34,26 +39,40 @@ export function ArchiveRestorePanel() {
   const markBusinessCloudSynced = useBusinessStore((s) => s.markCloudSynced);
   const token = useCloudStore((s) => s.token);
   const [serverBackups, setServerBackups] = useState<BusinessBackupSummary[]>([]);
+  const [householdBackups, setHouseholdBackups] = useState<HouseholdBackupSummary[]>([]);
   const [serverLoading, setServerLoading] = useState(false);
+  const [householdLoading, setHouseholdLoading] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [creatingHouseholdBackup, setCreatingHouseholdBackup] = useState(false);
   const { toast } = useToast();
 
   const hasArchive =
-    categoryArchive.length > 0 || businessArchive.length > 0 || serverBackups.length > 0;
+    categoryArchive.length > 0 ||
+    businessArchive.length > 0 ||
+    serverBackups.length > 0 ||
+    householdBackups.length > 0;
 
   const loadServerBackups = async () => {
     if (!token) {
       setServerBackups([]);
+      setHouseholdBackups([]);
       return;
     }
     setServerLoading(true);
+    setHouseholdLoading(true);
     try {
-      const res = await apiListBusinessBackups(token);
-      setServerBackups(res.backups ?? []);
+      const [businessRes, householdRes] = await Promise.all([
+        apiListBusinessBackups(token),
+        apiListHouseholdBackups(token),
+      ]);
+      setServerBackups(businessRes.backups ?? []);
+      setHouseholdBackups(householdRes.backups ?? []);
     } catch {
       setServerBackups([]);
+      setHouseholdBackups([]);
     } finally {
       setServerLoading(false);
+      setHouseholdLoading(false);
     }
   };
 
@@ -120,6 +139,66 @@ export function ArchiveRestorePanel() {
     }
   };
 
+  const createHouseholdBackup = async () => {
+    if (!token) return;
+    setCreatingHouseholdBackup(true);
+    try {
+      const res = await apiCreateHouseholdBackup(token);
+      setHouseholdBackups(res.backups ?? []);
+      toast(
+        locale === "ru" ? "Копия семьи создана" : "Household backup created",
+        "success",
+      );
+    } catch {
+      toast(
+        locale === "ru" ? "Не удалось создать копию семьи" : "Could not create household backup",
+        "error",
+      );
+    } finally {
+      setCreatingHouseholdBackup(false);
+    }
+  };
+
+  const restoreHouseholdServerBackup = async (id: string) => {
+    if (!token) return;
+    if (
+      !window.confirm(
+        locale === "ru"
+          ? "Восстановить семью из этой резервной копии? Текущие операции, цели и категории перед восстановлением тоже сохранятся в архив."
+          : "Restore household from this backup? Current entries, goals, and categories will also be saved as a backup.",
+      )
+    ) {
+      return;
+    }
+    setRestoringId(id);
+    try {
+      const res = await apiRestoreHouseholdBackup(token, id);
+      useCloudStore.getState().setDeletedTransactionIds([]);
+      useCloudStore.getState().setDeletedRecurringIds([]);
+      useStore.setState({
+        transactions: [],
+        categories: [],
+        savingsGoals: [],
+        categoryBudgets: [],
+        recurringTransactions: [],
+        vehicles: [],
+      });
+      applyHouseholdSync(res.sync, token);
+      toast(
+        locale === "ru" ? "Семья восстановлена из резервной копии" : "Household restored from backup",
+        "success",
+      );
+      await loadServerBackups();
+    } catch {
+      toast(
+        locale === "ru" ? "Не удалось восстановить семью" : "Could not restore household backup",
+        "error",
+      );
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   return (
     <div className="space-y-2 rounded-lg border border-border/80 bg-background p-3">
       <div className="flex items-start gap-2">
@@ -146,6 +225,72 @@ export function ArchiveRestorePanel() {
               ? "Архив пока пуст."
               : "Archive is empty."}
         </p>
+      ) : null}
+
+      {token ? (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {locale === "ru" ? "Резервные копии семьи" : "Household backups"}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              disabled={creatingHouseholdBackup}
+              onClick={() => void createHouseholdBackup()}
+            >
+              {creatingHouseholdBackup ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : locale === "ru" ? (
+                "Создать сейчас"
+              ) : (
+                "Create now"
+              )}
+            </Button>
+          </div>
+          {householdBackups.length > 0 ? (
+            <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
+              {householdBackups.map((item) => (
+                <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium leading-tight">
+                        {formatArchiveDate(item.createdAt, locale)} ·{" "}
+                        {locale === "ru" ? "операций: " : "entries: "}
+                        {item.transactions}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {locale === "ru" ? "Целей: " : "Goals: "}
+                        {item.goals} · {locale === "ru" ? "категорий: " : "categories: "}
+                        {item.categories} · {locale === "ru" ? "регулярных: " : "recurring: "}
+                        {item.recurring}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={Boolean(restoringId)}
+                      onClick={() => void restoreHouseholdServerBackup(item.id)}
+                    >
+                      {restoringId === item.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : locale === "ru" ? (
+                        "Вернуть"
+                      ) : (
+                        "Restore"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : householdLoading ? (
+            <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+              {locale === "ru" ? "Проверяю копии семьи..." : "Checking household backups..."}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {serverBackups.length > 0 ? (

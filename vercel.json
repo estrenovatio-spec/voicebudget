@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/business-backups",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/household-backups",
+      "schedule": "0 18 * * *"
     }
   ],
   "functions": {
@@ -24,6 +28,9 @@
       "maxDuration": 60
     },
     "src/app/api/cron/business-backups/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/household-backups/route.ts": {
       "maxDuration": 60
     }
   }

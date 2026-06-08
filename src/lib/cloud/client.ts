@@ -536,3 +536,49 @@ export async function apiRestoreBusinessBackup(token: string, backupId: string) 
     business: import("@/lib/business/types").BusinessCloudPayload;
   }>(res);
 }
+
+export type HouseholdBackupSummary = {
+  id: string;
+  createdAt: string;
+  reason: string;
+  transactions: number;
+  categories: number;
+  goals: number;
+  recurring: number;
+  budgets: number;
+  vehicles: number;
+};
+
+export async function apiListHouseholdBackups(token: string) {
+  const res = await apiFetch("/api/household/backups", {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  return parseJson<{ ok: boolean; backups: HouseholdBackupSummary[] }>(res);
+}
+
+export async function apiCreateHouseholdBackup(token: string) {
+  const res = await apiFetch("/api/household/backups", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "create" }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  return parseJson<{ ok: boolean; backups: HouseholdBackupSummary[] }>(res);
+}
+
+export async function apiRestoreHouseholdBackup(token: string, backupId: string) {
+  const res = await apiFetch("/api/household/backups", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "restore", backupId }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
+}
