@@ -29,6 +29,39 @@ function formatArchiveDate(value: string, locale: "ru" | "en"): string {
   }).format(date);
 }
 
+function formatArchiveTime(value: string, locale: "ru" | "en"): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function archiveDayKey(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function groupArchiveItems<T>(
+  items: T[],
+  getDate: (item: T) => string,
+): { key: string; date: string; items: T[] }[] {
+  const groups = new Map<string, { key: string; date: string; items: T[] }>();
+  for (const item of items) {
+    const date = getDate(item);
+    const key = archiveDayKey(date);
+    const group = groups.get(key);
+    if (group) {
+      group.items.push(item);
+    } else {
+      groups.set(key, { key, date, items: [item] });
+    }
+  }
+  return Array.from(groups.values());
+}
+
 export function ArchiveRestorePanel() {
   const locale = useStore((s) => s.locale);
   const categoryArchive = useStore((s) => s.deletedCategoryArchive);
@@ -253,37 +286,44 @@ export function ArchiveRestorePanel() {
           </div>
           {householdBackups.length > 0 ? (
             <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
-              {householdBackups.map((item) => (
-                <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium leading-tight">
-                        {formatArchiveDate(item.createdAt, locale)} ·{" "}
-                        {locale === "ru" ? "операций: " : "entries: "}
-                        {item.transactions}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {locale === "ru" ? "Целей: " : "Goals: "}
-                        {item.goals} · {locale === "ru" ? "категорий: " : "categories: "}
-                        {item.categories} · {locale === "ru" ? "долгов: " : "debts: "}
-                        {item.debts}
-                      </p>
+              {groupArchiveItems(householdBackups, (item) => item.createdAt).map((group) => (
+                <div key={group.key} className="space-y-1.5">
+                  <p className="px-1 text-[11px] font-medium text-muted-foreground">
+                    {formatArchiveDate(group.date, locale)}
+                  </p>
+                  {group.items.map((item) => (
+                    <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium leading-tight">
+                            {formatArchiveTime(item.createdAt, locale)} ·{" "}
+                            {locale === "ru" ? "операций: " : "entries: "}
+                            {item.transactions}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {locale === "ru" ? "Целей: " : "Goals: "}
+                            {item.goals} · {locale === "ru" ? "категорий: " : "categories: "}
+                            {item.categories} · {locale === "ru" ? "долгов: " : "debts: "}
+                            {item.debts}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={Boolean(restoringId)}
+                          onClick={() => void restoreHouseholdServerBackup(item.id)}
+                        >
+                          {restoringId === item.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : locale === "ru" ? (
+                            "Вернуть"
+                          ) : (
+                            "Restore"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={Boolean(restoringId)}
-                      onClick={() => void restoreHouseholdServerBackup(item.id)}
-                    >
-                      {restoringId === item.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : locale === "ru" ? (
-                        "Вернуть"
-                      ) : (
-                        "Restore"
-                      )}
-                    </Button>
-                  </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -306,42 +346,49 @@ export function ArchiveRestorePanel() {
             </Button>
           </div>
           <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
-            {serverBackups.map((item) => (
-              <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium leading-tight">
-                      {formatArchiveDate(item.createdAt, locale)} ·{" "}
-                      {locale === "ru" ? "бизнесов: " : "businesses: "}
-                      {item.units} · {locale === "ru" ? "проектов: " : "projects: "}
-                      {item.assets}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {locale === "ru" ? "Операций: " : "Entries: "}
-                      {item.transactions} · {locale === "ru" ? "долгов: " : "debts: "}
-                      {item.debts}
-                    </p>
-                    {[...item.unitNames, ...item.assetNames].length > 0 ? (
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {[...item.unitNames, ...item.assetNames].slice(0, 8).join(", ")}
-                      </p>
-                    ) : null}
+            {groupArchiveItems(serverBackups, (item) => item.createdAt).map((group) => (
+              <div key={group.key} className="space-y-1.5">
+                <p className="px-1 text-[11px] font-medium text-muted-foreground">
+                  {formatArchiveDate(group.date, locale)}
+                </p>
+                {group.items.map((item) => (
+                  <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium leading-tight">
+                          {formatArchiveTime(item.createdAt, locale)} ·{" "}
+                          {locale === "ru" ? "бизнесов: " : "businesses: "}
+                          {item.units} · {locale === "ru" ? "проектов: " : "projects: "}
+                          {item.assets}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {locale === "ru" ? "Операций: " : "Entries: "}
+                          {item.transactions} · {locale === "ru" ? "долгов: " : "debts: "}
+                          {item.debts}
+                        </p>
+                        {[...item.unitNames, ...item.assetNames].length > 0 ? (
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {[...item.unitNames, ...item.assetNames].slice(0, 8).join(", ")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={Boolean(restoringId)}
+                        onClick={() => void restoreServerBackup(item.id)}
+                      >
+                        {restoringId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : locale === "ru" ? (
+                          "Вернуть"
+                        ) : (
+                          "Restore"
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={Boolean(restoringId)}
-                    onClick={() => void restoreServerBackup(item.id)}
-                  >
-                    {restoringId === item.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : locale === "ru" ? (
-                      "Вернуть"
-                    ) : (
-                      "Restore"
-                    )}
-                  </Button>
-                </div>
+                ))}
               </div>
             ))}
           </div>
@@ -354,26 +401,33 @@ export function ArchiveRestorePanel() {
             {locale === "ru" ? "Категории" : "Categories"}
           </p>
           <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
-            {categoryArchive.map((item) => (
-              <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium leading-tight">{item.category.labels.ru}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatArchiveDate(item.deletedAt, locale)} ·{" "}
-                      {locale === "ru" ? "операций: " : "entries: "}
-                      {item.affectedTransactions.length}
-                    </p>
-                    {item.category.keywords.length > 0 ? (
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {item.category.keywords.slice(0, 6).join(", ")}
-                      </p>
-                    ) : null}
+            {groupArchiveItems(categoryArchive, (item) => item.deletedAt).map((group) => (
+              <div key={group.key} className="space-y-1.5">
+                <p className="px-1 text-[11px] font-medium text-muted-foreground">
+                  {formatArchiveDate(group.date, locale)}
+                </p>
+                {group.items.map((item) => (
+                  <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium leading-tight">{item.category.labels.ru}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatArchiveTime(item.deletedAt, locale)} ·{" "}
+                          {locale === "ru" ? "операций: " : "entries: "}
+                          {item.affectedTransactions.length}
+                        </p>
+                        {item.category.keywords.length > 0 ? (
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {item.category.keywords.slice(0, 6).join(", ")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => restoreCategory(item.id)}>
+                        {locale === "ru" ? "Вернуть" : "Restore"}
+                      </Button>
+                    </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => restoreCategory(item.id)}>
-                    {locale === "ru" ? "Вернуть" : "Restore"}
-                  </Button>
-                </div>
+                ))}
               </div>
             ))}
           </div>
@@ -386,36 +440,43 @@ export function ArchiveRestorePanel() {
             {locale === "ru" ? "Бизнес" : "Business"}
           </p>
           <div className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
-            {businessArchive.map((item) => {
-              const txTotal = item.transactions.reduce((sum, tx) => sum + tx.amount, 0);
-              return (
-                <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium leading-tight">{item.unit.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {formatArchiveDate(item.deletedAt, locale)} ·{" "}
-                        {locale === "ru" ? "операций: " : "entries: "}
-                        {item.transactions.length} ·{" "}
-                        {locale === "ru" ? "проектов: " : "projects: "}
-                        {item.assets.length} ·{" "}
-                        {locale === "ru" ? "долгов: " : "debts: "}
-                        {item.debts.length}
-                      </p>
-                      {txTotal > 0 ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {locale === "ru" ? "Сумма операций: " : "Entries total: "}
-                          {formatMoney(txTotal, locale)}
-                        </p>
-                      ) : null}
+            {groupArchiveItems(businessArchive, (item) => item.deletedAt).map((group) => (
+              <div key={group.key} className="space-y-1.5">
+                <p className="px-1 text-[11px] font-medium text-muted-foreground">
+                  {formatArchiveDate(group.date, locale)}
+                </p>
+                {group.items.map((item) => {
+                  const txTotal = item.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+                  return (
+                    <div key={item.id} className="rounded-md border px-2.5 py-2 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium leading-tight">{item.unit.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {formatArchiveTime(item.deletedAt, locale)} ·{" "}
+                            {locale === "ru" ? "операций: " : "entries: "}
+                            {item.transactions.length} ·{" "}
+                            {locale === "ru" ? "проектов: " : "projects: "}
+                            {item.assets.length} ·{" "}
+                            {locale === "ru" ? "долгов: " : "debts: "}
+                            {item.debts.length}
+                          </p>
+                          {txTotal > 0 ? (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              {locale === "ru" ? "Сумма операций: " : "Entries total: "}
+                              {formatMoney(txTotal, locale)}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => restoreBusiness(item.id)}>
+                          {locale === "ru" ? "Вернуть" : "Restore"}
+                        </Button>
+                      </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => restoreBusiness(item.id)}>
-                      {locale === "ru" ? "Вернуть" : "Restore"}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       ) : null}
