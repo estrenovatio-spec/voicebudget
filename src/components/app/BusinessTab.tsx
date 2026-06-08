@@ -349,6 +349,7 @@ function BusinessUnitTabs({
   metricsMap,
   locale,
   onSelect,
+  onEdit,
   onAdd,
 }: {
   units: BusinessUnit[];
@@ -356,6 +357,7 @@ function BusinessUnitTabs({
   metricsMap: Map<string, UnitCardMetrics>;
   locale: "ru" | "en";
   onSelect: (unitId: string) => void;
+  onEdit: (unitId: string) => void;
   onAdd: () => void;
 }) {
   return (
@@ -419,6 +421,17 @@ function BusinessUnitTabs({
         >
           <Plus className="h-4 w-4" aria-hidden />
         </button>
+        {activeUnitId ? (
+          <button
+            type="button"
+            onClick={() => onEdit(activeUnitId)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center border-b-2 border-transparent text-muted-foreground transition-colors hover:text-foreground"
+            aria-label={t(locale, "bizUnitEdit")}
+            title={t(locale, "bizUnitEdit")}
+          >
+            <Pencil className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -1297,6 +1310,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     });
     setEditUnitId(null);
     setEditUnitName("");
+    toast(locale === "ru" ? "Бизнес сохранён" : "Business saved", "success");
   };
 
   const deleteEditUnit = () => {
@@ -1484,6 +1498,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           metricsMap={unitMetricsMap}
           locale={locale}
           onSelect={setSelectedUnitId}
+          onEdit={openEditUnit}
           onAdd={() => setUnitDialogOpen(true)}
         />
         {showBusinessHow ? (

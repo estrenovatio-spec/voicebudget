@@ -385,6 +385,7 @@ export const useBusinessStore = create<BusinessStore>()(
             return next;
           }),
         }));
+        void pushBusinessToCloud();
       },
       setUnitHourlyRate: (id, rate) => {
         const n = Math.max(0, roundMoneyUp(rate));
