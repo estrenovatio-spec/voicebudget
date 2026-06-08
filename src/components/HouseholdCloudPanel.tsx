@@ -54,6 +54,8 @@ function shellClass(embedded: boolean, base: string, embeddedClass = "space-y-3"
   return embedded ? embeddedClass : base;
 }
 
+const responsiveShell = "min-w-0 max-w-full overflow-hidden";
+
 export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelProps) {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
@@ -88,7 +90,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
 
   if (subscriptionRequired && subscription) {
     return (
-      <div className={shellClass(embedded, "space-y-3")}>
+      <div className={`${responsiveShell} ${shellClass(embedded, "space-y-3")}`}>
         <PaywallPanel subscription={subscription} />
         {household && (
           <p className="text-xs text-muted-foreground">{t(locale, "paywallHouseholdPaused")}</p>
@@ -106,9 +108,9 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
           "space-y-3 rounded-lg border border-dashed border-border/70 p-3",
         )}
       >
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudWebLoginTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t(locale, "cloudWebLoginHint")}</p>
+          <p className="break-words text-xs text-muted-foreground">{t(locale, "cloudWebLoginHint")}</p>
         </div>
         <TelegramLoginButton
           botUsername={TG_BOT}
@@ -129,10 +131,10 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
       }).format(new Date(subscription.expiresAt));
 
     return (
-      <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3">
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{t(locale, "cloudActiveTitle")}</p>
-          <p className="text-xs text-muted-foreground">
+      <div className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-lg border bg-muted/30 p-3">
+        <div className="min-w-0 space-y-1">
+          <p className="break-words text-sm font-medium">{t(locale, "cloudActiveTitle")}</p>
+          <p className="break-words text-xs text-muted-foreground">
             {household.mode === "solo"
               ? t(locale, "cloudModeSolo")
               : t(locale, "cloudModeShared")}
@@ -140,22 +142,22 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
             {t(locale, "cloudMembers", { count: String(household.memberCount) })}
           </p>
           {subscription?.enforced && expiresLabel && (
-            <p className="text-xs text-muted-foreground">
+            <p className="break-words text-xs text-muted-foreground">
               {t(locale, "paywallActiveUntil", { date: expiresLabel })}
             </p>
           )}
         </div>
 
         {household.mode === "shared" || household.memberCount < 2 ? (
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <p className="text-xs text-muted-foreground">{t(locale, "cloudInviteHint")}</p>
-            <p className="font-mono text-lg font-semibold tracking-widest">
+            <p className="max-w-full break-all font-mono text-lg font-semibold tracking-widest">
               {household.inviteCode}
             </p>
           </div>
         ) : null}
 
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-950 dark:text-emerald-100">
+        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-950 dark:text-emerald-100">
           {t(locale, "cloudProtectedNotice")}
         </p>
 
@@ -185,9 +187,9 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
           "space-y-3 rounded-lg border border-dashed border-border/70 p-3",
         )}
       >
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudWebAttachTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t(locale, "cloudWebAttachHint")}</p>
+          <p className="break-words text-xs text-muted-foreground">{t(locale, "cloudWebAttachHint")}</p>
         </div>
         <Button
           type="button"
@@ -222,24 +224,24 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
         </p>
       )}
       {!embedded ? (
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">{t(locale, "cloudTitle")}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="break-words text-xs text-muted-foreground">
             {loggedInWeb ? t(locale, "cloudHintNewHousehold") : t(locale, "cloudHint")}
           </p>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">
+        <p className="break-words text-xs text-muted-foreground">
           {loggedInWeb ? t(locale, "cloudHintNewHousehold") : t(locale, "cloudHint")}
         </p>
       )}
 
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button
           type="button"
           size="sm"
           variant={mode === "solo" ? "default" : "outline"}
-          className="flex-1"
+          className="min-w-0 whitespace-normal px-2"
           onClick={() => setMode("solo")}
         >
           {t(locale, "cloudSolo")}
@@ -248,7 +250,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
           type="button"
           size="sm"
           variant={mode === "shared" ? "default" : "outline"}
-          className="flex-1"
+          className="min-w-0 whitespace-normal px-2"
           onClick={() => setMode("shared")}
         >
           {t(locale, "cloudShared")}
@@ -257,7 +259,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
 
       {mode === "solo" && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{t(locale, "cloudSoloHint")}</p>
+          <p className="break-words text-xs text-muted-foreground">{t(locale, "cloudSoloHint")}</p>
           <Input
             value={partnerLabel}
             onChange={(e) => setPartnerLabel(e.target.value)}
@@ -267,7 +269,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
       )}
 
       {mode === "shared" && (
-        <p className="text-xs text-muted-foreground">{t(locale, "cloudSharedHint")}</p>
+        <p className="break-words text-xs text-muted-foreground">{t(locale, "cloudSharedHint")}</p>
       )}
 
       <Button
@@ -286,7 +288,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
 
       <div className="space-y-2 border-t border-border/60 pt-3">
         <p className="text-xs font-medium">{t(locale, "cloudJoinTitle")}</p>
-        <p className="text-[11px] text-muted-foreground">{t(locale, "cloudJoinHint")}</p>
+        <p className="break-words text-[11px] text-muted-foreground">{t(locale, "cloudJoinHint")}</p>
         <Input
           value={joinCode}
           onChange={(e) => setJoinCode(e.target.value.toUpperCase())}

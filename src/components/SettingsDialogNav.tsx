@@ -182,7 +182,7 @@ export function SettingsDialogNav({
     categories: <CategoryManager />,
     vehicle: <VehicleSettingsPanel />,
     cloud: (
-      <div className="space-y-3">
+      <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
         <HouseholdCloudPanel embedded />
         <UpdateAppButton />
       </div>
@@ -289,7 +289,7 @@ export function SettingsDialogNav({
             <ChevronLeft className="h-4 w-4" />
           </Button>
         ) : null}
-        <h2 className="text-lg font-semibold leading-tight">{dialogTitle}</h2>
+        <h2 className="min-w-0 break-words text-lg font-semibold leading-tight">{dialogTitle}</h2>
       </div>
 
       {screen === "menu" ? (
@@ -307,7 +307,9 @@ export function SettingsDialogNav({
           ))}
         </div>
       ) : (
-        <div className="min-h-[12rem]">{detailContent[screen]}</div>
+        <div className="min-h-[12rem] min-w-0 max-w-full overflow-hidden">
+          {detailContent[screen]}
+        </div>
       )}
     </>
   );
