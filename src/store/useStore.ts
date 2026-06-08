@@ -87,6 +87,7 @@ import { recurringToParsedTransaction } from "@/lib/planning/recurring-run";
 import { useCloudStore } from "@/store/useCloudStore";
 import { resolveTransactionAmount } from "@/lib/parse-amount";
 import {
+  enrichCategoriesWithAiMemory,
   recordAiCorrectionLearning,
   recordAiInputLearning,
 } from "@/lib/ai-memory";
@@ -460,9 +461,10 @@ export const useStore = create<StoreState>()(
       addTransaction: (data, transcript, opts) => {
         const newId = makeId();
         set((state) => {
+          const personalizedCategories = enrichCategoriesWithAiMemory(state.categories);
           let normalized = normalizeIncoming(
             data,
-            state.categories,
+            personalizedCategories,
             state.locale,
             transcript,
           );
@@ -470,7 +472,7 @@ export const useStore = create<StoreState>()(
             normalized = refineParsedTransaction(
               normalized,
               transcript,
-              state.categories,
+              personalizedCategories,
               detectType,
               state.locale,
             );

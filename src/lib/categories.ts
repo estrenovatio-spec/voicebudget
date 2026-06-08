@@ -1,4 +1,5 @@
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
+import { matchAiMemoryCategoryId } from "@/lib/ai-memory";
 import { isIncomeReceiptPhrase } from "@/lib/planning/parse-input";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
 import type { CategoryDefinition, Locale, ParsedTransaction, TxType } from "@/types";
@@ -338,6 +339,9 @@ export function detectCategoryId(
   categories: CategoryDefinition[],
 ): string {
   const merged = sanitizeCategories(categories);
+  const fromMemory = matchAiMemoryCategoryId(text, type, merged);
+  if (fromMemory) return fromMemory;
+
   const fromPhrase = detectCategoryFromPhrases(text, type);
   if (fromPhrase && merged.some((c) => c.id === fromPhrase && c.type === type)) {
     return fromPhrase;

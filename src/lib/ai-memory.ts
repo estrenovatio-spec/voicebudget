@@ -213,6 +213,29 @@ export function enrichCategoriesWithAiMemory(
   });
 }
 
+export function matchAiMemoryCategoryId(
+  text: string,
+  type: TxType,
+  categories: CategoryDefinition[],
+): string | null {
+  const memory = readAiMemory();
+  if (memory.rules.length === 0) return null;
+
+  const categoryIds = new Set(categories.filter((cat) => cat.type === type).map((cat) => cat.id));
+  const candidates = new Set(phraseCandidates(text));
+  let best: AiMemoryRule | null = null;
+
+  for (const rule of memory.rules) {
+    if (rule.type !== type || !categoryIds.has(rule.categoryId)) continue;
+    if (!candidates.has(rule.phrase)) continue;
+    if (!best || rule.weight > best.weight || rule.lastSeenAt > best.lastSeenAt) {
+      best = rule;
+    }
+  }
+
+  return best?.categoryId ?? null;
+}
+
 export function buildAiMemorySnapshot(
   transactions: Transaction[],
   categories: CategoryDefinition[],
