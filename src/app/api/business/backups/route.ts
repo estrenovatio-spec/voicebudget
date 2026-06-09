@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  backupUserBusinessPayload,
+  fetchUserBusinessPayload,
   listUserBusinessBackups,
   restoreUserBusinessBackup,
 } from "@/lib/business/db";
@@ -37,20 +39,28 @@ export async function POST(req: NextRequest) {
   const session = requireSession(req);
   if (!session) return unauthorized();
 
-  let body: { backupId?: string };
+  let body: { backupId?: string; action?: "create" | "restore" };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const backupId = body.backupId?.trim();
-  if (!backupId) {
-    return NextResponse.json({ error: "bad_request" }, { status: 400 });
-  }
-
   try {
     await assertActiveSubscription(session.userId);
+    if (body.action === "create") {
+      const current = await fetchUserBusinessPayload(session.userId);
+      const ok = current
+        ? await backupUserBusinessPayload(session.userId, current, "manual")
+        : false;
+      const backups = await listUserBusinessBackups(session.userId, 30);
+      return NextResponse.json({ ok, backups });
+    }
+
+    const backupId = body.backupId?.trim();
+    if (!backupId) {
+      return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    }
     const business = await restoreUserBusinessBackup(session.userId, backupId);
     if (!business) return NextResponse.json({ error: "not_found" }, { status: 404 });
     return NextResponse.json({ ok: true, business });

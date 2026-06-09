@@ -563,6 +563,19 @@ export async function apiRestoreBusinessBackup(token: string, backupId: string) 
   }>(res);
 }
 
+export async function apiCreateBusinessBackup(token: string) {
+  const res = await apiFetch("/api/business/backups", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "create" }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  return parseJson<{ ok: boolean; backups: BusinessBackupSummary[] }>(res);
+}
+
 export type HouseholdBackupSummary = {
   id: string;
   createdAt: string;
