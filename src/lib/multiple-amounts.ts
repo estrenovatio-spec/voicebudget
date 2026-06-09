@@ -7,11 +7,13 @@ function cleanAmountText(text: string): string {
     .trim();
 }
 
-function looksLikeSingleFormattedAmount(parts: string[], separatorCount: number): boolean {
+function looksLikeSingleFormattedAmount(parts: string[], separators: string[]): boolean {
   if (parts.length < 2) return true;
-  if (parts.length === 2 && parts[1].length <= 2) return true;
+  if (parts.length === 2 && parts[1].length <= 2) {
+    return separators.length === 1 && /^[,.]+$/.test(separators[0]);
+  }
   if (parts.length === 2 && parts[0].length <= 3 && parts[1].length === 3) return true;
-  return separatorCount === parts.length - 1 && parts[0].length <= 3 && parts.slice(1).every((p) => p.length === 3);
+  return separators.length === parts.length - 1 && parts[0].length <= 3 && parts.slice(1).every((p) => p.length === 3);
 }
 
 function parseSeparatedAmountSequence(sequence: string): number[] {
@@ -19,7 +21,7 @@ function parseSeparatedAmountSequence(sequence: string): number[] {
   if (!/^\d+(?:[\s,.]+\d+)+$/.test(cleaned)) return [];
   const separators = cleaned.match(/[\s,.]+/g) ?? [];
   const parts = cleaned.split(/[\s,.]+/).filter(Boolean);
-  if (looksLikeSingleFormattedAmount(parts, separators.length)) return [];
+  if (looksLikeSingleFormattedAmount(parts, separators)) return [];
 
   const amounts = parts
     .map((part) => parseMoneyAmount(part))

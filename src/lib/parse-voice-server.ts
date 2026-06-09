@@ -23,6 +23,7 @@ import {
 } from "@/lib/detect-owner";
 import { hasPartnerDetectionConfig } from "@/lib/detect-owner";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
+import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
 const MAX_TRANSACTIONS = 10;
@@ -105,6 +106,20 @@ function applyOwnersToItems(
   return applyDetectedOwnersWithCarry(items, itemClauses, ownerOpts, "me");
 }
 
+function expandSeparatedAmountItems(
+  items: ParsedTransaction[],
+  fullText: string,
+): ParsedTransaction[] {
+  if (items.length !== 1) return items;
+  const amounts = extractSeparatedMoneyAmounts(fullText);
+  if (amounts.length <= 1) return items;
+  return amounts.map((amount) => ({
+    ...items[0],
+    amount,
+    note: sanitizeTransactionNote(items[0].note || fullText.slice(0, 120), amount),
+  }));
+}
+
 export async function parseTranscriptServerMany(
   transcript: string,
   locale: Locale,
@@ -168,7 +183,7 @@ export async function parseTranscriptServerMany(
     const raw: unknown = extractJsonFromLlmContent(content);
     const parsedItems = extractParsedItems(raw);
 
-    const items = parsedItems
+    const items = expandSeparatedAmountItems(parsedItems
       .map((item, index) =>
         itemToParsedTransaction(
           item,
@@ -177,7 +192,7 @@ export async function parseTranscriptServerMany(
           categories,
         ),
       )
-      .filter((item) => item.amount > 0);
+      .filter((item) => item.amount > 0), text);
 
     if (items.length === 0) throw new Error("No valid transactions");
 

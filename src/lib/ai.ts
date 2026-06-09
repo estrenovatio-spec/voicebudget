@@ -12,6 +12,7 @@ import {
 } from "@/lib/categories";
 import { APP_CURRENCY } from "@/lib/app-currency";
 import { parseAmountFromTranscript, resolveTransactionAmount } from "@/lib/parse-amount";
+import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
 import { ownerHintsForPrompt } from "@/lib/detect-owner";
 import { sanitizeTransactionNote } from "@/lib/transaction-note";
@@ -80,6 +81,8 @@ ${incomeCatalog}
 
 ## Несколько операций
 - «500 на обед и 200 на такси» → 2 объекта; у каждого своя сумма, categoryId и короткий note (только эта часть, не вся фраза).
+- «83 83 жена метро» → 2 объекта по 83 ₽, оба partner/жена и transport/метро; не склеивай в 8383.
+- Если подряд идут несколько одинаковых или разных чисел через пробел/запятую, а после них общее описание («метро», «продукты», «жена») — это несколько операций с одинаковым описанием.
 - Одна операция → массив из одного элемента.
 
 ## Поле note
@@ -264,6 +267,18 @@ export function fallbackParseMany(
   categories: CategoryDefinition[] = getDefaultCategories(),
 ): ParsedTransaction[] {
   const clauses = splitTranscriptClauses(transcript);
+  const separatedAmounts = extractSeparatedMoneyAmounts(transcript);
+  if (clauses.length === 1 && separatedAmounts.length > 1) {
+    const base = fallbackParse(transcript, locale, categories);
+    if (base.amount > 0) {
+      return separatedAmounts.map((amount) => ({
+        ...base,
+        amount,
+        note: sanitizeTransactionNote(transcript.slice(0, 120), amount),
+      }));
+    }
+  }
+
   const items = clauses
     .map((clause) => fallbackParse(clause, locale, categories))
     .filter((item) => item.amount > 0);
