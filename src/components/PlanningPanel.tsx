@@ -38,7 +38,7 @@ import {
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useCategories, useStore, useTransactions } from "@/store/useStore";
-import type { Locale } from "@/types";
+import type { Locale, Transaction } from "@/types";
 import { EMERGENCY_GOAL_ID } from "@/types/planning";
 import type { DebtItem, RecurringFrequency, SavingsGoal } from "@/types/planning";
 
@@ -143,6 +143,46 @@ function sortDebtsByStrategy(debts: DebtItem[], strategy: DebtItem["strategy"]):
   });
 }
 
+function goalDeadlineTime(deadline: string | null): number | null {
+  if (!deadline) return null;
+  const time = new Date(`${deadline}T12:00:00`).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function sortGoalsByPriority(goals: SavingsGoal[], transactions: Transaction[]): SavingsGoal[] {
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  const today = now.getTime();
+
+  return [...goals].sort((a, b) => {
+    const aTarget = resolveGoalTarget(a, transactions);
+    const bTarget = resolveGoalTarget(b, transactions);
+    const aDone = aTarget > 0 && a.savedAmount >= aTarget;
+    const bDone = bTarget > 0 && b.savedAmount >= bTarget;
+    if (aDone !== bDone) return aDone ? 1 : -1;
+
+    const aDeadline = goalDeadlineTime(a.deadline);
+    const bDeadline = goalDeadlineTime(b.deadline);
+    if (aDeadline !== null && bDeadline !== null) {
+      const aDays = Math.floor((aDeadline - today) / (24 * 60 * 60 * 1000));
+      const bDays = Math.floor((bDeadline - today) / (24 * 60 * 60 * 1000));
+      if (aDays !== bDays) return aDays - bDays;
+
+      const aRemaining = Math.max(0, aTarget - a.savedAmount);
+      const bRemaining = Math.max(0, bTarget - b.savedAmount);
+      if (aRemaining !== bRemaining) return bRemaining - aRemaining;
+    }
+    if (aDeadline !== null) return -1;
+    if (bDeadline !== null) return 1;
+
+    const aMonthly = a.monthlyContribution ?? 0;
+    const bMonthly = b.monthlyContribution ?? 0;
+    if (aMonthly !== bMonthly) return bMonthly - aMonthly;
+
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
 export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } = {}) {
   const locale = useStore((s) => s.locale);
   const transactions = useTransactions();
@@ -221,7 +261,14 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [editDebtDate, setEditDebtDate] = useState("");
   const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
 
-  const customGoals = savingsGoals.filter((g) => g.kind !== "emergency");
+  const customGoals = useMemo(
+    () =>
+      sortGoalsByPriority(
+        savingsGoals.filter((g) => g.kind !== "emergency"),
+        transactions,
+      ),
+    [savingsGoals, transactions],
+  );
   const emergencyGoal = savingsGoals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency");
   const expenseCategories = useMemo(
     () => sortCategoriesByLabel(categories.filter((c) => c.type === "expense"), categories, locale),
