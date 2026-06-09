@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { HelpFeedbackCard } from "@/components/HelpFeedbackCard";
 import { HelpFaqChat } from "@/components/HelpFaqChat";
 import { faqCheatsheetSections } from "@/lib/help-faq-content";
 import { t } from "@/lib/i18n";
@@ -69,6 +70,7 @@ export function HelpFaqDialog({ locale, variant = "settings" }: HelpFaqDialogPro
               {t(locale, "helpCheatsheetFooter")}
             </p>
           </div>
+          <HelpFeedbackCard locale={locale} />
           <HelpFaqChat locale={locale} />
         </div>
       </DialogContent>

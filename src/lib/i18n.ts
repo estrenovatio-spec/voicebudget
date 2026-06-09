@@ -42,6 +42,19 @@ export const DICT = {
     helpChatSourceCloud: "Ответ по данным из облачной базы.",
     helpChatSourceLocal:
       "Ответ по данным на этом устройстве (облако не подключено).",
+    helpFeedbackTitle: "Написать разработчику",
+    helpFeedbackHint:
+      "Предложение, замечание или спасибо — всё попадёт напрямую в Telegram.",
+    helpFeedbackOpen: "Отправить сообщение",
+    helpFeedbackKind_idea: "Предложение",
+    helpFeedbackKind_issue: "Замечание",
+    helpFeedbackKind_thanks: "Спасибо",
+    helpFeedbackPlaceholder: "Напишите коротко, что улучшить или что понравилось",
+    helpFeedbackSubmit: "Отправить",
+    helpFeedbackCancel: "Закрыть",
+    helpFeedbackRequired: "Напишите сообщение",
+    helpFeedbackDone: "Спасибо! Сообщение отправлено разработчику.",
+    helpFeedbackFail: "Не удалось отправить. Попробуйте позже.",
     clearData: "Очистить данные",
     clearDataConfirmAgain: "Точно? Нажмите ещё раз",
     clearConfirm:
@@ -1140,6 +1153,19 @@ export const DICT = {
     helpChatSourceCloud: "Answer based on cloud database.",
     helpChatSourceLocal:
       "Answer based on data on this device (cloud not connected).",
+    helpFeedbackTitle: "Message the developer",
+    helpFeedbackHint:
+      "Idea, issue, or thanks — it goes straight to Telegram.",
+    helpFeedbackOpen: "Send message",
+    helpFeedbackKind_idea: "Idea",
+    helpFeedbackKind_issue: "Issue",
+    helpFeedbackKind_thanks: "Thanks",
+    helpFeedbackPlaceholder: "Write briefly what to improve or what you liked",
+    helpFeedbackSubmit: "Send",
+    helpFeedbackCancel: "Close",
+    helpFeedbackRequired: "Write a message",
+    helpFeedbackDone: "Thanks! Message sent to the developer.",
+    helpFeedbackFail: "Could not send. Try again later.",
     clearData: "Clear data",
     clearDataConfirmAgain: "Are you sure? Tap again",
     clearConfirm:
