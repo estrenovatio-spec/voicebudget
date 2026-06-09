@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Landmark, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleAlert, Landmark, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -260,6 +260,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [editDebtRate, setEditDebtRate] = useState("");
   const [editDebtDate, setEditDebtDate] = useState("");
   const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
+  const [emergencyInfoOpen, setEmergencyInfoOpen] = useState(false);
 
   const customGoals = useMemo(
     () =>
@@ -1117,7 +1118,24 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                 </div>
               ) : (
                 <div className="space-y-2 rounded-lg border p-3">
-                  <p className="font-medium">{t(locale, "planningEmergencyTitle")}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium">{t(locale, "planningEmergencyTitle")}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 text-muted-foreground"
+                      onClick={() => setEmergencyInfoOpen((open) => !open)}
+                      aria-label={t(locale, "planningEmergencyInfoAria")}
+                    >
+                      <CircleAlert className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </div>
+                  {emergencyInfoOpen ? (
+                    <div className="rounded-md border border-border/70 bg-muted/40 p-2.5 text-xs leading-snug text-muted-foreground">
+                      {t(locale, "planningEmergencyInfo")}
+                    </div>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {emergencyGoal.emergencyMonths === 3
                       ? t(locale, "planningEmergencyMonths3")

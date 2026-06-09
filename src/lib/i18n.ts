@@ -1027,6 +1027,9 @@ export const DICT = {
     planningGoalMonthlyOnAccount: "Просто копить (без дохода): ~{amount}/мес",
     planningGoalMonthlyIfInvested: "Если инвестировать: ~{amount}/мес",
     planningEmergencyTitle: "Подушка безопасности",
+    planningEmergencyInfo:
+      "Это резерв на непредвиденное: болезнь, потеря дохода, срочный ремонт, переезд. Его задача — не дать лезть в долги, когда случается форс-мажор. Начните с 3 месяцев обязательных расходов, сильная цель — 6 месяцев.",
+    planningEmergencyInfoAria: "Что такое подушка безопасности",
     planningEmergencyHint:
       "Цель считается из средних расходов за 3 месяца × выбранный срок",
     planningEmergencyEnable: "Включить подушку",
@@ -2084,6 +2087,9 @@ export const DICT = {
     planningGoalMonthlyOnAccount: "Save only (no growth): ~{amount}/mo",
     planningGoalMonthlyIfInvested: "If invested: ~{amount}/mo",
     planningEmergencyTitle: "Emergency fund",
+    planningEmergencyInfo:
+      "This is money for emergencies: illness, income loss, urgent repairs, relocation. Its job is to keep you out of debt when life gets rough. Start with 3 months of essential expenses; 6 months is a strong target.",
+    planningEmergencyInfoAria: "What an emergency fund means",
     planningEmergencyHint:
       "Target = average monthly spend (3 mo) × chosen months",
     planningEmergencyEnable: "Enable emergency fund",
