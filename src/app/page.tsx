@@ -12,7 +12,6 @@ import { SubscriptionExpiredReminder } from "@/components/SubscriptionExpiredRem
 import { SubscriptionAccessBanner } from "@/components/SubscriptionAccessBanner";
 import { TrialBanner } from "@/components/TrialBanner";
 import { PendingRecurringCard } from "@/components/PendingRecurringCard";
-import { TransactionList } from "@/components/TransactionList";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import { VehicleMaintenanceBanner } from "@/components/VehicleMaintenanceBanner";
 import { VehicleOdometerDialog } from "@/components/VehicleOdometerDialog";
@@ -45,7 +44,6 @@ function FamilyHomeContent({
       <VoiceRecorder />
       <VehicleOdometerDialog />
       <PendingRecurringCard />
-      <TransactionList />
       <HomeSections />
     </>
   );

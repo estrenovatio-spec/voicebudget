@@ -61,7 +61,7 @@ function writeHidden(hidden: boolean): void {
   }
 }
 
-export function TipsPanel() {
+export function TipsPanel({ collapsible = true }: { collapsible?: boolean } = {}) {
   const locale = useStore((s) => s.locale);
   const advisor = useMemo(() => getAdvisorConfig(), []);
   const [hidden, setHidden] = useState(false);
@@ -72,8 +72,8 @@ export function TipsPanel() {
   );
 
   useEffect(() => {
-    setHidden(readHidden());
-  }, []);
+    setHidden(collapsible ? readHidden() : false);
+  }, [collapsible]);
 
   useEffect(() => {
     setPlanningTips(pickRandomPlanningTips(locale, advisor, TIP_COUNT));
@@ -97,7 +97,7 @@ export function TipsPanel() {
     writeHidden(true);
   }, []);
 
-  if (hidden) {
+  if (collapsible && hidden) {
     return (
       <div data-onboarding="tips">
         <HomeSectionCollapsedBar
@@ -126,16 +126,18 @@ export function TipsPanel() {
         icon={Sparkles}
         title={t(locale, "tipsPanelTitle")}
         action={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={sectionToggleButtonClassName}
-            onClick={hide}
-          >
-            <ChevronUp className="h-4 w-4" />
-            {t(locale, "recommendationsHide")}
-          </Button>
+          collapsible ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={sectionToggleButtonClassName}
+              onClick={hide}
+            >
+              <ChevronUp className="h-4 w-4" />
+              {t(locale, "recommendationsHide")}
+            </Button>
+          ) : null
         }
       />
       <CardContent className={homeSectionContentClassName}>

@@ -254,7 +254,7 @@ function TransactionRow({
   );
 }
 
-export function TransactionList() {
+export function TransactionList({ collapsible = true }: { collapsible?: boolean } = {}) {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
@@ -275,9 +275,9 @@ export function TransactionList() {
   );
 
   useEffect(() => {
-    setHidden(readHidden());
+    setHidden(collapsible ? readHidden() : false);
     setFilter(readTypeFilter());
-  }, []);
+  }, [collapsible]);
 
   const onTypeFilterChange = useCallback((value: string) => {
     const next = value as "all" | TxType;
@@ -335,7 +335,7 @@ export function TransactionList() {
     </div>
   );
 
-  if (hidden) {
+  if (collapsible && hidden) {
     return (
       <div data-onboarding="transactions">
         <HomeSectionCollapsedBar
@@ -372,16 +372,18 @@ export function TransactionList() {
           icon={List}
           title={t(locale, "transactions")}
           action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={sectionToggleButtonClassName}
-              onClick={hide}
-            >
-              <ChevronUp className="h-4 w-4" />
-              {t(locale, "transactionsHide")}
-            </Button>
+            collapsible ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={sectionToggleButtonClassName}
+                onClick={hide}
+              >
+                <ChevronUp className="h-4 w-4" />
+                {t(locale, "transactionsHide")}
+              </Button>
+            ) : null
           }
         />
         <CardHeader className={`space-y-3 pb-2 pt-0 ${homeSectionPadX}`}>

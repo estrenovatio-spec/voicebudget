@@ -163,7 +163,7 @@ function TotalsPanel({
   );
 }
 
-export function FinancialChart() {
+export function FinancialChart({ collapsible = true }: { collapsible?: boolean } = {}) {
   const locale = useStore((s) => s.locale);
   const period = useStatsPeriod();
   const periodTotals = usePeriodOwnerTotals();
@@ -179,8 +179,8 @@ export function FinancialChart() {
 
   useEffect(() => {
     setMounted(true);
-    setHidden(readHidden());
-  }, []);
+    setHidden(collapsible ? readHidden() : false);
+  }, [collapsible]);
 
   const show = useCallback(() => {
     setHidden(false);
@@ -205,7 +205,7 @@ export function FinancialChart() {
     );
   }
 
-  if (hidden) {
+  if (collapsible && hidden) {
     return (
       <div data-onboarding="chart">
         <HomeSectionCollapsedBar
@@ -235,16 +235,18 @@ export function FinancialChart() {
         title={title}
         subtitle={t(locale, "chartPeriod", { period: periodLabel })}
         action={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={sectionToggleButtonClassName}
-            onClick={hide}
-          >
-            <ChevronUp className="h-4 w-4" />
-            {t(locale, "summaryHide")}
-          </Button>
+          collapsible ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={sectionToggleButtonClassName}
+              onClick={hide}
+            >
+              <ChevronUp className="h-4 w-4" />
+              {t(locale, "summaryHide")}
+            </Button>
+          ) : null
         }
       />
       <CardContent className={`overflow-hidden ${homeSectionContentClassName}`}>

@@ -143,7 +143,7 @@ function sortDebtsByStrategy(debts: DebtItem[], strategy: DebtItem["strategy"]):
   });
 }
 
-export function PlanningPanel() {
+export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } = {}) {
   const locale = useStore((s) => s.locale);
   const transactions = useTransactions();
   const categories = useCategories();
@@ -183,7 +183,7 @@ export function PlanningPanel() {
     return useStore.persist.onFinishHydration(finish);
   }, []);
 
-  const open = hydrated && !collapsed;
+  const open = !collapsible || (hydrated && !collapsed);
 
   const toggleOpen = useCallback(() => {
     setPlanningPanelCollapsed(!useStore.getState().planningPanelCollapsed);
@@ -453,7 +453,7 @@ export function PlanningPanel() {
     </Button>
   );
 
-  if (hydrated && !open) {
+  if (collapsible && hydrated && !open) {
     return (
       <div data-onboarding="planning">
         <HomeSectionCollapsedBar
@@ -470,7 +470,7 @@ export function PlanningPanel() {
       <HomeSectionCardHeader
         icon={PiggyBank}
         title={t(locale, "planningTitle")}
-        action={showToggle}
+        action={collapsible ? showToggle : null}
       />
       {open ? (
         <CardContent className={homeSectionContentClassName}>
