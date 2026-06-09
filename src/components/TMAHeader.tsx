@@ -26,7 +26,7 @@ import { BALANCE_AMOUNTS_HIDDEN_KEY } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
 const balanceAmountClass =
-  "inline-flex min-w-[7.5rem] items-baseline justify-end gap-1 whitespace-nowrap text-right text-sm font-semibold leading-tight tabular-nums text-foreground";
+  "inline-flex min-w-[6.25rem] items-baseline justify-end gap-1 whitespace-nowrap text-right text-sm font-semibold leading-tight tabular-nums text-foreground";
 
 /** Подпись слева (до 2 строк для длинных имён), суммы — справа */
 function BalanceRow({
@@ -59,8 +59,8 @@ function BalanceRow({
           e.stopPropagation();
           onHideToggle?.();
         }}
-        className={`min-w-0 rounded-md px-0.5 text-sm font-semibold leading-tight text-foreground hover:bg-muted/40 ${
-          multiline ? "text-left leading-snug" : "truncate text-left"
+        className={`min-w-0 rounded-md px-0.5 text-left text-sm font-semibold leading-tight text-foreground [overflow-wrap:anywhere] hover:bg-muted/40 ${
+          multiline ? "leading-snug" : "whitespace-normal"
         }`}
       >
         {lines ? (
