@@ -47,6 +47,7 @@ export function clearDismissibleHintKeys(): void {
 export function clearAppStorage(): void {
   if (typeof window === "undefined") return;
   try {
+    sessionStorage.setItem(CLOUD_PAUSE_KEY, "1");
     localStorage.removeItem(STORE_KEY);
     localStorage.removeItem(BUSINESS_STORE_KEY);
     localStorage.removeItem(RECOMMENDATIONS_KEY);
@@ -73,7 +74,6 @@ export function clearAppStorage(): void {
     clearDismissibleHintKeys();
     localStorage.removeItem(CLOUD_KEY);
     sessionStorage.removeItem(WEB_LOGIN_KEY);
-    sessionStorage.removeItem(CLOUD_PAUSE_KEY);
     sessionStorage.removeItem("vb_app_tab_v1");
     sessionStorage.removeItem("vb-chunk-reload-once");
   } catch {

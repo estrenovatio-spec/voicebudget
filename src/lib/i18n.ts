@@ -45,7 +45,7 @@ export const DICT = {
     clearData: "Очистить данные",
     clearDataConfirmAgain: "Точно? Нажмите ещё раз",
     clearConfirm:
-      "Удалить все данные на этом устройстве? (операции, настройки, вход в облако). С сервера в облаке не удалится — снова появятся после «Скачать с облака».",
+      "Удалить данные на этом устройстве и приостановить автосинхронизацию? Облачная копия останется — восстановить можно через «Облако».",
     resetApp: "Сбросить кэш и перезагрузить",
     resetAppHint:
       "Если страница не открывается или зависает — полный сброс данных в браузере",
@@ -276,7 +276,7 @@ export const DICT = {
     bizAssetsTitle: "Проекты и источники",
     bizAssetAdd: "Добавить",
     bizAssetsEmpty:
-      "Добавьте клиента, проект, актив или аренду. Это не журнал операций, а карта того, откуда приходят деньги.",
+      "Добавьте клиента, разовый проект, актив или аренду. Сумму можно указать сразу или оставить пустой.",
     bizAssetInvestment: "Актив",
     bizAssetRental: "Аренда / инвестиция",
     bizAssetFreelance: "Клиент / проект",
@@ -287,6 +287,8 @@ export const DICT = {
     bizAssetNamePh: "Название: квартира, клиент, ETF, проект…",
     bizAssetCapitalPh: "Стоимость или вложенный капитал, ₽",
     bizAssetMonthlyPh: "Плановый доход чистыми в месяц, ₽",
+    bizAssetExpectedPh: "Сумма проекта или ожидаемый доход, ₽",
+    bizAssetExpected: "Ожидаю",
     bizAddTx: "Операция",
     bizRecentTx: "Последние операции",
     bizTxEditTitle: "Редактирование операции",
@@ -325,7 +327,7 @@ export const DICT = {
       "Следите за тем, что приносит деньги отдельно от текущих бизнес-операций.",
     bizProjectsHowTitle: "Как это использовать",
     bizProjectsHow1:
-      "Клиент / проект — заказ, консультация, подработка или направление, где вы зарабатываете.",
+      "Клиент / проект — разовый заказ, консультация, подработка или регулярный клиент.",
     bizProjectsHow2:
       "Актив — вложенный капитал, оборудование, инвестиция или то, что помогает приносить доход.",
     bizProjectsHow3:
@@ -456,8 +458,10 @@ export const DICT = {
     bizTypeSummary: "{capital} ₽ · +{monthly}/мес · {yield}% год",
     bizExpenseBreakdown: "Куда ушли расходы за период",
     bizAssetDialogHint:
-      "Добавьте клиента, проект или актив и плановый чистый доход. Для аренды можно отдельно указать ЖКХ, для клиента/проекта — часы, чтобы увидеть ставку в час.",
-    bizSourcesMonthly: "План в месяц",
+      "Для клиента/проекта достаточно названия. Сумму и часы можно добавить, если хотите видеть ожидаемый доход и ставку в час.",
+    bizProjectSummary: "{count} · ожидаю {amount}",
+    bizSourcesMonthly: "Пассив/мес",
+    bizSourcesExpected: "Ожидаю",
     bizSourcesCapital: "Капитал",
     bizSourcesFamily: "Уже в семье",
     bizFreelanceFlowTitle: "Сценарий фрилансера",
@@ -1139,7 +1143,7 @@ export const DICT = {
     clearData: "Clear data",
     clearDataConfirmAgain: "Are you sure? Tap again",
     clearConfirm:
-      "Delete all data on this device? (transactions, settings, cloud login). Cloud server data stays — it returns after “Download from cloud”.",
+      "Delete data on this device and pause auto-sync? Cloud copy stays — restore it from Cloud when needed.",
     resetApp: "Reset cache and reload",
     resetAppHint:
       "If the page won't load or freezes — full browser data reset for this app",
@@ -1366,7 +1370,7 @@ export const DICT = {
     bizAssetsTitle: "Projects & sources",
     bizAssetAdd: "Add",
     bizAssetsEmpty:
-      "Add a client, project, asset, or rental. This is not an operation log, but a map of where money comes from.",
+      "Add a client, one-off project, asset, or rental. Amount can be filled now or left empty.",
     bizAssetInvestment: "Asset",
     bizAssetRental: "Rental / investment",
     bizAssetFreelance: "Client / project",
@@ -1377,6 +1381,8 @@ export const DICT = {
     bizAssetNamePh: "Name: flat, client, ETF, project…",
     bizAssetCapitalPh: "Value or invested capital",
     bizAssetMonthlyPh: "Planned net monthly income",
+    bizAssetExpectedPh: "Project amount or expected income",
+    bizAssetExpected: "Expected",
     bizAddTx: "Transaction",
     bizRecentTx: "Recent",
     bizTxEditTitle: "Edit transaction",
@@ -1417,7 +1423,7 @@ export const DICT = {
       "Track things that bring money separately from daily business operations.",
     bizProjectsHowTitle: "How to use this",
     bizProjectsHow1:
-      "Client / project: order, consultation, side work, or earning direction.",
+      "Client / project: one-off order, consultation, side work, or recurring client.",
     bizProjectsHow2: "Asset: invested capital, equipment, investment, or income tool.",
     bizProjectsHow3:
       "Rental / investment: recurring income source. When money arrives, move it to family.",
@@ -1547,8 +1553,10 @@ export const DICT = {
     bizTypeSummary: "{capital} · +{monthly}/mo · {yield}% p.a.",
     bizExpenseBreakdown: "Where expenses went this period",
     bizAssetDialogHint:
-      "Add a client, project, or asset and expected net income. For rental, add utilities separately; for client/project, add hours to see hourly rate.",
-    bizSourcesMonthly: "Monthly plan",
+      "For client/project, the name is enough. Add amount and hours only if you want expected income and hourly rate.",
+    bizProjectSummary: "{count} · expected {amount}",
+    bizSourcesMonthly: "Passive/mo",
+    bizSourcesExpected: "Expected",
     bizSourcesCapital: "Capital",
     bizSourcesFamily: "In family",
     bizFreelanceFlowTitle: "Freelancer flow",

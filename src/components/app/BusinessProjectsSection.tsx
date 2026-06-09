@@ -105,6 +105,12 @@ function AssetRow({
                   })}
                 </span>
               </>
+            ) : asset.type === "freelance" ? (
+              asset.monthlyNet > 0 ? (
+                <span className="text-emerald-700 dark:text-emerald-400">
+                  {t(locale, "bizAssetExpected")}: {formatMoney(asset.monthlyNet, locale)}
+                </span>
+              ) : null
             ) : (
               <span className="text-emerald-700 dark:text-emerald-400">
                 +{formatMoney(asset.monthlyNet, locale)}/{t(locale, "bizPerMonth")}
@@ -186,6 +192,13 @@ function AssetTypeSection({
 }) {
   if (assets.length === 0) return null;
   const summary = typeAssetsSummary(assets, type);
+  const simpleSummary =
+    type === "freelance"
+      ? t(locale, "bizProjectSummary", {
+          count: String(assets.length),
+          amount: formatMoney(summary.monthlyNet, locale),
+        })
+      : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`;
 
   return (
     <div className="space-y-2">
@@ -201,7 +214,7 @@ function AssetTypeSection({
                 monthly: formatMoney(summary.monthlyNet, locale),
                 yield: String(summary.yieldPct),
               })
-            : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`}
+            : simpleSummary}
         </span>
       </div>
       {assets.map((a) => (
@@ -235,59 +248,6 @@ function SourceMetric({
   );
 }
 
-function FreelancerFlowCard({
-  locale,
-  clients,
-  plannedMonthly,
-  receivedTotal,
-}: {
-  locale: "ru" | "en";
-  clients: number;
-  plannedMonthly: number;
-  receivedTotal: number;
-}) {
-  return (
-    <div className="space-y-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
-      <div>
-        <p className="text-sm font-semibold text-foreground">
-          {t(locale, "bizFreelanceFlowTitle")}
-        </p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-          {t(locale, "bizFreelanceFlowHint")}
-        </p>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <SourceMetric
-          label={t(locale, "bizFreelanceClients")}
-          value={String(clients)}
-        />
-        <SourceMetric
-          label={t(locale, "bizFreelancePlan")}
-          value={`+${formatMoney(plannedMonthly, locale)}`}
-        />
-        <SourceMetric
-          label={t(locale, "bizFreelanceReceived")}
-          value={formatMoney(receivedTotal, locale)}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-1.5 text-[11px] leading-tight text-muted-foreground">
-        <span className="rounded-md bg-background/70 px-2 py-1">
-          {t(locale, "bizFreelanceStep1")}
-        </span>
-        <span className="rounded-md bg-background/70 px-2 py-1">
-          {t(locale, "bizFreelanceStep2")}
-        </span>
-        <span className="rounded-md bg-background/70 px-2 py-1">
-          {t(locale, "bizFreelanceStep3")}
-        </span>
-        <span className="rounded-md bg-background/70 px-2 py-1">
-          {t(locale, "bizFreelanceStep4")}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function BusinessProjectsSection() {
   const locale = useStore((s) => s.locale);
   const assets = useBusinessStore((s) => s.assets);
@@ -316,29 +276,24 @@ export function BusinessProjectsSection() {
   const [editUtilitiesMonth, setEditUtilitiesMonth] = useState(() => currentUtilitiesMonthKey());
 
   const assetsByType = useMemo(() => groupAssetsByType(assets, null), [assets]);
-  const portfolio = useMemo(() => assetsSummary(assets, null), [assets]);
+  const recurringAssets = useMemo(
+    () => assets.filter((asset) => asset.type !== "freelance"),
+    [assets],
+  );
+  const portfolio = useMemo(() => assetsSummary(recurringAssets, null), [recurringAssets]);
   const portfolioMonthly = useMemo(
     () => Math.round(portfolio.annualIncome / 12),
     [portfolio.annualIncome],
   );
-  const weightedYield = useMemo(() => weightedPortfolioYieldPct(assets), [assets]);
+  const freelanceExpected = useMemo(
+    () => assetsByType.freelance.reduce((sum, asset) => sum + asset.monthlyNet, 0),
+    [assetsByType.freelance],
+  );
+  const weightedYield = useMemo(() => weightedPortfolioYieldPct(recurringAssets), [recurringAssets]);
   const totalReceivedAll = useMemo(
     () => receipts.reduce((s, r) => s + r.amount, 0),
     [receipts],
   );
-  const freelanceAssets = assetsByType.freelance;
-  const freelanceMonthly = useMemo(
-    () => freelanceAssets.reduce((s, a) => s + a.monthlyNet, 0),
-    [freelanceAssets],
-  );
-  const freelanceReceived = useMemo(() => {
-    const ids = new Set(freelanceAssets.map((a) => a.id));
-    return receipts.reduce((sum, receipt) => {
-      if (!ids.has(receipt.assetId)) return sum;
-      return sum + receipt.amount;
-    }, 0);
-  }, [freelanceAssets, receipts]);
-
   const hasAssets =
     assetsByType.investment.length +
       assetsByType.rental.length +
@@ -350,7 +305,7 @@ export function BusinessProjectsSection() {
       toast(t(locale, "bizAssetNameRequired"), "error");
       return;
     }
-    const cap = parseMoneyAmount(assetCapital) ?? 0;
+    const cap = assetType === "freelance" ? 0 : parseMoneyAmount(assetCapital) ?? 0;
     const monthly = parseMoneyAmount(assetMonthly) ?? 0;
     const hours = parseMoneyAmount(assetHours) ?? undefined;
     addAsset(ensureProjectsUnitId(), assetType, assetName, cap, monthly, hours);
@@ -377,7 +332,8 @@ export function BusinessProjectsSection() {
     if (!editAsset || !editName.trim()) return;
     updateAsset(editAsset.id, {
       name: editName,
-      capitalValue: parseMoneyAmount(editCapital) ?? 0,
+      capitalValue:
+        editAsset.type === "freelance" ? 0 : parseMoneyAmount(editCapital) ?? 0,
       monthlyNet: parseMoneyAmount(editMonthly) ?? 0,
       hoursPerMonth: parseMoneyAmount(editHours) ?? 0,
     });
@@ -430,21 +386,20 @@ export function BusinessProjectsSection() {
               <li>{t(locale, "bizProjectsHow3")}</li>
             </ul>
           </div>
-          <FreelancerFlowCard
-            locale={locale}
-            clients={freelanceAssets.length}
-            plannedMonthly={freelanceMonthly}
-            receivedTotal={freelanceReceived}
-          />
-
           {!hasAssets ? (
             <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-2">
                 <SourceMetric
-                  label={t(locale, "bizSourcesMonthly")}
-                  value={`+${formatMoney(portfolioMonthly, locale)}`}
+                  label={t(
+                    locale,
+                    recurringAssets.length > 0 ? "bizSourcesMonthly" : "bizSourcesExpected",
+                  )}
+                  value={formatMoney(
+                    recurringAssets.length > 0 ? portfolioMonthly : freelanceExpected,
+                    locale,
+                  )}
                 />
                 <SourceMetric
                   label={t(locale, "bizSourcesCapital")}
@@ -535,17 +490,22 @@ export function BusinessProjectsSection() {
             value={assetName}
             onChange={(e) => setAssetName(e.target.value)}
           />
+          {assetType !== "freelance" ? (
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder={t(locale, "bizAssetCapitalPh")}
+              value={assetCapital}
+              onChange={(e) => setAssetCapital(e.target.value)}
+            />
+          ) : null}
           <Input
             type="text"
             inputMode="decimal"
-            placeholder={t(locale, "bizAssetCapitalPh")}
-            value={assetCapital}
-            onChange={(e) => setAssetCapital(e.target.value)}
-          />
-          <Input
-            type="text"
-            inputMode="decimal"
-            placeholder={t(locale, "bizAssetMonthlyPh")}
+            placeholder={t(
+              locale,
+              assetType === "freelance" ? "bizAssetExpectedPh" : "bizAssetMonthlyPh",
+            )}
             value={assetMonthly}
             onChange={(e) => setAssetMonthly(e.target.value)}
           />
@@ -571,13 +531,18 @@ export function BusinessProjectsSection() {
           </DialogHeader>
           <p className="text-xs text-muted-foreground">{t(locale, "bizAssetDialogHint")}</p>
           <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+          {editAsset?.type !== "freelance" ? (
+            <Input
+              placeholder={t(locale, "bizAssetCapitalPh")}
+              value={editCapital}
+              onChange={(e) => setEditCapital(e.target.value)}
+            />
+          ) : null}
           <Input
-            placeholder={t(locale, "bizAssetCapitalPh")}
-            value={editCapital}
-            onChange={(e) => setEditCapital(e.target.value)}
-          />
-          <Input
-            placeholder={t(locale, "bizAssetMonthlyPh")}
+            placeholder={t(
+              locale,
+              editAsset?.type === "freelance" ? "bizAssetExpectedPh" : "bizAssetMonthlyPh",
+            )}
             value={editMonthly}
             onChange={(e) => setEditMonthly(e.target.value)}
           />

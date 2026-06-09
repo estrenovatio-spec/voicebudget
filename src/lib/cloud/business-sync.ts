@@ -1,6 +1,7 @@
 import { mergeBusinessPayload } from "@/lib/business/db";
 import type { BusinessCloudPayload } from "@/lib/business/types";
 import { apiPullBusiness, apiPushBusiness } from "@/lib/cloud/client";
+import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useCloudStore } from "@/store/useCloudStore";
 
@@ -13,6 +14,7 @@ export function isBusinessCloudReady(): boolean {
 }
 
 export async function pullBusinessFromCloud(): Promise<boolean> {
+  if (isCloudPaused()) return false;
   const token = useCloudStore.getState().token;
   if (!token) return false;
   businessCloudReady = false;
@@ -41,6 +43,7 @@ export async function pullBusinessFromCloud(): Promise<boolean> {
 }
 
 export function scheduleBusinessCloudPush(delayMs = 1200): void {
+  if (isCloudPaused()) return;
   const token = useCloudStore.getState().token;
   if (!token) return;
   if (pushTimer) clearTimeout(pushTimer);
@@ -52,6 +55,7 @@ export function scheduleBusinessCloudPush(delayMs = 1200): void {
 }
 
 export async function pushBusinessToCloud(): Promise<boolean> {
+  if (isCloudPaused()) return false;
   const token = useCloudStore.getState().token;
   if (!token || !businessCloudReady || !useBusinessStore.persist.hasHydrated()) return false;
   try {
