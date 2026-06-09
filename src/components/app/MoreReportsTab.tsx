@@ -261,7 +261,10 @@ export function MoreReportsTab() {
     }
   };
 
-  const openServerExport = (type: "xlsx" | "pdf") => {
+  const openServerExport = (
+    type: "xlsx" | "pdf",
+    options: { direct?: boolean } = {},
+  ) => {
     if (!token) return false;
     const fileName = `prosto-budget-${period.from}_${period.to}.${type}`;
     const params = new URLSearchParams({
@@ -272,6 +275,17 @@ export function MoreReportsTab() {
       token,
     });
     const url = `${window.location.origin}/api/reports/export?${params.toString()}`;
+    if (options.direct) {
+      toast(
+        locale === "ru"
+          ? "Открываю PDF. Если Telegram спросит — выберите «Скачать» или «Поделиться»."
+          : "Opening PDF. If Telegram asks, choose Download or Share.",
+        "default",
+      );
+      window.location.href = url;
+      return true;
+    }
+
     const tg = window.Telegram?.WebApp;
     if (tg?.downloadFile) {
       try {
@@ -351,6 +365,8 @@ export function MoreReportsTab() {
       );
       return;
     }
+    if (openServerExport("pdf", { direct: true })) return;
+
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
