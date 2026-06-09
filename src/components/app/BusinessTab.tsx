@@ -56,7 +56,7 @@ import { useStatsPeriod, useStore } from "@/store/useStore";
 
 const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
-const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v1";
+const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v2";
 const BUSINESS_DEBT_STRATEGY_KEY = "voicebudget-business-debt-strategy";
 type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
 type DebtRepaymentStrategy = "avalanche" | "snowball";
@@ -759,10 +759,14 @@ function BusinessAdvisor({
     text:
       safeWithdraw > 0
         ? isRu
-          ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены остаток налога и минимальные платежи.`
+          ? reserveMonths >= 3
+            ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. Налог, минимальные платежи и резерв на ${reserveMonths} мес уже учтены.`
+            : `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены остаток налога и минимальные платежи.`
           : `Safe to withdraw now: ${formatMoney(safeWithdraw, locale)} after tax and minimum payments.`
         : isRu
-          ? "Пока лучше не выводить деньги собственнику. Сначала оставьте сумму на налог, обязательные платежи и резерв."
+          ? reserveMonths >= 3
+            ? "Пока лучше не выводить деньги собственнику: причина не в резерве, а в налоге, долгах или текущем остатке на счёте."
+            : "Пока лучше не выводить деньги собственнику. Сначала оставьте сумму на налог, обязательные платежи и резерв."
           : "Better not withdraw yet: cover tax, minimum payments, and reserve first.",
     tone: safeWithdraw > 0 ? "ok" : "risk",
   });
@@ -811,9 +815,18 @@ function BusinessAdvisor({
           ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} на остаток налога и обязательные платежи. Деньги собственнику пока лучше не выводить.`
           : `${formatMoney(Math.abs(cashGap), locale)} short for tax and required payments. Pause withdrawals.`
         : isRu
-          ? `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Эту сумму можно дальше делить между резервом и выводом.`
+          ? reserveMonths >= 6
+            ? `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Резерв уже ${reserveMonths} мес — докладывать туда автоматически не нужно; смотрите вывод собственнику или рост бизнеса.`
+            : reserveMonths >= 3
+              ? `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Резерв закрыт на ${reserveMonths} мес, поэтому главный вопрос — сколько вывести и сколько оставить на развитие.`
+              : `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Резерв ещё ниже 3 мес, поэтому часть суммы разумно направить туда.`
           : `After tax and required payments, buffer is ${formatMoney(cashGap, locale)}.`,
-    tone: cashGap < 0 ? "risk" : cashGap < metrics.avgMonthlyExpense * 0.5 ? "warn" : "ok",
+    tone:
+      cashGap < 0
+        ? "risk"
+        : reserveMonths < 3 && cashGap < metrics.avgMonthlyExpense * 0.5
+          ? "warn"
+          : "ok",
   });
 
   addSignal({

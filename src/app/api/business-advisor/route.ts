@@ -39,10 +39,41 @@ type BusinessAdvisorInput = z.infer<typeof bodySchema>;
 type BusinessAdvisorAdvice = z.infer<typeof adviceSchema>;
 
 function fallbackAdvice(input: z.infer<typeof bodySchema>) {
+  const reserveMonths = input.metrics.reserveMonths;
+  const cashGap = input.metrics.cashGap;
+  const safeWithdraw = input.metrics.safeWithdraw;
   const topRisk =
     input.signals.find((s) => s.tone === "risk") ??
     input.signals.find((s) => /касс|cash|реклам|ad|марж|margin|налог|tax|резерв|reserve/i.test(s.label) && s.tone === "warn") ??
     input.signals.find((s) => s.tone === "warn");
+  if (!topRisk && reserveMonths >= 6 && cashGap > 0) {
+    if (input.locale === "en") {
+      return {
+        summary: `Reserve already covers ${reserveMonths} months. Do not add to it automatically; decide how much to withdraw and what to reinvest.`,
+        action: "This week, set one owner rule: withdrawal amount, reinvestment amount, and tax money stay separate.",
+        tone: "ok" as const,
+      };
+    }
+    return {
+      summary: `Резерв уже закрывает ${reserveMonths} мес. Автоматически докладывать туда не нужно: решайте, сколько вывести собственнику и сколько оставить на рост.`,
+      action: "На этой неделе зафиксируйте правило: сумма к выводу, деньги на развитие и налог лежат отдельно.",
+      tone: "ok" as const,
+    };
+  }
+  if (!topRisk && reserveMonths >= 3 && safeWithdraw > 0) {
+    if (input.locale === "en") {
+      return {
+        summary: `Reserve covers ${reserveMonths} months, so the owner decision is safe withdrawal versus reinvestment, not more reserve by default.`,
+        action: "Choose the withdrawal amount first, then decide if anything stays for growth.",
+        tone: "ok" as const,
+      };
+    }
+    return {
+      summary: `Резерв закрывает ${reserveMonths} мес. Поэтому главный выбор сейчас — безопасный вывод собственнику или деньги на развитие, а не пополнение резерва по привычке.`,
+      action: "Сначала выберите сумму к выводу, затем решите, что оставить на развитие бизнеса.",
+      tone: "ok" as const,
+    };
+  }
   if (input.locale === "en") {
     return {
       summary: topRisk?.text ?? "The business is stable: revenue covers current expenses. Keep tax, reserve, and owner withdrawal as three separate pockets.",
@@ -152,8 +183,13 @@ function sanitizeAdvice(
 ): BusinessAdvisorAdvice {
   const bad =
     /свободн(ый|ого)? запас|запас периода|по операциям|юнит|операционн(ый|ого) баланс|алгоритм|модель|ИИ|unit|algorithm|model/i;
+  const wrongReservePush =
+    input.metrics.reserveMonths >= 3 &&
+    /(?:пополн|долож|добав|усил|направ|перевед|отлож|класть|полож).{0,40}резерв|резерв.{0,40}(?:пополн|долож|добав|усил|направ|перевед|отлож|класть|полож)|add.{0,40}reserve|reserve.{0,40}(?:add|top up|strengthen|set aside)/i.test(
+      `${advice.summary} ${advice.action}`,
+    );
   const joined = `${advice.summary} ${advice.action}`;
-  if (!bad.test(joined)) return advice;
+  if (!bad.test(joined) && !wrongReservePush) return advice;
   return fallbackAdvice(input);
 }
 
@@ -169,6 +205,8 @@ Rules:
 - Prefer concrete owner language: выручка, расходы, прибыль, маржа, налог, резерв, реклама, можно вывести.
 - Avoid jargon: no "операционный баланс", "свободный запас", "юнит", "денежный поток периода".
 - Prioritize in this order: cash gap / required payments, tax, reserve, ad ROI, margin, safe withdrawal.
+- Reserve logic: if reserveMonths >= 3, do NOT recommend adding more to reserve by default. If reserveMonths >= 6, call the reserve strong and focus on owner withdrawal, reinvestment, tax, debt, or ad ROI.
+- Only recommend adding to reserve when reserveMonths < 3 or there is a clear risk from the provided signals.
 - Mention the main risk or opportunity and give ONE action for this week.
 - summary <= 280 characters, action <= 180 characters.
 - Language: ${input.locale === "ru" ? "Russian" : "English"}.
