@@ -224,6 +224,9 @@ export function TMAHeader({
                 </>
               ) : null}
             </div>
+            <div className="mt-2 flex w-full justify-center border-t border-primary/10 pt-2">
+              <LiveRatesBar />
+            </div>
             {hasPartner ? (
               <div className="mt-2 border-t border-primary/10 pt-2">
                 <PartnerTransferDialog
@@ -256,7 +259,6 @@ export function TMAHeader({
               </Button>
             ) : null}
           </div>
-          <LiveRatesBar />
         </div>
       </div>
     </header>
