@@ -378,6 +378,32 @@ function BusinessUnitTabs({
         role="tablist"
         aria-label={t(locale, "bizUnitsTitle")}
       >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={projectsActive}
+          onClick={onSelectProjects}
+          className={cn(
+            "min-w-[7.25rem] flex-1 rounded-md px-2.5 py-2 text-left text-sm font-semibold transition-colors",
+            projectsActive
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
+          )}
+        >
+          <span className="block break-words leading-tight">
+            {t(locale, "bizSectionProjects")}
+          </span>
+          <span
+            className={cn(
+              "mt-0.5 block truncate text-[10px] font-semibold",
+              projectsActive
+                ? "text-primary-foreground/85"
+                : "text-muted-foreground",
+            )}
+          >
+            {t(locale, "bizProjectsTopHint")}
+          </span>
+        </button>
         {units.map((unit) => {
           const active = !projectsActive && unit.id === activeUnitId;
           const metrics = metricsMap.get(unit.id);
@@ -426,32 +452,6 @@ function BusinessUnitTabs({
             </button>
           );
         })}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={projectsActive}
-          onClick={onSelectProjects}
-          className={cn(
-            "min-w-[7.25rem] flex-1 rounded-md px-2.5 py-2 text-left text-sm font-semibold transition-colors",
-            projectsActive
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
-          )}
-        >
-          <span className="block break-words leading-tight">
-            {t(locale, "bizSectionProjects")}
-          </span>
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[10px] font-semibold",
-              projectsActive
-                ? "text-primary-foreground/85"
-                : "text-muted-foreground",
-            )}
-          >
-            {t(locale, "bizProjectsTopHint")}
-          </span>
-        </button>
         <button
           type="button"
           onClick={onAdd}
