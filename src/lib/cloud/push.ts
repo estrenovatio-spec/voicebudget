@@ -103,11 +103,17 @@ export async function cloudPushTransactionUpdate(
       | "note"
     >
   >,
+  opts?: { skipPull?: boolean },
 ): Promise<void> {
   const t = token();
   if (!t) return;
   try {
     await apiUpdateTransaction(t, id, patch);
+    useCloudStore.getState().setLastWriteError(null);
+    useCloudStore.getState().clearTransactionUpdatePending(id);
+    if (opts?.skipPull) {
+      return;
+    }
     await pullCloudAfterWrite();
   } catch {
     /* ignore */

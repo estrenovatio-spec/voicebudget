@@ -779,6 +779,7 @@ export const useStore = create<StoreState>()(
         if (after) {
           recordAiCorrectionLearning({ before: prev, after });
           clearCachedMonthlyAnalysis();
+          useCloudStore.getState().markTransactionUpdatePending(id, after.updatedAt);
           const goalIds = new Set<string>();
           if (prev?.goalId) goalIds.add(prev.goalId);
           if (after.goalId) goalIds.add(after.goalId);
@@ -836,6 +837,7 @@ export const useStore = create<StoreState>()(
         });
         if (goalAfterDelete) void cloudPushGoal(goalAfterDelete);
         for (const delId of idsToDelete) {
+          useCloudStore.getState().clearTransactionUpdatePending(delId);
           useCloudStore.getState().markTransactionDeleted(delId);
           useCloudStore.getState().removeFromLastSyncedRemoteTxIds(delId);
           void cloudPushTransactionDelete(delId);

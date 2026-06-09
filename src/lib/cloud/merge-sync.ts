@@ -30,6 +30,7 @@ export function mergeTransactions(
   remote: Transaction[],
   previouslySyncedRemoteIds?: ReadonlySet<string>,
   deletedTransactionIds?: ReadonlySet<string>,
+  pendingTransactionUpdateIds?: ReadonlySet<string>,
 ): Transaction[] {
   const map = new Map<string, Transaction>();
   const remoteIds = new Set<string>();
@@ -52,6 +53,10 @@ export function mergeTransactions(
     const existing = map.get(tx.id);
     if (!existing) {
       // Локальная операция ещё не на сервере (новая запись на этом устройстве).
+      map.set(tx.id, tx);
+      continue;
+    }
+    if (pendingTransactionUpdateIds?.has(tx.id)) {
       map.set(tx.id, tx);
       continue;
     }
@@ -244,6 +249,7 @@ export function mergeSyncPayload(
   deletedRecurringIds?: ReadonlySet<string>,
   deletedTransactionIds?: ReadonlySet<string>,
   deletedDebtIds?: ReadonlySet<string>,
+  pendingTransactionUpdateIds?: ReadonlySet<string>,
 ): MergedSyncResult {
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const remoteCategoryIds = new Set(remote.categories.map((c) => c.id));
@@ -257,6 +263,7 @@ export function mergeSyncPayload(
     remote.transactions,
     previouslySyncedRemoteIds,
     deletedTransactionIds,
+    pendingTransactionUpdateIds,
   );
   const categories = mergeCategories(
     localCategories,

@@ -10,6 +10,7 @@ import {
   cloudPushDebt,
   cloudPushRecurring,
   cloudPushTransaction,
+  cloudPushTransactionUpdate,
 } from "@/lib/cloud/push";
 import type { SyncPayload } from "@/lib/household/types";
 import { ensureCloudViewerUserId } from "@/lib/cloud/viewer-identity";
@@ -37,6 +38,9 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
   const deletedDebts = new Set(cloud.deletedDebtIds ?? []);
   const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
+  const pendingTransactionUpdates = new Set(
+    Object.keys(cloud.pendingTransactionUpdateIds ?? {}),
+  );
   const merged = mergeSyncPayload(
     local.transactions,
     local.categories,
@@ -53,6 +57,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     deletedRecurring,
     deletedTransactions,
     deletedDebts,
+    pendingTransactionUpdates,
   );
 
   const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
@@ -133,6 +138,26 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   for (const id of merged.localOnlyTransactionIds) {
     const tx = merged.transactions.find((t) => t.id === id);
     if (tx) void cloudPushTransaction(tx);
+  }
+  for (const id of pendingTransactionUpdates) {
+    const tx = merged.transactions.find((t) => t.id === id);
+    if (!tx || deletedTransactions.has(id)) continue;
+    void cloudPushTransactionUpdate(
+      id,
+      {
+        amount: tx.amount,
+        categoryId: tx.categoryId,
+        owner: tx.owner,
+        createdBy: tx.createdBy,
+        type: tx.type,
+        goalId: tx.goalId,
+        goalAmount: tx.goalAmount,
+        odometerKm: tx.odometerKm,
+        vehicleId: tx.vehicleId,
+        note: tx.note,
+      },
+      { skipPull: true },
+    );
   }
   for (const cat of merged.localOnlyCategories) {
     void cloudPushCategory(cat);

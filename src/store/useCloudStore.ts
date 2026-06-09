@@ -34,6 +34,8 @@ interface CloudState {
   deletedDebtIds: string[];
   /** Локально удалённые операции — не поднимать с облака при merge */
   deletedTransactionIds: string[];
+  /** Локальные правки операций, которые ещё нельзя перетирать pull'ом из облака */
+  pendingTransactionUpdateIds: Record<string, string>;
   /** Последняя ошибка записи в облако (операция остаётся локально) */
   lastWriteError: string | null;
   setServerConfigured: (value: boolean) => void;
@@ -64,6 +66,9 @@ interface CloudState {
   setDeletedDebtIds: (ids: string[]) => void;
   markTransactionDeleted: (id: string) => void;
   setDeletedTransactionIds: (ids: string[]) => void;
+  markTransactionUpdatePending: (id: string, updatedAt?: string) => void;
+  clearTransactionUpdatePending: (id: string) => void;
+  setPendingTransactionUpdateIds: (ids: Record<string, string>) => void;
   setLastWriteError: (error: string | null) => void;
   clearSession: () => void;
   /** Drop household token/sync only — keep subscription from latest bootstrap. */
@@ -93,6 +98,7 @@ export const useCloudStore = create<CloudState>()(
       deletedRecurringIds: [],
       deletedDebtIds: [],
       deletedTransactionIds: [],
+      pendingTransactionUpdateIds: {},
       lastWriteError: null,
       setServerConfigured: (serverConfigured) => set({ serverConfigured }),
       setLastWriteError: (lastWriteError) => set({ lastWriteError }),
@@ -159,6 +165,22 @@ export const useCloudStore = create<CloudState>()(
             : [...s.deletedTransactionIds, id],
         })),
       setDeletedTransactionIds: (deletedTransactionIds) => set({ deletedTransactionIds }),
+      markTransactionUpdatePending: (id, updatedAt) =>
+        set((s) => ({
+          pendingTransactionUpdateIds: {
+            ...s.pendingTransactionUpdateIds,
+            [id]: updatedAt ?? new Date().toISOString(),
+          },
+        })),
+      clearTransactionUpdatePending: (id) =>
+        set((s) => {
+          if (!s.pendingTransactionUpdateIds[id]) return s;
+          const next = { ...s.pendingTransactionUpdateIds };
+          delete next[id];
+          return { pendingTransactionUpdateIds: next };
+        }),
+      setPendingTransactionUpdateIds: (pendingTransactionUpdateIds) =>
+        set({ pendingTransactionUpdateIds }),
       clearSession: () =>
         set({
           token: null,
@@ -180,6 +202,7 @@ export const useCloudStore = create<CloudState>()(
           deletedRecurringIds: [],
           deletedDebtIds: [],
           deletedTransactionIds: [],
+          pendingTransactionUpdateIds: {},
           lastWriteError: null,
         }),
       clearHouseholdSession: () =>
@@ -249,6 +272,10 @@ export const useCloudStore = create<CloudState>()(
             deletedDebtIds: next.deletedDebtIds ?? [],
           };
         }
+        next = {
+          ...next,
+          pendingTransactionUpdateIds: next.pendingTransactionUpdateIds ?? {},
+        };
         return next;
       },
       onRehydrateStorage: () => () => {
