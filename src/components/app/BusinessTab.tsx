@@ -58,6 +58,7 @@ const BUSINESS_HOW_HIDDEN_KEY = "voicebudget-business-how-hidden";
 const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
 const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v2";
 const BUSINESS_DEBT_STRATEGY_KEY = "voicebudget-business-debt-strategy";
+const BUSINESS_SECTION_KEY = "voicebudget-business-section";
 type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
 type DebtRepaymentStrategy = "avalanche" | "snowball";
 type BusinessAdvisorTone = "ok" | "warn" | "risk";
@@ -83,6 +84,18 @@ function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
     default:
       return tx.type === "income" ? t(locale, "income") : t(locale, "expense");
   }
+}
+
+function businessTxCreatedTime(tx: BusinessTransaction): number {
+  const explicit = tx.createdAt ? new Date(tx.createdAt).getTime() : NaN;
+  if (Number.isFinite(explicit)) return explicit;
+  const idTime = tx.id.match(/^tx-([a-z0-9]+)/i)?.[1];
+  if (idTime) {
+    const parsed = Number.parseInt(idTime, 36);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  const date = new Date(`${tx.date}T12:00:00`).getTime();
+  return Number.isFinite(date) ? date : 0;
 }
 
 function UnitCard({
@@ -1280,11 +1293,25 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     if (storedDebtStrategy === "snowball" || storedDebtStrategy === "avalanche") {
       setBusinessDebtStrategy(storedDebtStrategy);
     }
+    const storedSection = localStorage.getItem(BUSINESS_SECTION_KEY);
+    if (
+      storedSection === "operations" ||
+      storedSection === "reserve" ||
+      storedSection === "tax" ||
+      storedSection === "debts" ||
+      storedSection === "projects"
+    ) {
+      setBusinessSection(storedSection);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(BUSINESS_DEBT_STRATEGY_KEY, businessDebtStrategy);
   }, [businessDebtStrategy]);
+
+  useEffect(() => {
+    localStorage.setItem(BUSINESS_SECTION_KEY, businessSection);
+  }, [businessSection]);
 
   useEffect(() => {
     if (!ready) return;
@@ -1315,7 +1342,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
   const recentTxs = useMemo(() => {
     if (!activeUnitId) return [];
-    return transactions.filter((tx) => tx.unitId === activeUnitId).slice(0, 30);
+    return transactions
+      .filter((tx) => tx.unitId === activeUnitId)
+      .sort((a, b) => businessTxCreatedTime(b) - businessTxCreatedTime(a))
+      .slice(0, 30);
   }, [transactions, activeUnitId]);
 
   const activeUnit = useMemo(

@@ -425,6 +425,7 @@ export const useBusinessStore = create<BusinessStore>()(
           kind,
           note: note.trim().slice(0, 120) || (type === "income" ? "Доход" : "Расход"),
           date: date ?? new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
       },
@@ -441,6 +442,7 @@ export const useBusinessStore = create<BusinessStore>()(
           kind: "cushion_deposit",
           note: "→ резерв бизнеса",
           date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
       },
@@ -457,6 +459,7 @@ export const useBusinessStore = create<BusinessStore>()(
           kind: "tax_deposit",
           note: "→ налоговый счёт",
           date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
       },
@@ -487,6 +490,7 @@ export const useBusinessStore = create<BusinessStore>()(
           kind: "family_withdrawal",
           note: "→ семейный бюджет",
           date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
           linkedFamilyTxId: familyTxId,
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));

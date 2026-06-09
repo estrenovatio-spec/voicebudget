@@ -13,6 +13,8 @@ export type BusinessTransaction = {
   kind: BusinessTxKind;
   note: string;
   date: string;
+  /** Когда операция была добавлена в приложение. Для старых операций берём время из id. */
+  createdAt?: string;
   /** Связанная операция во вкладке «Семья» (перевод себе) */
   linkedFamilyTxId?: string;
 };
