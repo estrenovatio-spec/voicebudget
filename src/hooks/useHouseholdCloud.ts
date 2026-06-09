@@ -135,6 +135,47 @@ export function useHouseholdCloud() {
     }
   }, []);
 
+  /** Current phone wins completely: cloud operations not present here are deleted. */
+  const replaceCloudWithThisDevice = useCallback(async () => {
+    if (!hasCloudAuth() && !useCloudStore.getState().token) {
+      setError("telegram_required");
+      return false;
+    }
+
+    const { transactions, categories } = useStore.getState();
+    setLoading(true);
+    setError(null);
+    try {
+      let sessionToken = useCloudStore.getState().token;
+      if (!sessionToken) {
+        setCloudPaused(false);
+        const created = await apiCreateHousehold({
+          ...getCloudAuthBody(),
+          mode: "solo",
+        });
+        sessionToken = created.token;
+        useCloudStore.getState().setSession(created.token, created.household);
+        if (created.user?.id) useCloudStore.getState().setCloudUserId(created.user.id);
+      }
+
+      const res = await apiImportLocal(sessionToken, {
+        transactions,
+        categories,
+        replaceTransactions: true,
+      });
+      setCloudPaused(false);
+      applyHouseholdSync(res.sync, sessionToken);
+      useCloudStore.getState().setDeletedTransactionIds([]);
+      useCloudStore.getState().touchSync();
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "replace_failed");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   /** Only pauses sync on this device — never removes membership on server. */
   const disconnectCloud = useCallback(async () => {
     setLoading(true);
@@ -211,6 +252,7 @@ export function useHouseholdCloud() {
     joinHousehold,
     pullSync,
     pushToCloud,
+    replaceCloudWithThisDevice,
     importLocal: pushToCloud,
     loginWithTelegramWeb,
     disconnectCloud,

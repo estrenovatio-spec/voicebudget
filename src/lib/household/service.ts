@@ -443,7 +443,11 @@ export async function assertMember(userId: string, householdId: string) {
 export async function importLocalSnapshot(
   userId: string,
   householdId: string,
-  data: { transactions: Transaction[]; categories?: CategoryDefinition[] },
+  data: {
+    transactions: Transaction[];
+    categories?: CategoryDefinition[];
+    replaceTransactions?: boolean;
+  },
 ) {
   await assertMember(userId, householdId);
 
@@ -470,6 +474,15 @@ export async function importLocalSnapshot(
   ).map((m) => m.userId);
 
   const caps = await getHouseholdDbCapabilities();
+  if (data.replaceTransactions) {
+    const keepIds = data.transactions.map((tx) => tx.id);
+    await prisma.transaction.deleteMany({
+      where: {
+        householdId,
+        ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
+      },
+    });
+  }
   for (const tx of data.transactions) {
     const createdBy =
       tx.createdBy && memberIds.includes(tx.createdBy) ? tx.createdBy : userId;

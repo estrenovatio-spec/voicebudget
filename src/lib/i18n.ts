@@ -725,12 +725,17 @@ export const DICT = {
     cloudSyncPullHint: "Облако важнее — список здесь заменится",
     cloudSyncPush: "Отправить на облако",
     cloudSyncPushHint: "Это устройство важнее — допишется в облако",
+    cloudSyncReplace: "Заменить облако этим телефоном",
+    cloudSyncReplaceHint: "В облаке останутся только операции этого телефона: {count}",
     cloudSyncPullConfirm:
       "Заменить операции на этом устройстве данными из облака? Локальные записи, которых нет в облаке, пропадут с экрана.",
     cloudSyncPushConfirm:
       "Отправить все операции с этого устройства в облако? Совпадающие по ID обновятся, остальное в облаке останется.",
+    cloudSyncReplaceConfirm:
+      "Начать заново в облаке? Старые операции на сервере удалятся, а останутся только операции с этого телефона. Это нужно, если вы очистили телефон и не хотите возвращать старую историю.",
     cloudSyncSuccessPull: "Скачано с облака",
     cloudSyncSuccessPush: "Отправлено в облако",
+    cloudSyncSuccessReplace: "Облако заменено данными этого телефона",
     cloudSyncFailed: "Синхронизация не удалась",
     cloudWriteLocalOnly:
       "Операция на этом телефоне есть, в облако не записалась — нажмите «Синхронизировать» в настройках",
@@ -747,6 +752,9 @@ export const DICT = {
     cloudPausedHint:
       "С телефона данные с сервера не подтягиваются. Если всё «возвращалось» после удаления Telegram — это было облако, не кэш.",
     cloudResume: "Снова включить облако",
+    cloudFreshStart: "Начать заново в облаке",
+    cloudFreshStartHint:
+      "Если вы очистили телефон и не хотите возвращать старые операции, нажмите здесь. В облако уйдёт текущий список операций: {count}.",
     cloudNotConfigured:
       "Сервер без БД — облако недоступно. Добавьте DATABASE_URL на Vercel.",
     cloudTelegramOnly: "Облако работает в Telegram Mini App.",
@@ -1828,12 +1836,17 @@ export const DICT = {
     cloudSyncPush: "Upload to cloud",
     cloudSyncPushHint:
       "This device wins — merges your operations into the cloud",
+    cloudSyncReplace: "Replace cloud with this phone",
+    cloudSyncReplaceHint: "Cloud will keep only this phone's operations: {count}",
     cloudSyncPullConfirm:
       "Replace operations on this device with cloud data? Local-only entries will disappear from this screen.",
     cloudSyncPushConfirm:
       "Upload all operations from this device to the cloud? Matching IDs update; other cloud data stays.",
+    cloudSyncReplaceConfirm:
+      "Start fresh in cloud? Old server operations will be deleted; only this phone's operations will remain. Use this after clearing the phone when you do not want old history back.",
     cloudSyncSuccessPull: "Downloaded from cloud",
     cloudSyncSuccessPush: "Uploaded to cloud",
+    cloudSyncSuccessReplace: "Cloud replaced with this phone's data",
     cloudSyncFailed: "Sync failed",
     cloudWriteLocalOnly:
       "Saved on this device only — cloud upload failed; tap Sync in settings",
@@ -1850,6 +1863,9 @@ export const DICT = {
     cloudPausedHint:
       "This phone won't pull from the server. If data came back after reinstalling Telegram, that was the cloud — not cache.",
     cloudResume: "Reconnect cloud",
+    cloudFreshStart: "Start fresh in cloud",
+    cloudFreshStartHint:
+      "If you cleared this phone and do not want old operations back, tap here. Current phone operations to upload: {count}.",
     cloudNotConfigured: "No database on server — add DATABASE_URL on Vercel.",
     cloudTelegramOnly: "Cloud works in the Telegram Mini App only.",
     cloudErrDatabase:

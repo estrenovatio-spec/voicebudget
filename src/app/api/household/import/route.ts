@@ -14,10 +14,20 @@ const txSchema = z.object({
   note: z.string(),
   date: z.string(),
   owner: z.enum(["me", "partner"]).optional(),
+  goalId: z.string().nullable().optional(),
+  goalAmount: z.number().nullable().optional(),
+  confirmed: z.boolean().optional(),
+  recurringId: z.string().nullable().optional(),
+  createdBy: z.string().nullable().optional(),
+  odometerKm: z.number().nullable().optional(),
+  vehicleId: z.string().nullable().optional(),
+  transferPairId: z.string().nullable().optional(),
+  businessTxId: z.string().nullable().optional(),
 });
 
 const bodySchema = z.object({
   transactions: z.array(txSchema),
+  replaceTransactions: z.boolean().optional(),
   categories: z
     .array(
       z.object({
@@ -58,6 +68,7 @@ export async function POST(req: NextRequest) {
         keywords: c.keywords,
         isSystem: c.isSystem,
       })),
+      replaceTransactions: body.replaceTransactions === true,
     });
     return NextResponse.json({ ok: true, sync });
   } catch (e) {

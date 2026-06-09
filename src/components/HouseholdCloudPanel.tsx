@@ -9,6 +9,7 @@ import { ReferralWalletPaywall } from "@/components/ReferralWalletPaywall";
 import { TelegramLoginButton } from "@/components/TelegramLoginButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
@@ -59,6 +60,8 @@ const responsiveShell = "min-w-0 max-w-full overflow-hidden";
 export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelProps) {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
+  const txCount = useStore((s) => s.transactions.length);
+  const { toast } = useToast();
   const {
     loading,
     error,
@@ -66,6 +69,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
     serverConfigured,
     createHousehold,
     joinHousehold,
+    replaceCloudWithThisDevice,
     loginWithTelegramWeb,
     attachExistingCloud,
     isTelegram,
@@ -79,6 +83,12 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
   const [partnerLabel, setPartnerLabel] = useState(partnerName ?? "");
   const [showNewHousehold, setShowNewHousehold] = useState(false);
   const autoAttachStarted = useRef(false);
+
+  const handleReplaceCloud = async () => {
+    if (!window.confirm(t(locale, "cloudSyncReplaceConfirm"))) return;
+    const ok = await replaceCloudWithThisDevice();
+    toast(ok ? t(locale, "cloudSyncSuccessReplace") : t(locale, "cloudSyncFailed"), ok ? "success" : "error");
+  };
 
   const loggedInWeb = !isTelegram && hasCloudAuth() && !isActive;
 
@@ -285,6 +295,21 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
       >
         {t(locale, "cloudCreate")}
       </Button>
+
+      <div className="space-y-2 rounded-md border border-amber-400/40 bg-amber-50/80 p-2.5 dark:bg-amber-950/20">
+        <p className="break-words text-xs text-amber-950 dark:text-amber-100">
+          {t(locale, "cloudFreshStartHint", { count: String(txCount) })}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-9 w-full whitespace-normal text-xs"
+          disabled={loading}
+          onClick={() => void handleReplaceCloud()}
+        >
+          {t(locale, "cloudFreshStart")}
+        </Button>
+      </div>
 
       <div className="space-y-2 border-t border-border/60 pt-3">
         <p className="text-xs font-medium">{t(locale, "cloudJoinTitle")}</p>

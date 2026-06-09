@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudDownload, CloudUpload, Loader2 } from "lucide-react";
+import { CloudDownload, CloudUpload, Loader2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -29,8 +29,9 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
   const txCount = useStore((s) => s.transactions.length);
   const lastSyncedAt = useCloudStore((s) => s.lastSyncedAt);
   const { toast } = useToast();
-  const { loading, error, pullSync, pushToCloud, isActive } = useHouseholdCloud();
-  const [lastAction, setLastAction] = useState<"pull" | "push" | null>(null);
+  const { loading, error, pullSync, pushToCloud, replaceCloudWithThisDevice, isActive } =
+    useHouseholdCloud();
+  const [lastAction, setLastAction] = useState<"pull" | "push" | "replace" | null>(null);
 
   if (!isActive) return null;
 
@@ -56,6 +57,18 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
     const ok = await pushToCloud();
     if (ok) {
       toast(t(locale, "cloudSyncSuccessPush"), "success");
+    } else {
+      toast(t(locale, "cloudSyncFailed"), "error");
+    }
+    setLastAction(null);
+  };
+
+  const handleReplace = async () => {
+    if (!window.confirm(t(locale, "cloudSyncReplaceConfirm"))) return;
+    setLastAction("replace");
+    const ok = await replaceCloudWithThisDevice();
+    if (ok) {
+      toast(t(locale, "cloudSyncSuccessReplace"), "success");
     } else {
       toast(t(locale, "cloudSyncFailed"), "error");
     }
@@ -130,6 +143,26 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
           </span>
         </Button>
       </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
+        disabled={loading}
+        onClick={() => void handleReplace()}
+      >
+        <span className="flex w-full min-w-0 items-center gap-2 font-medium leading-snug">
+          {loading && lastAction === "replace" ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <RotateCcw className="h-4 w-4 shrink-0" />
+          )}
+          <span className="min-w-0 break-words">{t(locale, "cloudSyncReplace")}</span>
+        </span>
+        <span className="w-full break-words text-xs font-normal leading-snug text-muted-foreground">
+          {t(locale, "cloudSyncReplaceHint", { count: String(txCount) })}
+        </span>
+      </Button>
 
       {error && (
         <p className="text-xs text-destructive">

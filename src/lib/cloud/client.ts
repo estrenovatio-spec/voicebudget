@@ -161,7 +161,11 @@ export async function apiSync(token: string) {
 
 export async function apiImportLocal(
   token: string,
-  data: { transactions: Transaction[]; categories: CategoryDefinition[] },
+  data: {
+    transactions: Transaction[];
+    categories: CategoryDefinition[];
+    replaceTransactions?: boolean;
+  },
 ) {
   const res = await apiFetch("/api/household/import", {
     method: "POST",
