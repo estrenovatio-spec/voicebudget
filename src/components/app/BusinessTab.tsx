@@ -1539,19 +1539,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               );
             }}
           />
-          <BusinessKpis
-            metrics={activeMetrics}
-            safeWithdraw={safeWithdraw}
-            locale={locale}
-          />
-          <BusinessAdvisor
-            metrics={activeMetrics}
-            safeWithdraw={safeWithdraw}
-            adSpend={activeAdSpend}
-            locale={locale}
-            open={businessAdvisorOpen}
-            onToggle={toggleBusinessAdvisor}
-          />
           <BusinessFamilyWithdrawal
             amount={safeWithdraw}
             locale={locale}
@@ -1566,6 +1553,19 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                 ok ? "success" : "error",
               );
             }}
+          />
+          <BusinessKpis
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            locale={locale}
+          />
+          <BusinessAdvisor
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            adSpend={activeAdSpend}
+            locale={locale}
+            open={businessAdvisorOpen}
+            onToggle={toggleBusinessAdvisor}
           />
 
           <div className="space-y-3 border-t border-border/60 pt-3">
