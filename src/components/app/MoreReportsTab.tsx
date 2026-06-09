@@ -151,6 +151,11 @@ export function MoreReportsTab() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [tableReady, setTableReady] = useState(true);
   const [historyKind, setHistoryKind] = useState<"weekly" | "monthly">("weekly");
+  const [preparedFile, setPreparedFile] = useState<{
+    type: "xlsx" | "pdf";
+    url: string;
+    fileName: string;
+  } | null>(null);
   const { toast } = useToast();
 
   const periodTxs = useMemo(
@@ -276,13 +281,33 @@ export function MoreReportsTab() {
     });
     const url = `${window.location.origin}/api/reports/export?${params.toString()}`;
     if (options.direct) {
+      setPreparedFile({ type, url, fileName });
       toast(
         locale === "ru"
-          ? "Открываю PDF. Если Telegram спросит — выберите «Скачать» или «Поделиться»."
-          : "Opening PDF. If Telegram asks, choose Download or Share.",
+          ? "PDF готов. Если файл не открылся сам — нажмите кнопку ниже."
+          : "PDF is ready. If it did not open automatically, tap the button below.",
         "default",
       );
-      window.location.href = url;
+      const tg = window.Telegram?.WebApp;
+      if (tg?.openLink) {
+        try {
+          tg.openLink(url, { try_instant_view: false });
+          return true;
+        } catch {
+          /* fallback below */
+        }
+      }
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
       return true;
     }
 
@@ -317,6 +342,21 @@ export function MoreReportsTab() {
     const opened = window.open(url, "_blank", "noopener,noreferrer");
     if (!opened) window.location.href = url;
     return true;
+  };
+
+  const openPreparedFile = () => {
+    if (!preparedFile) return;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.openLink) {
+      try {
+        tg.openLink(preparedFile.url, { try_instant_view: false });
+        return;
+      } catch {
+        /* fallback below */
+      }
+    }
+    const opened = window.open(preparedFile.url, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.href = preparedFile.url;
   };
 
   const exportExcel = async () => {
@@ -433,6 +473,39 @@ export function MoreReportsTab() {
             {t(locale, "moreReportsPdf")}
           </Button>
         </div>
+        {preparedFile ? (
+          <div className="rounded-md border border-primary/25 bg-primary/5 p-3 text-xs leading-relaxed">
+            <p className="font-medium text-foreground">
+              {preparedFile.type === "pdf"
+                ? locale === "ru"
+                  ? "PDF готов"
+                  : "PDF is ready"
+                : locale === "ru"
+                  ? "Файл готов"
+                  : "File is ready"}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {locale === "ru"
+                ? "Если Telegram не открыл скачивание автоматически, нажмите кнопку."
+                : "If Telegram did not open the download automatically, tap the button."}
+            </p>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button type="button" size="sm" onClick={openPreparedFile}>
+                {locale === "ru" ? "Открыть / скачать" : "Open / download"}
+              </Button>
+              <Button asChild type="button" size="sm" variant="outline">
+                <a
+                  href={preparedFile.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={preparedFile.fileName}
+                >
+                  {locale === "ru" ? "Ссылка на файл" : "File link"}
+                </a>
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3">
