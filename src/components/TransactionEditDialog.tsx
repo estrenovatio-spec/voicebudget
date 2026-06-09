@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -76,13 +76,18 @@ export function TransactionEditDialog({
   const [goalAmount, setGoalAmount] = useState("");
   const [comment, setComment] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const editSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) {
+      editSessionKeyRef.current = null;
       setConfirmDelete(false);
       return;
     }
     if (!transaction) return;
+    if (editSessionKeyRef.current === transaction.id) return;
+    editSessionKeyRef.current = transaction.id;
+
     const raw =
       useStore.getState().transactions.find((t) => t.id === transaction.id) ?? transaction;
     const viewerUserId = decodeUserIdFromHouseholdToken(token) ?? cloudUserId ?? null;
