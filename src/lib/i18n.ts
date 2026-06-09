@@ -339,7 +339,7 @@ export const DICT = {
     bizHowTitle: "Как пользоваться",
     bizHowDismiss: "Скрыть инструкцию",
     bizHowBody:
-      "1) Сверху выберите нужный бизнес или нажмите «+», чтобы добавить новый. 2) В карточке бизнеса нажмите «Доход» или «Расход» и запишите сумму. 3) Ниже смотрите операции, резерв, налог и проекты — всё считается отдельно от семьи.",
+      "1) Выберите бизнес. 2) Запишите доход или расход. 3) Ниже контролируйте операции, резерв, налог, долги и источники дохода. Семейный бюджет не смешивается с бизнесом.",
     bizAssetsPassiveLine: "Пассив по выбранному бизнесу: {amount}/мес",
     bizIncomeSources: "Откуда доход за период",
     bizPeriodSection: "Период",
@@ -368,8 +368,8 @@ export const DICT = {
     bizSectionOperations: "Операции",
     bizSectionReserve: "Резерв",
     bizSectionTax: "Налог",
-    bizSectionProjects: "Проекты",
-    bizNoRecentTx: "Пока нет операций по этому бизнесу.",
+    bizSectionProjects: "Источники",
+    bizNoRecentTx: "Пока нет операций по этому бизнесу. Добавьте доход или расход выше.",
     bizTaxSetup: "Настроить налог",
     bizTaxCurrent: "{rate}% · {period}",
     bizFamilyLinkHint:
@@ -1396,7 +1396,7 @@ export const DICT = {
     bizHowTitle: "How to use",
     bizHowDismiss: "Hide instructions",
     bizHowBody:
-      "1) Choose a business at the top or tap “+” to add one. 2) In the business card, tap Income or Expense and enter the amount. 3) Below, use Operations, Reserve, Tax, and Projects — all separate from Family.",
+      "1) Pick a business. 2) Add income or expense. 3) Below, control operations, reserve, tax, debts, and income sources. Family budget stays separate.",
     bizAssetsPassiveLine: "Passive for selected business: {amount}/mo",
     bizIncomeSources: "Income sources this period",
     bizPeriodSection: "Period",
@@ -1425,8 +1425,8 @@ export const DICT = {
     bizSectionOperations: "Operations",
     bizSectionReserve: "Reserve",
     bizSectionTax: "Tax",
-    bizSectionProjects: "Projects",
-    bizNoRecentTx: "No operations for this business yet.",
+    bizSectionProjects: "Sources",
+    bizNoRecentTx: "No operations for this business yet. Add income or expense above.",
     bizTaxSetup: "Set tax",
     bizTaxCurrent: "{rate}% · {period}",
     bizFamilyLinkHint:

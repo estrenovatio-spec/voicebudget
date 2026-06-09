@@ -361,9 +361,9 @@ function BusinessUnitTabs({
   onAdd: () => void;
 }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div className="rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
       <div
-        className="flex min-w-max items-center gap-1 border-b border-border/70"
+        className="flex flex-wrap items-stretch gap-1"
         role="tablist"
         aria-label={t(locale, "bizUnitsTitle")}
       >
@@ -380,10 +380,10 @@ function BusinessUnitTabs({
               onClick={() => onSelect(unit.id)}
               title={unit.name}
               className={cn(
-                "max-w-[10rem] border-b-2 px-3 py-2 text-left text-sm font-medium transition-colors",
+                "min-w-[7.25rem] flex-1 rounded-md px-2.5 py-2 text-left text-sm font-semibold transition-colors",
                 active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
               )}
             >
               <span
@@ -400,11 +400,13 @@ function BusinessUnitTabs({
               <span
                 className={cn(
                   "mt-0.5 block truncate text-[10px] font-semibold tabular-nums",
-                  profit > 0
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : profit < 0
-                      ? "text-red-700 dark:text-red-400"
-                      : "text-muted-foreground",
+                  active
+                    ? "text-primary-foreground/85"
+                    : profit > 0
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : profit < 0
+                        ? "text-red-700 dark:text-red-400"
+                        : "text-muted-foreground",
                 )}
               >
                 {profit > 0 ? "+" : profit < 0 ? "−" : ""}
@@ -416,7 +418,7 @@ function BusinessUnitTabs({
         <button
           type="button"
           onClick={onAdd}
-          className="flex h-9 w-9 shrink-0 items-center justify-center border-b-2 border-transparent text-muted-foreground transition-colors hover:text-foreground"
+          className="flex min-h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
           aria-label={t(locale, "bizUnitAdd")}
         >
           <Plus className="h-4 w-4" aria-hidden />
@@ -425,7 +427,7 @@ function BusinessUnitTabs({
           <button
             type="button"
             onClick={() => onEdit(activeUnitId)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center border-b-2 border-transparent text-muted-foreground transition-colors hover:text-foreground"
+            className="flex min-h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
             aria-label={t(locale, "bizUnitEdit")}
             title={t(locale, "bizUnitEdit")}
           >
@@ -1158,7 +1160,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [businessSection, setBusinessSection] =
     useState<BusinessSection>("operations");
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
-  const [businessPeriodOpen, setBusinessPeriodOpen] = useState(false);
+  const [businessPeriodOpen, setBusinessPeriodOpen] = useState(true);
   const [cushionAmount, setCushionAmount] = useState("");
   const [debtName, setDebtName] = useState("");
   const [debtBalance, setDebtBalance] = useState("");
@@ -1567,7 +1569,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           />
 
           <div className="space-y-3 border-t border-border/60 pt-3">
-            <div className="grid grid-cols-5 gap-1 rounded-lg bg-muted p-1">
+            <div className="grid grid-cols-6 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
               {(
                 [
                   "operations",
@@ -1595,10 +1597,13 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                     type="button"
                     onClick={() => setBusinessSection(section)}
                     className={cn(
-                      "rounded-md px-1.5 py-2 text-[11px] font-medium transition-colors",
+                      "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
+                      section === "operations" || section === "reserve" || section === "tax"
+                        ? "col-span-2"
+                        : "col-span-3",
                       businessSection === section
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground",
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
                     )}
                   >
                     {labelKey ? t(locale, labelKey) : locale === "ru" ? "Долги" : "Debts"}
