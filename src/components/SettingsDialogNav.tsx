@@ -3,8 +3,8 @@
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
-import { AppSettingsDiagnostics } from "@/components/AppSettingsDiagnostics";
 import { CategoryManager } from "@/components/CategoryManager";
+import { HelpFeedbackCard } from "@/components/HelpFeedbackCard";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
 import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
 import { SettingsMenuRow } from "@/components/SettingsMenuRow";
@@ -174,7 +174,7 @@ export function SettingsDialogNav({
     help: (
       <div className="space-y-3">
         <HelpFaqDialog locale={locale} />
-        <AppSettingsDiagnostics />
+        <HelpFeedbackCard locale={locale} />
       </div>
     ),
     categories: <CategoryManager />,
