@@ -154,7 +154,7 @@ export function VoiceRecorder() {
 
       const separatedAmounts = extractSeparatedMoneyAmounts(value);
       const items =
-        parsed.items.length === 1 && separatedAmounts.length > 1
+        separatedAmounts.length > 1
           ? separatedAmounts.map((amount) => ({ ...parsed.items[0], amount }))
           : parsed.items;
 
