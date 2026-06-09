@@ -220,6 +220,21 @@ function AssetTypeSection({
   );
 }
 
+function SourceMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg bg-muted/45 px-2.5 py-2">
+      <p className="text-[10px] font-medium leading-tight text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
 export function BusinessProjectsSection() {
   const locale = useStore((s) => s.locale);
   const assets = useBusinessStore((s) => s.assets);
@@ -249,6 +264,10 @@ export function BusinessProjectsSection() {
 
   const assetsByType = useMemo(() => groupAssetsByType(assets, null), [assets]);
   const portfolio = useMemo(() => assetsSummary(assets, null), [assets]);
+  const portfolioMonthly = useMemo(
+    () => Math.round(portfolio.annualIncome / 12),
+    [portfolio.annualIncome],
+  );
   const weightedYield = useMemo(() => weightedPortfolioYieldPct(assets), [assets]);
   const totalReceivedAll = useMemo(
     () => receipts.reduce((s, r) => s + r.amount, 0),
@@ -347,18 +366,24 @@ export function BusinessProjectsSection() {
             </ul>
           </div>
 
-          {totalReceivedAll > 0 ? (
-            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-300">
-              {t(locale, "projectsTotalReceived", {
-                amount: formatMoney(totalReceivedAll, locale),
-              })}
-            </p>
-          ) : null}
-
           {!hasAssets ? (
             <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
           ) : (
             <>
+              <div className="grid grid-cols-3 gap-2">
+                <SourceMetric
+                  label={t(locale, "bizSourcesMonthly")}
+                  value={`+${formatMoney(portfolioMonthly, locale)}`}
+                />
+                <SourceMetric
+                  label={t(locale, "bizSourcesCapital")}
+                  value={formatMoney(portfolio.totalCapital, locale)}
+                />
+                <SourceMetric
+                  label={t(locale, "bizSourcesFamily")}
+                  value={formatMoney(totalReceivedAll, locale)}
+                />
+              </div>
               {portfolio.totalCapital > 0 ? (
                 <div className="rounded-lg bg-primary/8 px-3 py-2 text-xs">
                   <p className="font-medium">{t(locale, "bizPortfolioSummary")}</p>
