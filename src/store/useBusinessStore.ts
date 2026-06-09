@@ -51,6 +51,7 @@ function ensureDefaultUnit(units: BusinessUnit[]): BusinessUnit[] {
 type BusinessStore = {
   units: BusinessUnit[];
   transactions: BusinessTransaction[];
+  deletedTransactionIds: string[];
   assets: BusinessAsset[];
   debts: BusinessDebt[];
   deletedUnitsArchive: DeletedBusinessUnitArchive[];
@@ -133,6 +134,7 @@ function migratePersisted(raw: unknown): Pick<
   BusinessStore,
   | "units"
   | "transactions"
+  | "deletedTransactionIds"
   | "assets"
   | "debts"
   | "deletedUnitsArchive"
@@ -171,6 +173,11 @@ function migratePersisted(raw: unknown): Pick<
     const tx = t as BusinessTransaction;
     return { ...tx, unitId: tx.unitId ?? defaultId };
   });
+  const deletedTransactionIds = Array.isArray(r.deletedTransactionIds)
+    ? (r.deletedTransactionIds as unknown[]).filter((id): id is string => typeof id === "string")
+    : [];
+  const deletedTransactionIdSet = new Set(deletedTransactionIds);
+  const visibleTransactions = transactions.filter((tx) => !deletedTransactionIdSet.has(tx.id));
   const assets = (Array.isArray(r.assets) ? r.assets : [])
     .filter((a) => {
       const asset = a as BusinessAsset;
@@ -249,7 +256,8 @@ function migratePersisted(raw: unknown): Pick<
 
   return {
     units,
-    transactions,
+    transactions: visibleTransactions,
+    deletedTransactionIds,
     assets,
     debts,
     deletedUnitsArchive,
@@ -269,6 +277,7 @@ export const useBusinessStore = create<BusinessStore>()(
     (set, get) => ({
       units: [defaultBusinessUnit()],
       transactions: [],
+      deletedTransactionIds: [],
       assets: [],
       debts: [],
       deletedUnitsArchive: [],
@@ -317,15 +326,21 @@ export const useBusinessStore = create<BusinessStore>()(
           passiveReceipts: archivedReceipts,
         };
         const nextUnits = units.filter((u) => u.id !== id);
-        set({
+        set((s) => ({
           units: nextUnits,
           transactions: transactions.filter((t) => t.unitId !== id),
+          deletedTransactionIds: [
+            ...new Set([
+              ...s.deletedTransactionIds,
+              ...archivedTransactions.map((tx) => tx.id),
+            ]),
+          ].slice(-500),
           assets: assets.filter((a) => a.unitId !== id),
           debts: debts.filter((d) => d.unitId !== id),
           deletedUnitsArchive: [archiveEntry, ...deletedUnitsArchive].slice(0, 30),
           passiveReceipts: passiveReceipts.filter((r) => !removedAssetIds.has(r.assetId)),
           selectedUnitId: nextUnits[0]?.id ?? null,
-        });
+        }));
         void pushBusinessToCloud();
         return true;
       },
@@ -344,6 +359,9 @@ export const useBusinessStore = create<BusinessStore>()(
               ...archive.transactions.filter((tx) => !txIds.has(tx.id)),
               ...s.transactions,
             ],
+            deletedTransactionIds: s.deletedTransactionIds.filter(
+              (id) => !archive.transactions.some((tx) => tx.id === id),
+            ),
             assets: [
               ...archive.assets.filter((asset) => !assetIds.has(asset.id)),
               ...s.assets,
@@ -667,7 +685,11 @@ export const useBusinessStore = create<BusinessStore>()(
             skipBusinessLink: true,
           });
         }
-        set((s) => ({ transactions: s.transactions.filter((t) => t.id !== id) }));
+        set((s) => ({
+          transactions: s.transactions.filter((t) => t.id !== id),
+          deletedTransactionIds: [...new Set([...s.deletedTransactionIds, id])].slice(-500),
+        }));
+        void pushBusinessToCloud();
       },
       addAsset: (unitId, type, name, capitalValue, monthlyNet, hoursPerMonth) => {
         const label = name.trim();
@@ -709,6 +731,7 @@ export const useBusinessStore = create<BusinessStore>()(
         version: 2,
         units: get().units,
         transactions: get().transactions,
+        deletedTransactionIds: get().deletedTransactionIds,
         assets: get().assets,
         debts: get().debts,
         deletedUnitsArchive: get().deletedUnitsArchive,
@@ -731,6 +754,7 @@ export const useBusinessStore = create<BusinessStore>()(
       partialize: (state) => ({
         units: state.units,
         transactions: state.transactions,
+        deletedTransactionIds: state.deletedTransactionIds,
         assets: state.assets,
         debts: state.debts,
         deletedUnitsArchive: state.deletedUnitsArchive,

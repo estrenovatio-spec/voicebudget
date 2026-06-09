@@ -22,6 +22,7 @@ const payloadSchema = z.object({
   version: z.literal(2),
   units: z.array(z.any()),
   transactions: z.array(z.any()),
+  deletedTransactionIds: z.array(z.string()).optional(),
   assets: z.array(z.any()),
   debts: z.array(z.any()).optional(),
   deletedUnitsArchive: z.array(z.any()).optional(),
