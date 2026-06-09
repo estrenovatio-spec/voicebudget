@@ -48,6 +48,7 @@ export function clearAppStorage(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(CLOUD_PAUSE_KEY, "1");
+    localStorage.setItem(CLOUD_PAUSE_KEY, "1");
     localStorage.removeItem(STORE_KEY);
     localStorage.removeItem(BUSINESS_STORE_KEY);
     localStorage.removeItem(RECOMMENDATIONS_KEY);
@@ -73,6 +74,7 @@ export function clearAppStorage(): void {
     localStorage.removeItem(FAMILY_ONBOARDING_DONE_KEY);
     clearDismissibleHintKeys();
     localStorage.removeItem(CLOUD_KEY);
+    localStorage.setItem(CLOUD_PAUSE_KEY, "1");
     sessionStorage.removeItem(WEB_LOGIN_KEY);
     sessionStorage.removeItem("vb_app_tab_v1");
     sessionStorage.removeItem("vb-chunk-reload-once");

@@ -22,6 +22,7 @@ import {
   apiPutGarage,
   apiSync,
 } from "@/lib/cloud/client";
+import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 import { isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
@@ -33,6 +34,7 @@ function noteCloudWriteError(message: string): void {
 }
 
 function token(): string | null {
+  if (isCloudPaused()) return null;
   const { token: t, household } = useCloudStore.getState();
   return t && household ? t : null;
 }
