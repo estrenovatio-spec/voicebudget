@@ -76,6 +76,8 @@ function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
     case "cushion_deposit":
       return t(locale, "bizTxCushion");
+    case "tax_deposit":
+      return t(locale, "bizTxTax");
     case "family_withdrawal":
       return t(locale, "bizTxFamily");
     default:
@@ -447,7 +449,7 @@ function BusinessUnitTabs({
 function safeWithdrawAmount(metrics: UnitCardMetrics): number {
   return Math.max(
     0,
-    Math.floor(metrics.operatingBalance - metrics.taxReserve - metrics.debtMinPayment),
+    Math.floor(metrics.operatingBalance - metrics.taxGap - metrics.debtMinPayment),
   );
 }
 
@@ -622,9 +624,9 @@ function BusinessKpis({
     },
     {
       label: locale === "ru" ? "Налог" : "Tax",
-      value: formatMoney(metrics.taxReserve, locale),
+      value: `${formatMoney(metrics.taxDeposited, locale)} / ${formatMoney(metrics.taxReserve, locale)}`,
       tone:
-        metrics.taxReserve > 0
+        metrics.taxGap > 0
           ? "text-amber-700 dark:text-amber-300"
           : "text-muted-foreground",
     },
@@ -703,7 +705,7 @@ function BusinessAdvisor({
       : 0;
   const margin = Math.round(metrics.profitMarginPct);
   const adShare = metrics.income > 0 ? Math.round((adSpend / metrics.income) * 100) : 0;
-  const cashNeeded = Math.max(0, metrics.taxReserve + metrics.debtMinPayment);
+  const cashNeeded = Math.max(0, metrics.taxGap + metrics.debtMinPayment);
   const cashGap = metrics.operatingBalance - cashNeeded;
 
   let main = t(locale, "bizAdvisorProfit");
@@ -727,7 +729,7 @@ function BusinessAdvisor({
     text:
       safeWithdraw > 0
         ? isRu
-          ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены налог и минимальные платежи.`
+          ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены остаток налога и минимальные платежи.`
           : `Safe to withdraw now: ${formatMoney(safeWithdraw, locale)} after tax and minimum payments.`
         : isRu
           ? "Пока лучше не выводить деньги собственнику. Сначала оставьте сумму на налог, обязательные платежи и резерв."
@@ -776,7 +778,7 @@ function BusinessAdvisor({
     text:
       cashGap < 0
         ? isRu
-          ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} на налог и обязательные платежи. Деньги собственнику пока лучше не выводить.`
+          ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} на остаток налога и обязательные платежи. Деньги собственнику пока лучше не выводить.`
           : `${formatMoney(Math.abs(cashGap), locale)} short for tax and required payments. Pause withdrawals.`
         : isRu
           ? `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Эту сумму можно дальше делить между резервом и выводом.`
@@ -801,9 +803,11 @@ function BusinessAdvisor({
     addSignal({
       label: isRu ? "Налог" : "Tax",
       text: isRu
-        ? `Под налог стоит держать отдельно ${formatMoney(metrics.taxReserve, locale)}. Это не прибыль собственника, а будущий обязательный платёж.`
+        ? metrics.taxGap > 0
+          ? `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}. Уже отдельно ${formatMoney(metrics.taxDeposited, locale)}, осталось отложить ${formatMoney(metrics.taxGap, locale)}.`
+          : `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}, а отдельно уже ${formatMoney(metrics.taxDeposited, locale)}. Налоговый конверт закрыт.`
         : `Set aside for tax: ${formatMoney(metrics.taxReserve, locale)}. Do not treat it as owner profit.`,
-      tone: "warn",
+      tone: metrics.taxGap > 0 ? "warn" : "ok",
     });
   }
 
@@ -822,6 +826,8 @@ function BusinessAdvisor({
     adSpend,
     adShare,
     metrics.taxReserve,
+    metrics.taxDeposited,
+    metrics.taxGap,
     reserveMonths,
     metrics.debtMinPayment,
     cashGap,
@@ -870,6 +876,8 @@ function BusinessAdvisor({
           adSpend,
           adShare,
           taxReserve: metrics.taxReserve,
+          taxDeposited: metrics.taxDeposited,
+          taxGap: metrics.taxGap,
           reserveMonths,
           debtMinPayment: metrics.debtMinPayment,
           cashGap,
@@ -913,6 +921,8 @@ function BusinessAdvisor({
     metrics.income,
     metrics.profit,
     metrics.taxReserve,
+    metrics.taxDeposited,
+    metrics.taxGap,
     open,
     reserveMonths,
     safeWithdraw,
@@ -1166,6 +1176,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const removeUnit = useBusinessStore((s) => s.removeUnit);
   const addOperatingTx = useBusinessStore((s) => s.addOperatingTx);
   const transferToCushion = useBusinessStore((s) => s.transferToCushion);
+  const transferToTax = useBusinessStore((s) => s.transferToTax);
   const transferToFamily = useBusinessStore((s) => s.transferToFamily);
   const removeTransaction = useBusinessStore((s) => s.removeTransaction);
   const addDebt = useBusinessStore((s) => s.addDebt);
@@ -1192,6 +1203,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(true);
   const [cushionAmount, setCushionAmount] = useState("");
+  const [taxAmount, setTaxAmount] = useState("");
   const [debtName, setDebtName] = useState("");
   const [debtBalance, setDebtBalance] = useState("");
   const [debtMinPayment, setDebtMinPayment] = useState("");
@@ -1401,7 +1413,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const submitCushionAmount = () => {
     if (!activeUnit || !activeMetrics) return;
     const amount = parseMoneyAmount(cushionAmount);
-    if (!amount || amount > activeMetrics.canToCushion) {
+    if (!amount || amount > Math.max(0, activeMetrics.operatingBalance)) {
       toast(t(locale, "bizCushionInvalid"), "error");
       return;
     }
@@ -1409,6 +1421,23 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     setCushionAmount("");
     toast(
       t(locale, "bizVoiceCushionOk", {
+        amount: formatMoney(amount, locale),
+      }),
+      "success",
+    );
+  };
+
+  const submitTaxAmount = () => {
+    if (!activeUnit || !activeMetrics) return;
+    const amount = parseMoneyAmount(taxAmount);
+    if (!amount || amount > Math.max(0, activeMetrics.operatingBalance)) {
+      toast(t(locale, "bizTaxInvalid"), "error");
+      return;
+    }
+    transferToTax(activeUnit.id, amount);
+    setTaxAmount("");
+    toast(
+      t(locale, "bizTaxDepositOk", {
         amount: formatMoney(amount, locale),
       }),
       "success",
@@ -1814,7 +1843,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                           ),
                         })}
                   </p>
-                  {activeMetrics.canToCushion > 0 ? (
+                  {activeMetrics.operatingBalance > 0 ? (
                     <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2">
                       <div className="space-y-1">
                         <label
@@ -1865,24 +1894,72 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   <p className="text-muted-foreground">
                     {t(locale, "bizTaxHint")}
                   </p>
-                  <div className="rounded-lg bg-muted px-3 py-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizTaxReserve")}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.taxReserve, locale)}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {activeMetrics.taxRatePct > 0
+                          ? t(locale, "bizTaxCurrent", {
+                              rate: String(activeMetrics.taxRatePct),
+                              period: taxPeriodLabel(
+                                activeMetrics.taxPeriod,
+                                locale,
+                              ),
+                            })
+                          : t(locale, "bizTaxOff")}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(locale, "bizTaxDeposited")}
+                      </p>
+                      <p className="font-bold tabular-nums">
+                        {formatMoney(activeMetrics.taxDeposited, locale)}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {activeMetrics.taxGap > 0
+                          ? t(locale, "bizTaxGap", {
+                              amount: formatMoney(activeMetrics.taxGap, locale),
+                            })
+                          : t(locale, "bizTaxCovered")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="business-tax-amount"
+                        className="text-xs font-medium text-muted-foreground"
+                      >
+                        {t(locale, "bizTaxAmountLabel")}
+                      </label>
+                      <Input
+                        id="business-tax-amount"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={t(locale, "bizTaxAmountPh")}
+                        value={taxAmount}
+                        onChange={(e) => setTaxAmount(e.target.value)}
+                      />
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      {t(locale, "bizTaxReserve")}
+                      {t(locale, "bizTaxRecommended", {
+                        amount: formatMoney(activeMetrics.taxGap, locale),
+                      })}
                     </p>
-                    <p className="font-bold tabular-nums">
-                      {formatMoney(activeMetrics.taxReserve, locale)}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {activeMetrics.taxRatePct > 0
-                        ? t(locale, "bizTaxCurrent", {
-                            rate: String(activeMetrics.taxRatePct),
-                            period: taxPeriodLabel(
-                              activeMetrics.taxPeriod,
-                              locale,
-                            ),
-                          })
-                        : t(locale, "bizTaxOff")}
-                    </p>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={!taxAmount.trim()}
+                      onClick={submitTaxAmount}
+                    >
+                      {t(locale, "bizTaxDepositSubmit")}
+                    </Button>
                   </div>
                   <Button
                     type="button"

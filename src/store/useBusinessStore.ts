@@ -78,6 +78,7 @@ type BusinessStore = {
     date?: string,
   ) => void;
   transferToCushion: (unitId: string, amount: number) => void;
+  transferToTax: (unitId: string, amount: number) => void;
   transferToFamily: (unitId: string, amount: number) => boolean;
   /** Зачислить пассив с проекта в семью (сумма и дата — на выбор). */
   transferPassiveToFamily: (assetId: string, amount: number, date?: string) => boolean;
@@ -431,7 +432,7 @@ export const useBusinessStore = create<BusinessStore>()(
         const amt = roundMoneyUp(amount);
         if (amt <= 0) return;
         const snap = get().snapshot(unitId);
-        if (amt > snap.canToCushion) return;
+        if (amt > Math.max(0, snap.operatingBalance)) return;
         const tx: BusinessTransaction = {
           id: makeId("tx"),
           unitId,
@@ -439,6 +440,22 @@ export const useBusinessStore = create<BusinessStore>()(
           amount: amt,
           kind: "cushion_deposit",
           note: "→ резерв бизнеса",
+          date: new Date().toISOString().slice(0, 10),
+        };
+        set((s) => ({ transactions: [tx, ...s.transactions] }));
+      },
+      transferToTax: (unitId, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return;
+        const snap = get().snapshot(unitId);
+        if (amt > Math.max(0, snap.operatingBalance)) return;
+        const tx: BusinessTransaction = {
+          id: makeId("tx"),
+          unitId,
+          type: "expense",
+          amount: amt,
+          kind: "tax_deposit",
+          note: "→ налоговый счёт",
           date: new Date().toISOString().slice(0, 10),
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));

@@ -103,6 +103,8 @@ function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): s
       return isRu ? "Расход бизнеса" : "Business expense";
     case "cushion_deposit":
       return isRu ? "В резерв бизнеса" : "Business reserve";
+    case "tax_deposit":
+      return isRu ? "На налоговый счёт" : "Tax account";
     case "family_withdrawal":
       return isRu ? "Вывод в семью" : "Family withdrawal";
   }
@@ -363,6 +365,9 @@ export function buildBudgetExcelWorkbook(params: {
   const reserveDeposits = sum(
     businessTransactions.filter((tx) => tx.kind === "cushion_deposit").map((tx) => tx.amount),
   );
+  const taxDeposits = sum(
+    businessTransactions.filter((tx) => tx.kind === "tax_deposit").map((tx) => tx.amount),
+  );
   const familyWithdrawals = sum(
     businessTransactions.filter((tx) => tx.kind === "family_withdrawal").map((tx) => tx.amount),
   );
@@ -372,6 +377,7 @@ export function buildBudgetExcelWorkbook(params: {
     const unitIncome = sum(rows.filter((tx) => tx.kind === "operating_income").map((tx) => tx.amount));
     const unitExpense = sum(rows.filter((tx) => tx.kind === "operating_expense").map((tx) => tx.amount));
     const unitReserve = sum(rows.filter((tx) => tx.kind === "cushion_deposit").map((tx) => tx.amount));
+    const unitTax = sum(rows.filter((tx) => tx.kind === "tax_deposit").map((tx) => tx.amount));
     const unitWithdrawal = sum(rows.filter((tx) => tx.kind === "family_withdrawal").map((tx) => tx.amount));
     return [[
       unit.name,
@@ -379,6 +385,7 @@ export function buildBudgetExcelWorkbook(params: {
       unitExpense,
       unitIncome - unitExpense,
       unitReserve,
+      unitTax,
       unitWithdrawal,
       rows.length,
       assets.length,
@@ -434,11 +441,11 @@ export function buildBudgetExcelWorkbook(params: {
 
   const businessSummary: (string | number)[][] = [
     isRu
-      ? ["Бизнес", "Выручка", "Расходы", "Прибыль", "В резерв", "Выведено в семью", "Операций", "Проектов/активов"]
-      : ["Business", "Revenue", "Expenses", "Profit", "To reserve", "Withdrawn to family", "Entries", "Projects/assets"],
+      ? ["Бизнес", "Выручка", "Расходы", "Прибыль", "В резерв", "На налоговый счёт", "Выведено в семью", "Операций", "Проектов/активов"]
+      : ["Business", "Revenue", "Expenses", "Profit", "To reserve", "To tax account", "Withdrawn to family", "Entries", "Projects/assets"],
     ...(businessSummaryRows.length
       ? businessSummaryRows
-      : [[isRu ? "Бизнесы пока не добавлены" : "No businesses yet", 0, 0, 0, 0, 0, 0, 0]]),
+      : [[isRu ? "Бизнесы пока не добавлены" : "No businesses yet", 0, 0, 0, 0, 0, 0, 0, 0]]),
   ];
 
   const metaRows: (string | number)[][] = [
@@ -453,6 +460,7 @@ export function buildBudgetExcelWorkbook(params: {
     [isRu ? "Расходы бизнеса" : "Business expenses", businessExpense],
     [isRu ? "Прибыль бизнеса" : "Business profit", businessIncome - businessExpense],
     [isRu ? "Переложено в резерв бизнеса" : "Moved to business reserve", reserveDeposits],
+    [isRu ? "Переложено на налоговый счёт" : "Moved to tax account", taxDeposits],
     [isRu ? "Выведено из бизнеса в семью" : "Withdrawn from business to family", familyWithdrawals],
     [isRu ? "Проектов/активов" : "Projects/assets", businessAssets.length],
     [
@@ -611,7 +619,7 @@ export function buildTransactionsPdfBlob(params: {
     })),
     ...businessTransactions.map((tx) => ({
       date: formatIsoDate(tx.date, locale),
-      amount: `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" ? "−" : "+"}${tx.amount.toLocaleString(isRu ? "ru-RU" : "en-US")} ₽`,
+      amount: `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" || tx.kind === "tax_deposit" ? "−" : "+"}${tx.amount.toLocaleString(isRu ? "ru-RU" : "en-US")} ₽`,
       category: `${isRu ? "Бизнес" : "Business"}: ${unitName(tx.unitId)}`,
       note: `${businessKindLabel(tx.kind, locale)}${tx.note ? ` — ${tx.note}` : ""}`,
     })),

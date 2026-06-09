@@ -37,6 +37,7 @@ function signedOperatingEffect(tx: BusinessTransaction): number {
       return amt;
     case "operating_expense":
     case "cushion_deposit":
+    case "tax_deposit":
     case "family_withdrawal":
       return -amt;
     default:
@@ -63,6 +64,13 @@ export function calcOperatingBalance(transactions: BusinessTransaction[]): numbe
 export function calcCushionBalance(transactions: BusinessTransaction[]): number {
   return transactions.reduce((acc, tx) => {
     if (tx.kind === "cushion_deposit") return acc + roundMoneyUp(tx.amount);
+    return acc;
+  }, 0);
+}
+
+export function calcTaxDepositBalance(transactions: BusinessTransaction[]): number {
+  return transactions.reduce((acc, tx) => {
+    if (tx.kind === "tax_deposit") return acc + roundMoneyUp(tx.amount);
     return acc;
   }, 0);
 }
@@ -103,6 +111,8 @@ export type UnitCardMetrics = {
   canToCushion: number;
   operatingBalance: number;
   taxReserve: number;
+  taxDeposited: number;
+  taxGap: number;
   taxRatePct: number;
   taxPeriod: BusinessTaxPeriod;
   debtBalance: number;
@@ -122,6 +132,8 @@ export function unitCardMetrics(
   const taxPeriod = unit.taxPeriod ?? "quarter";
   const periodStats = periodOperatingStats(transactions, period, unit.id);
   const snap = buildBusinessSnapshot(transactions, assets, unit.id, now, taxRate, debts);
+  const taxReserve = unitTaxReserve(transactions, unit.id, taxRate, taxPeriod, now);
+  const taxDeposited = calcTaxDepositBalance(filterUnitTxs(transactions, unit.id));
   return {
     unitId: unit.id,
     income: periodStats.income,
@@ -135,7 +147,9 @@ export function unitCardMetrics(
     cushionTarget: snap.cushionTarget,
     canToCushion: snap.canToCushion,
     operatingBalance: snap.operatingBalance,
-    taxReserve: unitTaxReserve(transactions, unit.id, taxRate, taxPeriod, now),
+    taxReserve,
+    taxDeposited,
+    taxGap: Math.max(0, roundMoneyUp(taxReserve - taxDeposited)),
     taxRatePct: taxRate,
     taxPeriod,
     debtBalance: snap.debtBalance,

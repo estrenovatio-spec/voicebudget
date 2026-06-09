@@ -21,6 +21,8 @@ function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
     case "cushion_deposit":
       return t(locale, "bizTxCushion");
+    case "tax_deposit":
+      return t(locale, "bizTxTax");
     case "family_withdrawal":
       return t(locale, "bizTxFamily");
     case "operating_income":

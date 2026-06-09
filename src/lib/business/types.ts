@@ -2,6 +2,7 @@ export type BusinessTxKind =
   | "operating_income"
   | "operating_expense"
   | "cushion_deposit"
+  | "tax_deposit"
   | "family_withdrawal";
 
 export type BusinessTransaction = {

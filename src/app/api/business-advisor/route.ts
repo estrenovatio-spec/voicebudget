@@ -20,6 +20,8 @@ const bodySchema = z.object({
     adSpend: z.number(),
     adShare: z.number(),
     taxReserve: z.number(),
+    taxDeposited: z.number().optional(),
+    taxGap: z.number().optional(),
     reserveMonths: z.number(),
     debtMinPayment: z.number(),
     cashGap: z.number(),

@@ -67,6 +67,8 @@ function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): s
       return isRu ? "Расход бизнеса" : "Business expense";
     case "cushion_deposit":
       return isRu ? "В резерв бизнеса" : "Business reserve";
+    case "tax_deposit":
+      return isRu ? "На налоговый счёт" : "Tax account";
     case "family_withdrawal":
       return isRu ? "Вывод в семью" : "Family withdrawal";
   }
@@ -99,7 +101,7 @@ function makeRows(params: {
     })),
     ...params.businessTransactions.map((tx) => ({
       date: tx.date,
-      amount: `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" ? "-" : "+"}${tx.amount} RUB`,
+      amount: `${tx.kind === "operating_expense" || tx.kind === "family_withdrawal" || tx.kind === "tax_deposit" ? "-" : "+"}${tx.amount} RUB`,
       category: `${isRu ? "Бизнес" : "Business"}: ${unitName(tx.unitId)}`,
       note: `${businessKindLabel(tx.kind, params.locale)}${tx.note ? ` - ${tx.note}` : ""}`,
     })),
