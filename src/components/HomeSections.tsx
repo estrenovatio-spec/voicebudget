@@ -33,13 +33,13 @@ export function HomeSections() {
             <span className="text-center">
               Цели
               <br />
-              и план
+              и планы
             </span>
           ) : (
             <span className="text-center">
               Goals
               <br />
-              plan
+              plans
             </span>
           )}
         </TabsTrigger>
