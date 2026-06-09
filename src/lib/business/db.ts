@@ -324,36 +324,6 @@ export function mergeBusinessPayload(
   local: BusinessCloudPayload,
   remote: BusinessCloudPayload,
 ): BusinessCloudPayload {
-  const unitMap = new Map<string, (typeof local.units)[0]>();
-  for (const u of remote.units) unitMap.set(u.id, u);
-  for (const u of local.units) unitMap.set(u.id, u);
-
-  const deletedTransactionIds = new Set<string>([
-    ...(remote.deletedTransactionIds ?? []),
-    ...(local.deletedTransactionIds ?? []),
-  ]);
-
-  const txMap = new Map<string, (typeof local.transactions)[0]>();
-  for (const t of remote.transactions) txMap.set(t.id, t);
-  for (const t of local.transactions) txMap.set(t.id, t);
-  for (const id of deletedTransactionIds) txMap.delete(id);
-
-  const assetMap = new Map<string, (typeof local.assets)[0]>();
-  for (const a of [...remote.assets, ...local.assets]) {
-    if (a && typeof a.id === "string") assetMap.set(a.id, a);
-  }
-
-  const units = Array.from(unitMap.values());
-  if (units.length === 0) units.push(defaultBusinessUnit());
-
-  const receiptMap = new Map<string, NonNullable<BusinessCloudPayload["passiveReceipts"]>[number]>();
-  for (const r of [...(remote.passiveReceipts ?? []), ...(local.passiveReceipts ?? [])]) {
-    if (r && typeof r.id === "string") receiptMap.set(r.id, r);
-  }
-  const debtMap = new Map<string, NonNullable<BusinessCloudPayload["debts"]>[number]>();
-  for (const d of [...(remote.debts ?? []), ...(local.debts ?? [])]) {
-    if (d && typeof d.id === "string") debtMap.set(d.id, d);
-  }
   const archiveMap = new Map<
     string,
     NonNullable<BusinessCloudPayload["deletedUnitsArchive"]>[number]
@@ -363,6 +333,54 @@ export function mergeBusinessPayload(
     ...(local.deletedUnitsArchive ?? []),
   ]) {
     if (item && typeof item.id === "string") archiveMap.set(item.id, item);
+  }
+  const deletedUnitIds = new Set(
+    Array.from(archiveMap.values())
+      .map((item) => item.unit?.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+
+  const unitMap = new Map<string, (typeof local.units)[0]>();
+  for (const u of remote.units) {
+    if (!deletedUnitIds.has(u.id)) unitMap.set(u.id, u);
+  }
+  for (const u of local.units) {
+    if (!deletedUnitIds.has(u.id)) unitMap.set(u.id, u);
+  }
+
+  const deletedTransactionIds = new Set<string>([
+    ...(remote.deletedTransactionIds ?? []),
+    ...(local.deletedTransactionIds ?? []),
+  ]);
+
+  const txMap = new Map<string, (typeof local.transactions)[0]>();
+  for (const t of remote.transactions) {
+    if (!deletedUnitIds.has(t.unitId)) txMap.set(t.id, t);
+  }
+  for (const t of local.transactions) {
+    if (!deletedUnitIds.has(t.unitId)) txMap.set(t.id, t);
+  }
+  for (const id of deletedTransactionIds) txMap.delete(id);
+
+  const assetMap = new Map<string, (typeof local.assets)[0]>();
+  for (const a of [...remote.assets, ...local.assets]) {
+    if (deletedUnitIds.has(a.unitId)) continue;
+    if (a && typeof a.id === "string") assetMap.set(a.id, a);
+  }
+  const visibleAssetIds = new Set(assetMap.keys());
+
+  const units = Array.from(unitMap.values());
+  if (units.length === 0) units.push(defaultBusinessUnit());
+
+  const receiptMap = new Map<string, NonNullable<BusinessCloudPayload["passiveReceipts"]>[number]>();
+  for (const r of [...(remote.passiveReceipts ?? []), ...(local.passiveReceipts ?? [])]) {
+    if (!visibleAssetIds.has(r.assetId)) continue;
+    if (r && typeof r.id === "string") receiptMap.set(r.id, r);
+  }
+  const debtMap = new Map<string, NonNullable<BusinessCloudPayload["debts"]>[number]>();
+  for (const d of [...(remote.debts ?? []), ...(local.debts ?? [])]) {
+    if (deletedUnitIds.has(d.unitId)) continue;
+    if (d && typeof d.id === "string") debtMap.set(d.id, d);
   }
 
   return {

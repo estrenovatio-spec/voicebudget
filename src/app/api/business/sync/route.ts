@@ -85,16 +85,26 @@ export async function PUT(req: NextRequest) {
     if (existing) {
       await backupUserBusinessPayload(session.userId, existing, "before_update");
       toSave = mergeBusinessPayload(incoming, existing);
-      if (incoming.assets.length === 0 && existing.assets.length > 0) {
+      const incomingHasDeletedUnitArchive = (incoming.deletedUnitsArchive?.length ?? 0) > 0;
+      if (
+        !incomingHasDeletedUnitArchive &&
+        incoming.assets.length === 0 &&
+        existing.assets.length > 0
+      ) {
         toSave.assets = existing.assets;
       }
       if (
+        !incomingHasDeletedUnitArchive &&
         (incoming.passiveReceipts?.length ?? 0) === 0 &&
         (existing.passiveReceipts?.length ?? 0) > 0
       ) {
         toSave.passiveReceipts = existing.passiveReceipts;
       }
-      if ((incoming.debts?.length ?? 0) === 0 && (existing.debts?.length ?? 0) > 0) {
+      if (
+        !incomingHasDeletedUnitArchive &&
+        (incoming.debts?.length ?? 0) === 0 &&
+        (existing.debts?.length ?? 0) > 0
+      ) {
         toSave.debts = existing.debts;
       }
       if (
