@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/format-money";
 import { t, ruPlural, enPlural } from "@/lib/i18n";
 import { inferParseLocale } from "@/lib/locale-infer";
 import { isCloudSyncActive } from "@/lib/cloud/push";
+import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import { mergeTransactionComment } from "@/lib/transaction-note";
 import {
   canUseVoiceInput,
@@ -151,22 +152,28 @@ export function VoiceRecorder() {
         }
       }
 
+      const separatedAmounts = extractSeparatedMoneyAmounts(value);
+      const items =
+        parsed.items.length === 1 && separatedAmounts.length > 1
+          ? separatedAmounts.map((amount) => ({ ...parsed.items[0], amount }))
+          : parsed.items;
+
       const extraComment = comment.trim();
-      for (const item of parsed.items) {
+      for (const item of items) {
         const note = mergeTransactionComment(item.note, value, extraComment, item.amount);
         addTransaction({ ...item, note }, note || value);
       }
       setText("");
       setComment("");
       toast(
-        parsed.items.length === 1
+        items.length === 1
           ? t(locale, "voiceSuccess")
           : t(locale, "voiceSuccessMany", {
-              count: String(parsed.items.length),
+              count: String(items.length),
               word:
                 locale === "ru"
-                  ? ruPlural(parsed.items.length, "операция", "операции", "операций")
-                  : enPlural(parsed.items.length, "entry", "entries"),
+                  ? ruPlural(items.length, "операция", "операции", "операций")
+                  : enPlural(items.length, "entry", "entries"),
             }),
         "success",
       );

@@ -45,6 +45,7 @@ import {
 } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
+import { parseSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import {
   isProjectsServiceUnit,
   resolveVisibleUnitId,
@@ -126,9 +127,13 @@ function UnitCard({
     if (/^\+\s*(\d|[\d\s.,])/.test(raw)) amountRaw = raw.replace(/^\+\s*/, "");
     else if (/^[-−–]\s*(\d|[\d\s.,])/.test(raw))
       amountRaw = raw.replace(/^[-−–]\s*/, "");
-    const n = parseMoneyAmount(amountRaw);
-    if (!n) return;
-    onQuickTx(quickMode, n, quickNote.trim());
+    const amounts = parseSeparatedMoneyAmounts(amountRaw);
+    const singleAmount = parseMoneyAmount(amountRaw);
+    const parsedAmounts = amounts.length > 1 ? amounts : singleAmount ? [singleAmount] : [];
+    if (parsedAmounts.length === 0) return;
+    for (const amount of parsedAmounts) {
+      onQuickTx(quickMode, amount, quickNote.trim());
+    }
     setQuickMode(null);
     setQuickAmount("");
     setQuickNote("");
@@ -1007,9 +1012,13 @@ function BusinessQuickEntry({
 
   const submitQuick = () => {
     if (!quickMode) return;
-    const n = parseMoneyAmount(quickAmount);
-    if (!n) return;
-    onQuickTx(quickMode, n, quickNote.trim());
+    const amounts = parseSeparatedMoneyAmounts(quickAmount);
+    const singleAmount = parseMoneyAmount(quickAmount);
+    const parsedAmounts = amounts.length > 1 ? amounts : singleAmount ? [singleAmount] : [];
+    if (parsedAmounts.length === 0) return;
+    for (const amount of parsedAmounts) {
+      onQuickTx(quickMode, amount, quickNote.trim());
+    }
     setQuickAmount("");
     setQuickNote("");
   };

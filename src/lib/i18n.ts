@@ -364,7 +364,7 @@ export const DICT = {
       "Запишите первый доход или расход. После нескольких операций ИИ начнёт видеть маржу, денежный разрыв, резерв и безопасный вывод.",
     bizQuickEntryTitle: "Быстрый ввод",
     bizQuickEntryHint:
-      "Например: «получил 15000 за консультацию» или «потратил 3000 на рекламу».",
+      "Например: «15000» или «1000 1000» — создаст несколько доходов/расходов.",
     bizSectionOperations: "Операции",
     bizSectionReserve: "Резерв",
     bizSectionTax: "Налог",
@@ -582,7 +582,7 @@ export const DICT = {
     voiceError: "Ошибка распознавания",
     micDenied:
       "Нет доступа к микрофону. В браузере нажмите «Разрешить» в адресной строке; в Telegram — в настройках приложения.",
-    fallbackPlaceholder: "Например: потратил 500 на обед, заработал 1000",
+    fallbackPlaceholder: "Например: потратил 500 на обед или 1000 1000 продукты",
     fallbackSubmit: "Добавить",
     speechUnavailable: "Голос недоступен — введите текст",
     transactions: "Операции",
@@ -1421,7 +1421,7 @@ export const DICT = {
       "Add the first income or expense. After several operations, AI will see margin, cash gap, reserve, and safe withdrawal.",
     bizQuickEntryTitle: "Quick entry",
     bizQuickEntryHint:
-      "For example: “received 15000 for consulting” or “spent 3000 on ads”.",
+      "For example: “15000” or “1000 1000” — creates several income/expense entries.",
     bizSectionOperations: "Operations",
     bizSectionReserve: "Reserve",
     bizSectionTax: "Tax",
@@ -1633,7 +1633,7 @@ export const DICT = {
     voiceError: "Recognition error",
     micDenied:
       "Microphone access denied. In the browser, allow the mic in the address bar; in Telegram, check app settings.",
-    fallbackPlaceholder: "e.g. spent 50 on lunch, earned 1000",
+    fallbackPlaceholder: "e.g. spent 50 on lunch or 1000 1000 groceries",
     fallbackSubmit: "Add",
     speechUnavailable: "Voice unavailable — type instead",
     transactions: "Transactions",
