@@ -1258,6 +1258,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     useState<BusinessSection>("operations");
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(true);
+  const [businessSectionReady, setBusinessSectionReady] = useState(false);
   const [cushionAmount, setCushionAmount] = useState("");
   const [taxAmount, setTaxAmount] = useState("");
   const [debtName, setDebtName] = useState("");
@@ -1303,6 +1304,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     ) {
       setBusinessSection(storedSection);
     }
+    setBusinessSectionReady(true);
   }, []);
 
   useEffect(() => {
@@ -1310,8 +1312,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   }, [businessDebtStrategy]);
 
   useEffect(() => {
+    if (!businessSectionReady) return;
     localStorage.setItem(BUSINESS_SECTION_KEY, businessSection);
-  }, [businessSection]);
+  }, [businessSection, businessSectionReady]);
 
   useEffect(() => {
     if (!ready) return;

@@ -758,12 +758,22 @@ export const useBusinessStore = create<BusinessStore>()(
         deletedUnitsArchive: get().deletedUnitsArchive,
         passiveReceipts: get().passiveReceipts,
         taxRatePct: get().taxRatePct,
+        selectedUnitId: get().selectedUnitId,
       }),
       importPayload: (payload) => {
+        const currentSelectedUnitId = get().selectedUnitId;
         const data = migratePersisted(payload);
+        const selectedUnitId =
+          payload.selectedUnitId !== undefined
+            ? data.selectedUnitId
+            : currentSelectedUnitId &&
+                data.units.some((unit) => unit.id === currentSelectedUnitId)
+              ? currentSelectedUnitId
+              : data.selectedUnitId;
         set((s) => ({
           ...s,
           ...data,
+          selectedUnitId,
         }));
       },
       markCloudSynced: () => set({ cloudSyncedAt: new Date().toISOString() }),

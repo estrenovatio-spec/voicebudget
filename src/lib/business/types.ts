@@ -153,6 +153,7 @@ export type BusinessCloudPayload = {
   debts?: BusinessDebt[];
   deletedUnitsArchive?: DeletedBusinessUnitArchive[];
   taxRatePct?: number;
+  selectedUnitId?: string | null;
 };
 
 export const BUSINESS_UNIT_COLORS = [

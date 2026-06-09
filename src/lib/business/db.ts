@@ -97,6 +97,7 @@ function emptyPayload(): BusinessCloudPayload {
     debts: [],
     deletedUnitsArchive: [],
     passiveReceipts: [],
+    selectedUnitId: unit.id,
   };
 }
 
@@ -136,9 +137,15 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
         deletedUnitsArchive as BusinessCloudPayload["deletedUnitsArchive"],
       passiveReceipts: [],
       taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
+      selectedUnitId: unit.id,
     };
   }
   const passiveReceipts = Array.isArray(o.passiveReceipts) ? o.passiveReceipts : [];
+  const selectedUnitId =
+    typeof o.selectedUnitId === "string" &&
+    (units as { id?: string }[]).some((unit) => unit.id === o.selectedUnitId)
+      ? o.selectedUnitId
+      : null;
 
   return {
     version: 2,
@@ -153,6 +160,7 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
       deletedUnitsArchive as BusinessCloudPayload["deletedUnitsArchive"],
     passiveReceipts: passiveReceipts as BusinessCloudPayload["passiveReceipts"],
     taxRatePct: typeof o.taxRatePct === "number" ? o.taxRatePct : 0,
+    selectedUnitId,
   };
 }
 
