@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ToastItem {
@@ -17,13 +17,16 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const counterRef = useRef(0);
 
   const toast = useCallback((message: string, variant: ToastItem["variant"] = "default") => {
-    const id = `${Date.now()}`;
-    setItems((prev) => [...prev, { id, message, variant }]);
+    counterRef.current += 1;
+    const id = `${Date.now()}-${counterRef.current}`;
+    const duration = variant === "error" ? 4000 : 2200;
+    setItems((prev) => [...prev.slice(-2), { id, message, variant }]);
     setTimeout(() => {
       setItems((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    }, duration);
   }, []);
 
   const value = useMemo(() => ({ toast }), [toast]);

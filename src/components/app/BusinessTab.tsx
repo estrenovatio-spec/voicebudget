@@ -44,7 +44,7 @@ import {
   type BudgetPeriod,
 } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
-import { t } from "@/lib/i18n";
+import { enPlural, ruPlural, t } from "@/lib/i18n";
 import { parseSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import {
   isProjectsServiceUnit,
@@ -1002,7 +1002,7 @@ function BusinessQuickEntry({
   onQuickTx,
 }: {
   locale: "ru" | "en";
-  onQuickTx: (type: "income" | "expense", amount: number, note: string) => void;
+  onQuickTx: (type: "income" | "expense", amounts: number[], note: string) => void;
 }) {
   const [quickMode, setQuickMode] = useState<"income" | "expense" | null>(
     "income",
@@ -1016,9 +1016,7 @@ function BusinessQuickEntry({
     const singleAmount = parseMoneyAmount(quickAmount);
     const parsedAmounts = amounts.length > 1 ? amounts : singleAmount ? [singleAmount] : [];
     if (parsedAmounts.length === 0) return;
-    for (const amount of parsedAmounts) {
-      onQuickTx(quickMode, amount, quickNote.trim());
-    }
+    onQuickTx(quickMode, parsedAmounts, quickNote.trim());
     setQuickAmount("");
     setQuickNote("");
   };
@@ -1127,6 +1125,29 @@ function BusinessFamilyWithdrawal({
       </div>
     </div>
   );
+}
+
+function businessQuickToastMessage(
+  type: "income" | "expense",
+  amounts: number[],
+  locale: "ru" | "en",
+): string {
+  if (amounts.length === 1) {
+    const amount = formatMoney(amounts[0], locale);
+    return type === "income"
+      ? t(locale, "bizVoiceIncomeOk", { amount })
+      : t(locale, "bizVoiceExpenseOk", { amount });
+  }
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  if (locale !== "ru") {
+    const word = type === "income" ? enPlural(amounts.length, "income", "income entries") : enPlural(amounts.length, "expense", "expense entries");
+    return `Added ${amounts.length} ${word}: ${formatMoney(total, locale)} ₽ total`;
+  }
+  const word =
+    type === "income"
+      ? ruPlural(amounts.length, "доход", "дохода", "доходов")
+      : ruPlural(amounts.length, "расход", "расхода", "расходов");
+  return `Добавлено ${amounts.length} ${word}: всего ${formatMoney(total, locale)} ₽`;
 }
 
 export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) {
@@ -1534,18 +1555,11 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         <>
           <BusinessQuickEntry
             locale={locale}
-            onQuickTx={(type, amount, note) => {
-              addOperatingTx(activeUnit.id, type, amount, note);
-              toast(
-                type === "income"
-                  ? t(locale, "bizVoiceIncomeOk", {
-                      amount: formatMoney(amount, locale),
-                    })
-                  : t(locale, "bizVoiceExpenseOk", {
-                      amount: formatMoney(amount, locale),
-                    }),
-                "success",
-              );
+            onQuickTx={(type, amounts, note) => {
+              for (const amount of amounts) {
+                addOperatingTx(activeUnit.id, type, amount, note);
+              }
+              toast(businessQuickToastMessage(type, amounts, locale), "success");
             }}
           />
           <BusinessFamilyWithdrawal
