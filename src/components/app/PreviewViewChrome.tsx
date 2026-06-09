@@ -1,7 +1,6 @@
 "use client";
 
 import { PreviewHeaderNav } from "@/components/app/PreviewHeaderNav";
-import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
 import { LiveRatesBar } from "@/components/LiveRatesBar";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 
@@ -32,10 +31,7 @@ export function PreviewViewControls({
     <div className="flex shrink-0 flex-col items-end gap-1">
       <PreviewHeaderNav active={active} onChange={onChange} />
       {active === "business" ? (
-        <>
-          <CloudHeaderStatus />
-          <LiveRatesBar />
-        </>
+        <LiveRatesBar />
       ) : null}
     </div>
   );
