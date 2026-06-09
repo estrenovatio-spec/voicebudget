@@ -1523,19 +1523,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
       {activeUnit && activeMetrics ? (
         <>
-          <BusinessKpis
-            metrics={activeMetrics}
-            safeWithdraw={safeWithdraw}
-            locale={locale}
-          />
-          <BusinessAdvisor
-            metrics={activeMetrics}
-            safeWithdraw={safeWithdraw}
-            adSpend={activeAdSpend}
-            locale={locale}
-            open={businessAdvisorOpen}
-            onToggle={toggleBusinessAdvisor}
-          />
           <BusinessQuickEntry
             locale={locale}
             onQuickTx={(type, amount, note) => {
@@ -1551,6 +1538,19 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                 "success",
               );
             }}
+          />
+          <BusinessKpis
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            locale={locale}
+          />
+          <BusinessAdvisor
+            metrics={activeMetrics}
+            safeWithdraw={safeWithdraw}
+            adSpend={activeAdSpend}
+            locale={locale}
+            open={businessAdvisorOpen}
+            onToggle={toggleBusinessAdvisor}
           />
           <BusinessFamilyWithdrawal
             amount={safeWithdraw}
