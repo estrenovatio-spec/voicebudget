@@ -51,6 +51,25 @@ function assetTypeLabel(type: BusinessAssetType, locale: "ru" | "en"): string {
   return t(locale, "bizAssetInvestment");
 }
 
+function sortFreelanceAssetsByPaymentStatus(
+  assets: BusinessAsset[],
+  receipts: ReturnType<typeof useBusinessStore.getState>["passiveReceipts"],
+): BusinessAsset[] {
+  return [...assets].sort((a, b) => {
+    const receivedA = passiveReceivedTotal(receipts, a.id);
+    const receivedB = passiveReceivedTotal(receipts, b.id);
+    const remainingA = Math.max(0, a.monthlyNet - receivedA);
+    const remainingB = Math.max(0, b.monthlyNet - receivedB);
+    const paidA = receivedA > 0 && remainingA <= 0;
+    const paidB = receivedB > 0 && remainingB <= 0;
+
+    if (paidA !== paidB) return paidA ? 1 : -1;
+    if (!paidA && remainingA !== remainingB) return remainingB - remainingA;
+    if (paidA && receivedA !== receivedB) return receivedB - receivedA;
+    return a.name.localeCompare(b.name, "ru");
+  });
+}
+
 function AssetRow({
   asset,
   locale,
@@ -207,6 +226,8 @@ function AssetTypeSection({
   onRemove: (asset: BusinessAsset) => void;
 }) {
   if (assets.length === 0) return null;
+  const visibleAssets =
+    type === "freelance" ? sortFreelanceAssetsByPaymentStatus(assets, receipts) : assets;
   const summary = typeAssetsSummary(assets, type);
   const receivedForType =
     type === "freelance"
@@ -249,7 +270,7 @@ function AssetTypeSection({
             : simpleSummary}
         </span>
       </div>
-      {assets.map((a) => (
+      {visibleAssets.map((a) => (
         <AssetRow
           key={a.id}
           asset={a}
