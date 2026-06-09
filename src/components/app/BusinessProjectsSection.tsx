@@ -72,6 +72,18 @@ function AssetRow({
   const effectiveHourly = assetEffectiveHourlyRate(asset);
   const utilities = rentalUtilitiesForMonth(asset);
   const netMonthly = rentalEffectiveMonthlyNet(asset);
+  const freelanceRemaining = Math.max(0, asset.monthlyNet - receivedTotal);
+  const freelanceStatus =
+    asset.type === "freelance" && receivedTotal > 0
+      ? freelanceRemaining > 0
+        ? t(locale, "projectsPaymentPartial", {
+            received: formatMoney(receivedTotal, locale),
+            left: formatMoney(freelanceRemaining, locale),
+          })
+        : t(locale, "projectsPaymentReceived", {
+            amount: formatMoney(receivedTotal, locale),
+          })
+      : null;
 
   return (
     <div className="space-y-1.5 rounded-lg border border-border/80 p-2.5">
@@ -106,7 +118,11 @@ function AssetRow({
                 </span>
               </>
             ) : asset.type === "freelance" ? (
-              asset.monthlyNet > 0 ? (
+              freelanceStatus ? (
+                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                  {freelanceStatus}
+                </span>
+              ) : asset.monthlyNet > 0 ? (
                 <span className="text-emerald-700 dark:text-emerald-400">
                   {t(locale, "bizAssetExpected")}: {formatMoney(asset.monthlyNet, locale)}
                 </span>
@@ -127,7 +143,7 @@ function AssetRow({
               </span>
             ) : null}
           </div>
-          {receivedTotal > 0 ? (
+          {receivedTotal > 0 && asset.type !== "freelance" ? (
             <p className="mt-1 text-[10px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
               {t(locale, "projectsReceivedTotal", { amount: formatMoney(receivedTotal, locale) })}
             </p>
@@ -192,12 +208,28 @@ function AssetTypeSection({
 }) {
   if (assets.length === 0) return null;
   const summary = typeAssetsSummary(assets, type);
+  const receivedForType =
+    type === "freelance"
+      ? assets.reduce((sum, asset) => sum + passiveReceivedTotal(receipts, asset.id), 0)
+      : 0;
+  const freelanceRemaining = Math.max(0, summary.monthlyNet - receivedForType);
   const simpleSummary =
     type === "freelance"
-      ? t(locale, "bizProjectSummary", {
-          count: String(assets.length),
-          amount: formatMoney(summary.monthlyNet, locale),
-        })
+      ? receivedForType > 0 && freelanceRemaining <= 0
+        ? t(locale, "bizProjectSummaryPaid", {
+            count: String(assets.length),
+            amount: formatMoney(receivedForType, locale),
+          })
+        : receivedForType > 0
+          ? t(locale, "bizProjectSummaryPartial", {
+              count: String(assets.length),
+              received: formatMoney(receivedForType, locale),
+              left: formatMoney(freelanceRemaining, locale),
+            })
+          : t(locale, "bizProjectSummary", {
+              count: String(assets.length),
+              amount: formatMoney(summary.monthlyNet, locale),
+            })
       : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`;
 
   return (
