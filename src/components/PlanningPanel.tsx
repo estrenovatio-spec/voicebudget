@@ -505,7 +505,8 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
             .map((tx) => tx.date)
             .sort()
             .at(-1) ?? null;
-        const paid = paidTransactions.length > 0;
+        const paidByNextDate = item.enabled && item.nextRunDate > recurringPeriod.to;
+        const paid = paidTransactions.length > 0 || paidByNextDate;
         const pending = pendingTransactions.length > 0;
         const overdue = item.enabled && !paid && item.nextRunDate <= today;
         const status: "paid" | "pending" | "overdue" | "upcoming" | "paused" =
@@ -546,6 +547,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
 
   const recurringPaidCount = useMemo(() => {
     return recurringTransactions.filter((item) =>
+      item.enabled && item.nextRunDate > recurringPeriod.to ||
       transactions.some(
         (tx) =>
           tx.recurringId === item.id &&
