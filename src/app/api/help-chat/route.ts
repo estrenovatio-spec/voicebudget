@@ -34,28 +34,29 @@ import type { CategoryBudget, RecurringTransaction, SavingsGoal } from "@/types/
 export const maxDuration = 60;
 
 const txSchema = z.object({
-  id: z.string(),
-  amount: z.number(),
-  type: z.enum(["income", "expense"]),
-  categoryId: z.string(),
-  currency: z.string(),
-  note: z.string().optional(),
-  date: z.string(),
-  owner: z.enum(["me", "partner"]).optional(),
-  goalId: z.string().optional(),
-  goalAmount: z.number().optional(),
+  id: z.string().catch(() => `local-${Date.now().toString(36)}`),
+  amount: z.coerce.number().catch(0),
+  type: z.enum(["income", "expense"]).catch("expense"),
+  categoryId: z.string().catch("other"),
+  currency: z.string().catch("RUB"),
+  note: z.string().optional().catch(""),
+  date: z.string().catch(() => new Date().toISOString().slice(0, 10)),
+  owner: z.enum(["me", "partner"]).optional().catch("me"),
+  goalId: z.string().optional().catch(undefined),
+  goalAmount: z.coerce.number().optional().catch(undefined),
 });
 
 const categorySchema = z.object({
-  id: z.string(),
+  id: z.string().catch("other"),
   labels: z
     .object({ ru: z.string().optional(), en: z.string().optional() })
+    .catch({ ru: "—", en: "—" })
     .transform((l) => ({
       ru: (l.ru ?? l.en ?? "").trim() || "—",
       en: (l.en ?? l.ru ?? "").trim() || "—",
     })),
-  keywords: z.array(z.string()).optional(),
-  type: z.enum(["income", "expense", "both"]).optional(),
+  keywords: z.array(z.string()).optional().catch([]),
+  type: z.enum(["income", "expense", "both"]).optional().catch(undefined),
 });
 
 const messageSchema = z.object({

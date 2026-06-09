@@ -7,18 +7,24 @@ const BOT = getTelegramBotMention();
 export function buildAppScreenMap(locale: Locale): string {
   if (locale === "en") {
     return `APP UI MAP (exact labels):
-- Home: balance (tap block to hide amounts; tap a figure for «Cash on hand»), filters All / Me / Partner, text field + "Add", transaction list (tap to edit/delete)
-- Planning block: "Goals & planning" → tabs Jars, Limits, Emergency fund, Recurring
-- Chart & tips: statistics, "Tips & AI" (weekly/monthly analysis)
-- Settings (gear): Help, Categories, Cloud & family, partner name, subscription, clear data
-- Cloud & family: "Solo" / "Shared", "Create cloud budget", invite code, "Join", Sync / Download / Upload`;
+- Family tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), filters All / Me / Partner, text field + "Add", microphone, transaction list (tap to edit/delete)
+- Family sections: Operations, Goals & plans, Statistics, Growth
+- Goals & plans: Jars, Limits, Emergency fund, Recurring, Debts
+- Growth: weekly mission, Financial memory, advisor notes, 7-day/30-day reviews
+- Business tab: business balance, currencies, quick input, selected business metrics, advisor notes, Operations, Reserve, Tax, Debts, Projects & sources
+- More: Reports, Insurance, Services, Referral, Settings
+- Settings (gear): Help, Categories, Cloud & family, partner name/keywords, app update, clear data
+- Cloud & family: Solo / Shared, create cloud budget, invite code, Join, sync controls, archive restore`;
   }
   return `КАРТА ПРИЛОЖЕНИЯ (точные названия кнопок):
-- Главная: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), фильтры Общий / Я / Партнёр, поле ввода + «Добавить», список операций (нажать — изменить/удалить)
-- Блок «Цели и планирование»: вкладки Копилки · Лимиты · Подушка · Регулярные
-- Ниже: «Статистика», «Советы и AI» (разбор недели/месяца)
-- Настройки (шестерёнка): «Помощь и вопросы», «Категории», «Облако и семья», имя партнёра, подписка, «Очистить данные»
-- «Облако и семья»: «Веду один» / «Вдвоём», «Создать облачный бюджет», код приглашения, «Присоединиться», «Синхронизировать» / «Скачать с облака» / «Отправить на облако»
+- Вкладка «Семья»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), фильтры Общий / Я / Партнёр, поле ввода + «Добавить», микрофон, список операций (нажать — изменить/удалить)
+- Разделы семьи: «Операции», «Цели и планы», «Статистика», «Рост»
+- «Цели и планы»: Копилки · Лимиты · Подушка · Регулярные · Долги
+- «Рост»: миссия недели, «Финансовая память», «Финсоветник заметил», разборы 7/30 дней
+- Вкладка «Бизнес»: баланс бизнеса, валюты, быстрый ввод, показатели выбранного бизнеса, «Финсоветник заметил», Операции, Резерв, Налог, Долги, «Проекты и источники»
+- «Ещё»: Фин отчёты, Страхование, Услуги, Пригласить друга, Настройки
+- Настройки (шестерёнка): «Помощь и вопросы», «Категории», «Облако и семья», имена/ключевые слова партнёра, обновление приложения, «Очистить данные»
+- «Облако и семья»: «Веду один» / «Вдвоём», создание облачного бюджета, код приглашения, «Присоединиться», синхронизация, восстановление из архива
 - Бот ${BOT}: голосовое или текст = запись; /start — приветствие, /help — шпаргалка`;
 }
 
@@ -39,8 +45,9 @@ const PLAYBOOKS: Playbook[] = [
       ru: [
         "Откройте Mini App (бот → «Открыть приложение»).",
         "На главной внизу поле ввода — напишите, например: «потратил 500 на обед».",
-        "Нажмите «Добавить» — операция появится в списке.",
-        `Или отправьте то же текстом боту ${BOT}; голосом — только боту (голосовое в чат, не в приложении).`,
+        "Нажмите «Добавить» — операция появится в разделе «Операции».",
+        "Можно нажать микрофон рядом с полем ввода и сказать фразу голосом.",
+        `Или отправьте текст/голосовое боту ${BOT}; при включённом облаке запись попадёт в бюджет.`,
       ],
       en: [
         "Open Mini App (bot → Open app).",
@@ -77,7 +84,8 @@ const PLAYBOOKS: Playbook[] = [
       ru: [
         "Настройки → «Облако и семья» → «Веду один» → «Создать облачный бюджет».",
         "Новые операции уходят в облако сами.",
-        "На компьютере: сайт → Настройки → «Войти через Telegram» → «Подключить этот браузер» → «Скачать с облака».",
+        "Если нужно вернуть данные: Настройки → «Облако и семья» → восстановление из архива или «Скачать с облака».",
+        "На компьютере: сайт → Настройки → «Войти через Telegram» → «Подключить этот браузер».",
         "Нужна активная подписка, если на сервере включена оплата.",
       ],
       en: [
@@ -159,7 +167,7 @@ const PLAYBOOKS: Playbook[] = [
     title: { ru: "Копилки и цели", en: "Savings goals" },
     steps: {
       ru: [
-        "Главная → «Цели и планирование» → «Копилки».",
+        "Семья → «Цели и планы» → «Копилки».",
         "Фразой: «отложил 5000 на отпуск» · «закинул в подушку 2000».",
         "Если копилка уже создана — достаточно «5000 на отпуск» (без «отложил»).",
         "Часть зарплаты в цель: «зарплата 100000, 20000 на отпуск».",
