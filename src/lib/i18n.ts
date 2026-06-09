@@ -680,7 +680,10 @@ export const DICT = {
     settingsSaved: "Сохранено",
     cloudTitle: "Сохранение и семья",
     cloudHint:
-      "Данные сохраняются автоматически через ваш аккаунт Telegram. Здесь можно подключить партнёра.",
+      "Сохранение, партнёр и запуск заново — всё в одном месте.",
+    cloudDeviceResetTitle: "Начать с чистого телефона",
+    cloudDeviceResetHint:
+      "Очистит данные только на этом устройстве и остановит автосинхронизацию. Если старые данные в облаке больше не нужны, после очистки нажмите здесь «Начать заново в облаке».",
     cloudWebLoginTitle: "Войти через Telegram",
     cloudWebLoginHint:
       "Тот же аккаунт, что в Mini App: операции с телефона и с сайта будут в одном облаке.",
@@ -1789,7 +1792,10 @@ export const DICT = {
     partnerSave: "Save partner’s name",
     settingsSaved: "Saved",
     cloudTitle: "Save & household",
-    cloudHint: "Data is saved automatically through your Telegram account. Connect a partner here.",
+    cloudHint: "Saving, partner setup and fresh start are in one place.",
+    cloudDeviceResetTitle: "Start with a clean phone",
+    cloudDeviceResetHint:
+      "Clears data only on this device and pauses auto-sync. If old cloud data is no longer needed, after clearing tap “Start fresh in cloud” here.",
     cloudWebLoginTitle: "Log in with Telegram",
     cloudWebLoginHint:
       "Same account as in the Mini App — phone and web stay in sync.",

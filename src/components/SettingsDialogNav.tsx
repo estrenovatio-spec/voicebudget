@@ -33,8 +33,7 @@ type SettingsScreen =
   | "categories"
   | "vehicle"
   | "cloud"
-  | "household"
-  | "danger";
+  | "household";
 
 type MenuItem = {
   id: Exclude<SettingsScreen, "menu">;
@@ -50,7 +49,6 @@ const MENU_ITEMS: MenuItem[] = [
   { id: "vehicle", titleKey: "vehicleGarageTitle", descriptionKey: "vehicleHintMulti" },
   { id: "help", titleKey: "helpTitle" },
   { id: "language", titleKey: "settingsLanguage", descriptionKey: "settingsLanguageHint" },
-  { id: "danger", titleKey: "clearData", descriptionKey: "clearConfirm", danger: true },
 ];
 
 export function SettingsDialogNav({
@@ -184,6 +182,19 @@ export function SettingsDialogNav({
     cloud: (
       <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
         <HouseholdCloudPanel embedded />
+        <div className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">
+              {t(locale, "cloudDeviceResetTitle")}
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t(locale, "cloudDeviceResetHint")}
+            </p>
+          </div>
+          <Button variant="destructive" className="w-full" onClick={handleClear} type="button">
+            {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
+          </Button>
+        </div>
         <UpdateAppButton />
       </div>
     ),
@@ -259,17 +270,6 @@ export function SettingsDialogNav({
         ) : null}
         <p className="text-xs text-muted-foreground">{t(locale, "partnerKeywordsHint")}</p>
         <UpdateAppButton />
-      </div>
-    ),
-    danger: (
-      <div className="space-y-3">
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-950 dark:text-emerald-100">
-          {t(locale, "cloudProtectedNotice")}
-        </p>
-        <p className="text-xs text-muted-foreground">{t(locale, "clearConfirm")}</p>
-        <Button variant="destructive" className="w-full" onClick={handleClear} type="button">
-          {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
-        </Button>
       </div>
     ),
   };
