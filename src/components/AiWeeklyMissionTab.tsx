@@ -235,6 +235,81 @@ function essentialHabitDetail(
   return `Средний чек ${amount}. Детские расходы сначала разбираем по смыслу: что важно, какой план платежей и где можно оптимизировать без вреда для ребёнка.`;
 }
 
+function flexibleCategoryKind(category: string): "subscription" | "delivery" | "entertainment" | "shopping" | null {
+  const normalized = category.toLowerCase();
+  if ([
+    "подпис",
+    "сервис",
+    "subscription",
+    "netflix",
+    "spotify",
+    "яндекс плюс",
+  ].some((token) => normalized.includes(token))) {
+    return "subscription";
+  }
+  if ([
+    "достав",
+    "кафе",
+    "ресторан",
+    "кофе",
+    "delivery",
+    "cafe",
+    "restaurant",
+    "coffee",
+  ].some((token) => normalized.includes(token))) {
+    return "delivery";
+  }
+  if ([
+    "развлеч",
+    "кино",
+    "игр",
+    "досуг",
+    "entertainment",
+    "games",
+    "cinema",
+  ].some((token) => normalized.includes(token))) {
+    return "entertainment";
+  }
+  if ([
+    "покуп",
+    "маркет",
+    "одеж",
+    "wildberries",
+    "ozon",
+    "shopping",
+    "clothes",
+  ].some((token) => normalized.includes(token))) {
+    return "shopping";
+  }
+  return null;
+}
+
+function flexibleHabitDetail(kind: NonNullable<ReturnType<typeof flexibleCategoryKind>>, avgAmount: number, locale: Locale): string {
+  const amount = formatMoney(avgAmount, locale);
+  if (locale !== "ru") {
+    if (kind === "subscription") {
+      return `Average charge ${amount}. Mission: open the list of paid services and leave only what you knowingly use this week.`;
+    }
+    if (kind === "delivery") {
+      return `Average check ${amount}. Mission: before one order, compare it with a simple home alternative and choose consciously.`;
+    }
+    if (kind === "entertainment") {
+      return `Average check ${amount}. Mission: set one leisure amount before spending, not after.`;
+    }
+    return `Average check ${amount}. Mission: use a 24-hour pause for one non-urgent purchase and decide tomorrow.`;
+  }
+  if (kind === "subscription") {
+    return `Средний платёж ${amount}. Миссия: открыть список платных сервисов и оставить только то, чем вы осознанно пользуетесь на этой неделе.`;
+  }
+  if (kind === "delivery") {
+    return `Средний чек ${amount}. Миссия: перед одним заказом сравнить его с простым домашним вариантом и выбрать осознанно, а не на автомате.`;
+  }
+  if (kind === "entertainment") {
+    return `Средний чек ${amount}. Миссия: заранее назначить одну сумму на досуг, а не считать уже после траты.`;
+  }
+  return `Средний чек ${amount}. Миссия: для одной необязательной покупки включить паузу 24 часа и решить завтра.`;
+}
+
 function literacyPrinciple(
   kind:
     | "over_budget"
@@ -267,12 +342,12 @@ function literacyPrinciple(
   const ru: Record<typeof kind, string> = {
     over_budget: "Лимит — не наказание, а ранний сигнал поправить план.",
     cashflow_pause: "Сначала оплатить то, без чего нельзя. Покупки «хочу» — после этого.",
-    habit: "Маленькие повторяющиеся траты незаметно становятся большой суммой.",
+    habit: "Повторяющиеся траты сначала замечают, потом решают: оставить, заменить или ограничить.",
     essential: "Еду, здоровье, детей и счета сначала планируют, а не сокращают без разбора.",
     small_observation: "Маленькие расходы сначала наблюдают, а не убирают на эмоциях.",
     debt: "Сначала минимальный платёж по долгу. Лишние покупки — потом.",
     goal: "Накопления растут, когда добавляешь понемногу, но регулярно.",
-    memory: "Исправления учат приложение вашему настоящему языку денег.",
+    memory: "Когда категория исправлена, следующий похожий расход попадёт точнее.",
     consistency: "Лучше записывать неидеально, чем бросить совсем.",
     limit: "Один понятный лимит легче удержать, чем много обещаний себе.",
   };
@@ -314,16 +389,23 @@ function buildWeeklyMissions(params: {
 
   const overBudget = categoryBudgets.find((b) => b.overLimit);
   if (overBudget) {
+    const essentialKind = essentialCategoryKind(overBudget.category);
     add({
       id: `over:${overBudget.category}`,
       tone: "focus",
-      principle: literacyPrinciple("over_budget", locale),
+      principle: literacyPrinciple(essentialKind ? "essential" : "over_budget", locale),
       title: isRu
-        ? `Пауза в «${overBudget.category}»`
-        : `Pause ${overBudget.category}`,
-      detail: isRu
-        ? "Лимит уже превышен. Миссия: 48 часов без новых трат в этой категории."
-        : "Limit is already over. Mission: 48 hours with no new spending there.",
+        ? essentialKind
+          ? `Разобрать «${overBudget.category}»`
+          : `Проверить лимит «${overBudget.category}»`
+        : essentialKind
+          ? `Review "${overBudget.category}"`
+          : `Check "${overBudget.category}" limit`,
+      detail: essentialKind
+        ? essentialHabitDetail(essentialKind, Math.max(0, overBudget.spent ?? 0), locale)
+        : isRu
+          ? "Лимит уже превышен. Миссия: найти одну причину перерасхода и записать правило на следующую покупку."
+          : "The limit is already over. Mission: find one reason for overspending and write one rule for the next purchase.",
     });
   } else if (
     signals?.cashflowRisk === "high" ||
@@ -342,6 +424,7 @@ function buildWeeklyMissions(params: {
 
   if (habit && habit.sharePercent >= 25) {
     const essentialKind = essentialCategoryKind(habit.category);
+    const flexibleKind = flexibleCategoryKind(habit.category);
     const isSmallHabit = habit.avgAmount < 1000;
     add({
       id: `habit:${habit.category}`,
@@ -355,23 +438,27 @@ function buildWeeklyMissions(params: {
           ? `Проверить статью «${habit.category}»`
           : isSmallHabit
             ? `Понаблюдать за «${habit.category}»`
-          : `Найти один повтор: ${habit.category}`
+            : `Разобрать повтор: ${habit.category}`
         : essentialKind
           ? `Review "${habit.category}"`
           : isSmallHabit
             ? `Watch "${habit.category}"`
-          : `One less check: ${habit.category}`,
+            : `Review one repeat: ${habit.category}`,
       detail: isRu
         ? essentialKind
           ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
           : isSmallHabit
             ? `Средний чек ${formatMoney(habit.avgAmount, locale)}. Миссия: просто записать ещё 3 такие траты и понять, это обычная база или привычка.`
-          : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Миссия: найти один повторяющийся расход и решить, нужен ли он на этой неделе.`
+            : flexibleKind
+              ? flexibleHabitDetail(flexibleKind, habit.avgAmount, locale)
+              : `Средний чек ${formatMoney(habit.avgAmount, locale)}. Миссия: найти повторяющийся расход и решить его статус: оставить, заменить или поставить лимит.`
         : essentialKind
           ? essentialHabitDetail(essentialKind, habit.avgAmount, locale)
           : isSmallHabit
             ? `Average check ${formatMoney(habit.avgAmount, locale)}. Mission: log 3 more similar expenses and learn whether this is a basic need or a habit.`
-          : `Average check ${formatMoney(habit.avgAmount, locale)}. Mission: find one repeated expense and decide whether it is needed this week.`,
+            : flexibleKind
+              ? flexibleHabitDetail(flexibleKind, habit.avgAmount, locale)
+              : `Average check ${formatMoney(habit.avgAmount, locale)}. Mission: find a repeated expense and decide its status: keep, replace, or set a limit.`,
     });
   }
 
@@ -414,9 +501,9 @@ function buildWeeklyMissions(params: {
       id: "teach-ai",
       tone: "learn",
       principle: literacyPrinciple("memory", locale),
-      title: isRu ? "Научить ИИ двум словам" : "Teach AI two phrases",
+      title: isRu ? "Закрепить две фразы памяти" : "Teach two memory phrases",
       detail: isRu
-        ? "Запишите пару расходов обычными словами. Если категория ошиблась - исправьте, это усилит память."
+        ? "Запишите пару расходов обычными словами. Если категория ошиблась — исправьте её: так похожие траты дальше будут попадать точнее."
         : "Add two natural-language expenses. If a category is wrong, correct it to strengthen memory.",
     });
   }
@@ -536,7 +623,7 @@ export function AiWeeklyMissionTab() {
       weekTransactionsCount,
     ],
   );
-  const aiMissionCacheId = `${period.from}:${period.to}:${locale}:v3`;
+  const aiMissionCacheId = `${period.from}:${period.to}:${locale}:v4`;
 
   useEffect(() => {
     const cached = readCachedAiMission(aiMissionCacheId);

@@ -59,6 +59,17 @@ function defaultPrinciple(locale: "ru" | "en", tone: z.infer<typeof missionSchem
   return "Лучше записывать неидеально, чем бросить совсем.";
 }
 
+const SENSITIVE_RE =
+  /ед[ауые]?|продукт|здоров|аптек|лекар|врач|дет|реб|сад|школ|обуч|образован|жкх|аренд|кварт|коммун|транспорт|бензин|проезд|долг|кредит|налог|food|grocery|health|medical|child|school|education|rent|utilities|transport|fuel|debt|loan|tax/i;
+const CUT_RE =
+  /не трат|без новых трат|убрать|урезать|сократ|отказ|пропуст|one less|no new spending|skip|cut|reduce|stop spending/i;
+
+function missionLooksUnsafe(mission: z.infer<typeof missionSchema>): boolean {
+  const text = `${mission.title} ${mission.principle ?? ""} ${mission.detail}`;
+  if (/ИИ|AI\b/i.test(text)) return true;
+  return SENSITIVE_RE.test(text) && CUT_RE.test(text);
+}
+
 function withPrinciple(
   mission: z.infer<typeof missionSchema>,
   locale: "ru" | "en",
@@ -67,6 +78,16 @@ function withPrinciple(
     ...mission,
     principle: mission.principle?.trim() || defaultPrinciple(locale, mission.tone),
   };
+}
+
+function safeMission(
+  mission: z.infer<typeof missionSchema>,
+  input: z.infer<typeof bodySchema>,
+): z.infer<typeof missionSchema> & { principle: string } {
+  if (missionLooksUnsafe(mission)) {
+    return withPrinciple(fallbackMission(input), input.locale);
+  }
+  return withPrinciple(mission, input.locale);
 }
 
 function missionPrompt(input: z.infer<typeof bodySchema>): string {
@@ -81,6 +102,7 @@ Strict principles:
 - No shame, no fear, no harsh austerity.
 - Do not suggest cutting groceries/food, health, children, education, emergency, debt minimum payments, taxes, transport, utilities, rent, internet, phone, or mandatory bills.
 - For groceries/food, suggest a shopping list, meal plan, checking impulse extras, or simply observing. Never say "skip food", "one less grocery check", or anything that sounds like eating less.
+- For health, children, education, debt, taxes, and mandatory bills: mission must be planning/checking documents/payment dates/reserve. Never suggest cutting or pausing.
 - For small average checks under 1000 RUB, prefer observation and tracking over cutting.
 - If a sensitive category is visible, suggest planning, checking documents, splitting payments, insurance/tax deduction, or building reserve.
 - The mission must be doable in 7 days and take 5-20 minutes or one small action.
@@ -93,7 +115,7 @@ Strict principles:
 Good mission examples in Russian:
 - "Разобрать один повторяющийся расход"
 - "Проверить обязательный платёж"
-- "Закрепить правило для ИИ"
+- "Закрепить правило финансовой памяти"
 - "Пополнить резерв малой суммой"
 
 Good principle examples in Russian:
@@ -124,7 +146,7 @@ export async function POST(request: NextRequest) {
     if (!isLlmConfigured()) {
       return NextResponse.json({
         success: true,
-        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
+        mission: safeMission(fallbackMission(parsed.data), parsed.data),
         fallback: true,
       });
     }
@@ -133,7 +155,7 @@ export async function POST(request: NextRequest) {
     if (!openai) {
       return NextResponse.json({
         success: true,
-        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
+        mission: safeMission(fallbackMission(parsed.data), parsed.data),
         fallback: true,
       });
     }
@@ -160,13 +182,13 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        mission: withPrinciple(validated.data, parsed.data.locale),
+        mission: safeMission(validated.data, parsed.data),
       });
     } catch (error) {
       console.warn("[weekly-mission fallback]", error);
       return NextResponse.json({
         success: true,
-        mission: withPrinciple(fallbackMission(parsed.data), parsed.data.locale),
+        mission: safeMission(fallbackMission(parsed.data), parsed.data),
         fallback: true,
       });
     }
