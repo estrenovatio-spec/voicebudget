@@ -75,13 +75,11 @@ export function TransactionEditDialog({
   const [goalId, setGoalId] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
   const [comment, setComment] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const editSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       editSessionKeyRef.current = null;
-      setConfirmDelete(false);
       return;
     }
     if (!transaction) return;
@@ -112,7 +110,6 @@ export function TransactionEditDialog({
       "";
     setVehicleId(defaultVid);
     setComment(displayTransactionNote(raw.note, raw.amount) ?? "");
-    setConfirmDelete(false);
   }, [
     allTransactions,
     cloudUserId,
@@ -199,10 +196,6 @@ export function TransactionEditDialog({
   };
 
   const handleDelete = () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
     deleteTransaction(transaction.id);
     clearCachedRecommendations();
     onOpenChange(false);
@@ -383,40 +376,14 @@ export function TransactionEditDialog({
             </Button>
           </div>
           <div className="border-t pt-2">
-            {confirmDelete ? (
-              <div className="space-y-2">
-                <p className="text-center text-sm text-muted-foreground">
-                  {t(locale, "txDeleteConfirm")}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    {t(locale, "cancel")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={handleDelete}
-                  >
-                    {t(locale, "txDeleteYes")}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full"
-                onClick={handleDelete}
-              >
-                {t(locale, "txDelete")}
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full"
+              onClick={handleDelete}
+            >
+              {t(locale, "txDelete")}
+            </Button>
           </div>
         </div>
       </DialogContent>

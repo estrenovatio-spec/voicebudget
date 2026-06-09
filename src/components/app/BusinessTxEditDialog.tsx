@@ -52,7 +52,6 @@ export function BusinessTxEditDialog({
   const [txType, setTxType] = useState<"income" | "expense">("expense");
   const [note, setNote] = useState("");
   const [date, setDate] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isOperating =
     transaction?.kind === "operating_income" ||
@@ -64,7 +63,6 @@ export function BusinessTxEditDialog({
     setTxType(transaction.type);
     setNote(transaction.note);
     setDate(transaction.date);
-    setConfirmDelete(false);
   }, [transaction, open]);
 
   const handleSave = () => {
@@ -87,10 +85,6 @@ export function BusinessTxEditDialog({
 
   const handleDelete = () => {
     if (!transaction) return;
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
     removeTransaction(transaction.id);
     toast(t(locale, "bizTxDeleted"), "success");
     onOpenChange(false);
@@ -153,11 +147,11 @@ export function BusinessTxEditDialog({
         </Button>
         <Button
           type="button"
-          variant={confirmDelete ? "destructive" : "outline"}
+          variant="destructive"
           className="w-full"
           onClick={handleDelete}
         >
-          {confirmDelete ? t(locale, "txDeleteYes") : t(locale, "txDelete")}
+          {t(locale, "txDelete")}
         </Button>
         {transaction.amount > 0 ? (
           <p className="text-center text-[11px] tabular-nums text-muted-foreground">
