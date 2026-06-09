@@ -227,9 +227,11 @@ export function MoreReportsTab() {
     return window.btoa(binary);
   };
 
-  const downloadPreparedBlob = async (filename: string, blob: Blob): Promise<boolean> => {
-    const tg = window.Telegram?.WebApp;
-    if (!token || !tg?.downloadFile) return false;
+  const prepareBlobFile = async (
+    filename: string,
+    blob: Blob,
+  ): Promise<{ url: string; fileName: string } | null> => {
+    if (!token) return null;
     try {
       const res = await fetch("/api/reports/file", {
         method: "POST",
@@ -244,9 +246,22 @@ export function MoreReportsTab() {
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string };
-      if (!res.ok || !data.id) return false;
+      if (!res.ok || !data.id) return null;
       const params = new URLSearchParams({ id: data.id, token });
       const url = `${window.location.origin}/api/reports/file?${params.toString()}`;
+      return { url, fileName: filename };
+    } catch {
+      return null;
+    }
+  };
+
+  const downloadPreparedBlob = async (filename: string, blob: Blob): Promise<boolean> => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg?.downloadFile) return false;
+    const prepared = await prepareBlobFile(filename, blob);
+    if (!prepared) return false;
+    try {
+      const { url, fileName } = prepared;
       tg.downloadFile({ url, file_name: filename }, (accepted) => {
         toast(
           accepted
@@ -258,7 +273,10 @@ export function MoreReportsTab() {
               : "Telegram did not allow downloading. Opening the file link.",
           accepted ? "success" : "default",
         );
-        if (!accepted) window.open(url, "_blank", "noopener,noreferrer");
+        if (!accepted) {
+          setPreparedFile({ type: filename.endsWith(".pdf") ? "pdf" : "xlsx", url, fileName });
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
       });
       return true;
     } catch {
@@ -405,8 +423,6 @@ export function MoreReportsTab() {
       );
       return;
     }
-    if (openServerExport("pdf", { direct: true })) return;
-
     const pdf = buildTransactionsPdfBlob({
       transactions: periodTxs,
       categories,
@@ -418,6 +434,28 @@ export function MoreReportsTab() {
       title: t(locale, "moreReportsExportTitle"),
     });
     const fileName = `prosto-budget-${period.from}_${period.to}.pdf`;
+    const prepared = await prepareBlobFile(fileName, pdf);
+    if (prepared) {
+      setPreparedFile({ type: "pdf", url: prepared.url, fileName: prepared.fileName });
+      toast(
+        locale === "ru"
+          ? "PDF готов. Если файл не открылся сам — нажмите кнопку ниже."
+          : "PDF is ready. If it did not open automatically, tap the button below.",
+        "default",
+      );
+      const tg = window.Telegram?.WebApp;
+      if (tg?.openLink) {
+        try {
+          tg.openLink(prepared.url, { try_instant_view: false });
+          return;
+        } catch {
+          /* fallback below */
+        }
+      }
+      const opened = window.open(prepared.url, "_blank", "noopener,noreferrer");
+      if (!opened) return;
+      return;
+    }
     const result = await saveBlobFile(fileName, pdf, {
       openBlobInWebView: false,
     });
