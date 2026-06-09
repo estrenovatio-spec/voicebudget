@@ -743,7 +743,18 @@ export function AiWeeklyMissionTab() {
           return (
             <li
               key={mission.id}
-              className={`flex items-start gap-2 rounded-md border ${
+              role="button"
+              tabIndex={0}
+              onClick={() => toggleMission(mission.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  toggleMission(mission.id);
+                }
+              }}
+              aria-pressed={done}
+              aria-label={done ? "Вернуть миссию" : "Отметить миссию"}
+              className={`flex cursor-pointer items-start gap-2 rounded-md border transition-transform active:scale-[0.99] ${
                 isMain ? "p-3 ring-1 ring-primary/15" : "p-2.5"
               } ${missionToneClass(mission.tone)} ${
                 done ? "opacity-65" : ""
@@ -753,8 +764,8 @@ export function AiWeeklyMissionTab() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="mt-0.5 h-7 w-7 shrink-0"
-                onClick={() => toggleMission(mission.id)}
+                tabIndex={-1}
+                className="pointer-events-none mt-0.5 h-7 w-7 shrink-0"
                 aria-label={done ? "Вернуть миссию" : "Отметить миссию"}
               >
                 {done ? (
