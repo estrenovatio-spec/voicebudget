@@ -17,7 +17,7 @@ import {
   getFallbackCategoryId,
   sortCategoriesByLabel,
 } from "@/lib/categories";
-import { formatBudgetPeriodLabel, getCurrentBudgetPeriod } from "@/lib/budget-period";
+import { formatBudgetPeriodLabel, getCurrentBudgetPeriod, isDateInBudgetPeriod } from "@/lib/budget-period";
 import { formatMoney } from "@/lib/format-money";
 import { formatPlanningDeadline, formatTransactionDate } from "@/lib/format-date";
 import {
@@ -261,6 +261,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [editDebtDate, setEditDebtDate] = useState("");
   const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
   const [emergencyInfoOpen, setEmergencyInfoOpen] = useState(false);
+  const [recurringFilter, setRecurringFilter] = useState<"unpaid" | "paid" | "all">("unpaid");
 
   const customGoals = useMemo(
     () =>
@@ -480,6 +481,80 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
       dayOfMonth: item.frequency === "monthly" ? d.getDate() : item.dayOfMonth,
     });
   };
+
+  const recurringPeriod = useMemo(
+    () => getCurrentBudgetPeriod(budgetMonthStartDay),
+    [budgetMonthStartDay],
+  );
+  const recurringCards = useMemo(() => {
+    const today = todayIso();
+    return recurringTransactions
+      .map((item) => {
+        const periodTransactions = transactions.filter(
+          (tx) =>
+            tx.recurringId === item.id &&
+            isDateInBudgetPeriod(tx.date, recurringPeriod),
+        );
+        const paidTransactions = periodTransactions.filter((tx) => tx.confirmed !== false);
+        const pendingTransactions = periodTransactions.filter((tx) => tx.confirmed === false);
+        const skippedInPeriod = (item.skippedDates ?? []).filter((date) =>
+          isDateInBudgetPeriod(date, recurringPeriod),
+        );
+        const lastPaidDate =
+          paidTransactions
+            .map((tx) => tx.date)
+            .sort()
+            .at(-1) ?? null;
+        const paid = paidTransactions.length > 0;
+        const pending = pendingTransactions.length > 0;
+        const overdue = item.enabled && !paid && item.nextRunDate <= today;
+        const status: "paid" | "pending" | "overdue" | "upcoming" | "paused" =
+          paid
+            ? "paid"
+            : pending
+              ? "pending"
+              : !item.enabled
+                ? "paused"
+                : overdue
+                  ? "overdue"
+                  : "upcoming";
+        return {
+          item,
+          paid,
+          pending,
+          status,
+          lastPaidDate,
+          skippedInPeriod,
+          sortDate: pendingTransactions[0]?.date ?? item.nextRunDate,
+        };
+      })
+      .filter((card) => {
+        if (recurringFilter === "paid") return card.paid;
+        if (recurringFilter === "unpaid") return !card.paid;
+        return true;
+      })
+      .sort((a, b) => {
+        if (recurringFilter === "paid") {
+          return (b.lastPaidDate ?? "").localeCompare(a.lastPaidDate ?? "");
+        }
+        const priority = { pending: 0, overdue: 1, upcoming: 2, paused: 3, paid: 4 };
+        const priorityDiff = priority[a.status] - priority[b.status];
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.sortDate.localeCompare(b.sortDate);
+      });
+  }, [budgetMonthStartDay, recurringFilter, recurringPeriod, recurringTransactions, transactions]);
+
+  const recurringPaidCount = useMemo(() => {
+    return recurringTransactions.filter((item) =>
+      transactions.some(
+        (tx) =>
+          tx.recurringId === item.id &&
+          tx.confirmed !== false &&
+          isDateInBudgetPeriod(tx.date, recurringPeriod),
+      ),
+    ).length;
+  }, [recurringPeriod, recurringTransactions, transactions]);
+  const recurringUnpaidCount = recurringTransactions.length - recurringPaidCount;
 
   const showToggle = (
     <Button
@@ -1212,10 +1287,40 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t(locale, "planningRecurringHint")}
               </p>
+              {recurringTransactions.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1">
+                  {(["unpaid", "paid", "all"] as const).map((filter) => (
+                    <Button
+                      key={filter}
+                      type="button"
+                      variant={recurringFilter === filter ? "default" : "ghost"}
+                      size="sm"
+                      className="h-auto min-h-9 px-1 text-[11px] leading-tight"
+                      onClick={() => setRecurringFilter(filter)}
+                    >
+                      {filter === "unpaid"
+                        ? replaceTokens(t(locale, "planningRecurringFilterUnpaid"), {
+                            count: String(recurringUnpaidCount),
+                          })
+                        : filter === "paid"
+                          ? replaceTokens(t(locale, "planningRecurringFilterPaid"), {
+                              count: String(recurringPaidCount),
+                            })
+                          : replaceTokens(t(locale, "planningRecurringFilterAll"), {
+                              count: String(recurringTransactions.length),
+                            })}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
               {recurringTransactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t(locale, "planningRecurringEmpty")}</p>
+              ) : recurringCards.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                  {t(locale, "planningRecurringFilterEmpty")}
+                </p>
               ) : (
-                recurringTransactions.map((item) => {
+                recurringCards.map(({ item, status, lastPaidDate, skippedInPeriod }) => {
                   const categoryLabel = getCategoryLabel(item.categoryId, categories, locale);
                   const title = recurringDisplayName(item, categoryLabel);
                   const skipped = item.skippedDates ?? [];
@@ -1235,12 +1340,18 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                           <p
                             className={cn(
                               "mb-1 inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                              item.enabled
+                              status === "paid"
+                                ? "bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-100"
+                                : item.enabled
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100"
                                 : "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-100",
                             )}
                           >
-                            {item.enabled
+                            {status === "paid"
+                              ? t(locale, "planningRecurringStatusPaid")
+                              : status === "pending"
+                                ? t(locale, "planningRecurringStatusPending")
+                                : item.enabled
                               ? t(locale, "planningRecurringStatusActive")
                               : t(locale, "planningRecurringStatusPaused")}
                           </p>
@@ -1259,6 +1370,20 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                               date: formatTransactionDate(item.nextRunDate, locale),
                             })}
                           </p>
+                          {lastPaidDate ? (
+                            <p className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-300">
+                              {replaceTokens(t(locale, "planningRecurringPaidOn"), {
+                                date: formatTransactionDate(lastPaidDate, locale),
+                              })}
+                            </p>
+                          ) : null}
+                          {skippedInPeriod.length > 0 && !lastPaidDate ? (
+                            <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                              {replaceTokens(t(locale, "planningRecurringSkippedInPeriod"), {
+                                count: String(skippedInPeriod.length),
+                              })}
+                            </p>
+                          ) : null}
                           <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="shrink-0">{t(locale, "planningRecurringDate")}</span>
                             <Input
