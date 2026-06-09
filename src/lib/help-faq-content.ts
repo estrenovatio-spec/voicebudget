@@ -295,12 +295,10 @@ export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
       ru: [
         "На главной внизу — поле ввода. Напишите фразу и нажмите «Добавить».",
         "Голосом — нажмите микрофон рядом с полем ввода или отправьте голосовое боту в Telegram.",
-        "При включённом облаке записи из бота попадают в общий бюджет.",
       ],
       en: [
         "On the home screen — text field at the bottom. Type a phrase and tap «Add».",
-        "Voice — bot only (voice message in chat). No mic in the Mini App.",
-        "With cloud on, bot entries sync to the household.",
+        "Voice — tap the microphone near the input field or send a voice message to the bot.",
       ],
     },
     example: {
