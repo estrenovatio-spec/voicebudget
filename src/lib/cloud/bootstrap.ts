@@ -6,7 +6,12 @@ import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { fetchAndApplyDevSubscription } from "@/lib/billing/dev-subscription";
 import { isValidSubscriptionPublic } from "@/lib/billing/subscription-shape";
-import { apiBootstrap, apiSubscriptionStatus, apiSync } from "@/lib/cloud/client";
+import {
+  apiBootstrap,
+  apiCreateHousehold,
+  apiSubscriptionStatus,
+  apiSync,
+} from "@/lib/cloud/client";
 import { useCloudStore } from "@/store/useCloudStore";
 
 function clearStaleHouseholdSession(): void {
@@ -88,6 +93,21 @@ export async function runHouseholdBootstrap(): Promise<void> {
       useCloudStore.getState().touchSync();
     } else if (res.token && res.household) {
       useCloudStore.getState().setSession(res.token, res.household);
+    } else if (
+      hasTelegramWebApp() &&
+      (!res.subscription?.enforced || res.subscription.active)
+    ) {
+      try {
+        const created = await apiCreateHousehold({ ...auth, mode: "solo" });
+        if (created.user?.id) {
+          useCloudStore.getState().setCloudUserId(created.user.id);
+        }
+        applyHouseholdSync(created.sync, created.token);
+        useCloudStore.getState().touchSync();
+      } catch (e) {
+        console.warn("[household/bootstrap auto-create]", e);
+        clearStaleHouseholdSession();
+      }
     } else if (!res.subscription?.enforced || res.subscription.active) {
       clearStaleHouseholdSession();
     }

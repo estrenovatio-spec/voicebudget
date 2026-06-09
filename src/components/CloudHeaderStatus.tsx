@@ -41,9 +41,5 @@ export function CloudHeaderStatus() {
     );
   }
 
-  return (
-    <p className="text-right text-xs leading-tight text-muted-foreground">
-      {t(locale, "cloudHeaderOff")}
-    </p>
-  );
+  return null;
 }
