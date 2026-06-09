@@ -13,11 +13,36 @@ export function familyIncomeNoteFromBusiness(
 export function familyIncomeNoteFromPassive(
   unitName: string,
   assetName: string,
+  assetType: "investment" | "rental" | "freelance",
   locale: "ru" | "en",
 ): string {
   const biz = unitName.trim() || (locale === "en" ? "business" : "бизнес");
-  const asset = assetName.trim() || (locale === "en" ? "passive income" : "пассив");
+  const fallback =
+    locale === "en"
+      ? assetType === "rental"
+        ? "rental"
+        : assetType === "investment"
+          ? "investment"
+          : "project"
+      : assetType === "rental"
+        ? "аренда"
+        : assetType === "investment"
+          ? "инвестиции"
+          : "проект";
+  const label =
+    locale === "en"
+      ? assetType === "rental"
+        ? "Rental"
+        : assetType === "investment"
+          ? "Investment"
+          : "Project"
+      : assetType === "rental"
+        ? "Аренда"
+        : assetType === "investment"
+          ? "Инвестиции"
+          : "Проект";
+  const asset = assetName.trim() || fallback;
   return locale === "en"
-    ? `Passive «${asset}» (${biz})`
-    : `Пассив «${asset}» (${biz})`;
+    ? `${label} «${asset}» (${biz})`
+    : `${label} «${asset}» (${biz})`;
 }

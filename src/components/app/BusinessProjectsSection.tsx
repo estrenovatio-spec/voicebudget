@@ -1,7 +1,7 @@
 "use client";
 
-import { Building2, LineChart, Pencil, Plus, Shield, Trash2, Wallet } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Building2, LineChart, Pencil, Plus, Shield, Trash2, Wallet, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { PassiveTransferDialog } from "@/components/app/PassiveTransferDialog";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ import { formatMoney } from "@/lib/format-money";
 import { t } from "@/lib/i18n";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStore } from "@/store/useStore";
+
+const PROJECTS_HOW_HIDDEN_KEY = "voicebudget-business-projects-how-hidden";
 
 function AssetIcon({
   type,
@@ -340,6 +342,15 @@ export function BusinessProjectsSection() {
   const [editHours, setEditHours] = useState("");
   const [editUtilities, setEditUtilities] = useState("");
   const [editUtilitiesMonth, setEditUtilitiesMonth] = useState(() => currentUtilitiesMonthKey());
+  const [showProjectsHow, setShowProjectsHow] = useState(false);
+
+  useEffect(() => {
+    try {
+      setShowProjectsHow(localStorage.getItem(PROJECTS_HOW_HIDDEN_KEY) !== "1");
+    } catch {
+      setShowProjectsHow(true);
+    }
+  }, []);
 
   const assetsByType = useMemo(() => groupAssetsByType(assets, null), [assets]);
   const recurringAssets = useMemo(
@@ -430,6 +441,15 @@ export function BusinessProjectsSection() {
     setTransferAsset(null);
   };
 
+  const hideProjectsHow = () => {
+    setShowProjectsHow(false);
+    try {
+      localStorage.setItem(PROJECTS_HOW_HIDDEN_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <>
       <Card>
@@ -444,14 +464,24 @@ export function BusinessProjectsSection() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed">
-            <p className="font-medium text-foreground">{t(locale, "bizProjectsHowTitle")}</p>
-            <ul className="mt-1 space-y-0.5 text-muted-foreground">
-              <li>{t(locale, "bizProjectsHow1")}</li>
-              <li>{t(locale, "bizProjectsHow2")}</li>
-              <li>{t(locale, "bizProjectsHow3")}</li>
-            </ul>
-          </div>
+          {showProjectsHow ? (
+            <div className="relative rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 pr-9 text-[11px] leading-relaxed">
+              <p className="font-medium text-foreground">{t(locale, "bizProjectsHowTitle")}</p>
+              <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                <li>{t(locale, "bizProjectsHow1")}</li>
+                <li>{t(locale, "bizProjectsHow2")}</li>
+                <li>{t(locale, "bizProjectsHow3")}</li>
+              </ul>
+              <button
+                type="button"
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+                onClick={hideProjectsHow}
+                aria-label={t(locale, "bizHowDismiss")}
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          ) : null}
           {!hasAssets ? (
             <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
           ) : (

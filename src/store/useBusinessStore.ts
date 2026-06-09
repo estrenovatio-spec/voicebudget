@@ -509,7 +509,7 @@ export const useBusinessStore = create<BusinessStore>()(
           type: "income",
           categoryId: getFallbackCategoryId("income"),
           currency: normalizeAppCurrency(),
-          note: familyIncomeNoteFromPassive(unit?.name ?? "", asset.name, locale),
+          note: familyIncomeNoteFromPassive(unit?.name ?? "", asset.name, asset.type, locale),
           date: txDate,
           owner: "me",
         });
