@@ -184,6 +184,8 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   }, []);
 
   const open = !collapsible || (hydrated && !collapsed);
+  const planningTabClass =
+    "h-auto min-h-9 rounded-md px-2 text-xs font-semibold leading-tight text-foreground/70 transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const toggleOpen = useCallback(() => {
     setPlanningPanelCollapsed(!useStore.getState().planningPanelCollapsed);
@@ -475,20 +477,20 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
       {open ? (
         <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
-            <TabsList className="mb-3 flex h-auto w-full justify-start gap-1 overflow-x-auto overflow-y-hidden p-1">
-              <TabsTrigger value="goals" className="min-w-fit shrink-0 px-3 text-xs">
+            <TabsList className="mb-3 grid h-auto w-full grid-cols-6 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
+              <TabsTrigger value="goals" className={`${planningTabClass} col-span-2`}>
                 {t(locale, "planningTabGoals")}
               </TabsTrigger>
-              <TabsTrigger value="limits" className="min-w-fit shrink-0 px-3 text-xs">
+              <TabsTrigger value="limits" className={`${planningTabClass} col-span-2`}>
                 {t(locale, "planningTabLimits")}
               </TabsTrigger>
-              <TabsTrigger value="debts" className="min-w-fit shrink-0 px-3 text-xs">
+              <TabsTrigger value="debts" className={`${planningTabClass} col-span-2`}>
                 {locale === "ru" ? "Долги" : "Debts"}
               </TabsTrigger>
-              <TabsTrigger value="emergency" className="min-w-fit shrink-0 px-3 text-xs">
+              <TabsTrigger value="emergency" className={`${planningTabClass} col-span-3`}>
                 {t(locale, "planningTabEmergency")}
               </TabsTrigger>
-              <TabsTrigger value="recurring" className="min-w-fit shrink-0 px-3 text-xs">
+              <TabsTrigger value="recurring" className={`${planningTabClass} col-span-3`}>
                 {t(locale, "planningTabRecurring")}
               </TabsTrigger>
             </TabsList>
