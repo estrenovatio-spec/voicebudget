@@ -54,13 +54,24 @@ export async function ensureBusinessCloudTables(): Promise<boolean> {
       $$ LANGUAGE plpgsql
     `);
     await prisma.$executeRawUnsafe(`
-      DROP TRIGGER IF EXISTS "UserBusinessLedger_updatedAt_trigger" ON "UserBusinessLedger"
-    `);
-    await prisma.$executeRawUnsafe(`
-      CREATE TRIGGER "UserBusinessLedger_updatedAt_trigger"
-      BEFORE UPDATE ON "UserBusinessLedger"
-      FOR EACH ROW
-      EXECUTE FUNCTION "set_UserBusinessLedger_updatedAt"()
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_trigger
+          WHERE tgname = 'UserBusinessLedger_updatedAt_trigger'
+            AND tgrelid = '"UserBusinessLedger"'::regclass
+        ) THEN
+          CREATE TRIGGER "UserBusinessLedger_updatedAt_trigger"
+          BEFORE UPDATE ON "UserBusinessLedger"
+          FOR EACH ROW
+          EXECUTE FUNCTION "set_UserBusinessLedger_updatedAt"();
+        END IF;
+      EXCEPTION
+        WHEN duplicate_object THEN
+          NULL;
+      END
+      $$
     `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "UserBusinessBackup" (
