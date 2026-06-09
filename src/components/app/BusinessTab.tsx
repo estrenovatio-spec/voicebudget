@@ -353,17 +353,21 @@ function UnitCard({
 function BusinessUnitTabs({
   units,
   activeUnitId,
+  projectsActive,
   metricsMap,
   locale,
   onSelect,
+  onSelectProjects,
   onEdit,
   onAdd,
 }: {
   units: BusinessUnit[];
   activeUnitId: string | null;
+  projectsActive: boolean;
   metricsMap: Map<string, UnitCardMetrics>;
   locale: "ru" | "en";
   onSelect: (unitId: string) => void;
+  onSelectProjects: () => void;
   onEdit: (unitId: string) => void;
   onAdd: () => void;
 }) {
@@ -375,7 +379,7 @@ function BusinessUnitTabs({
         aria-label={t(locale, "bizUnitsTitle")}
       >
         {units.map((unit) => {
-          const active = unit.id === activeUnitId;
+          const active = !projectsActive && unit.id === activeUnitId;
           const metrics = metricsMap.get(unit.id);
           const profit = metrics?.profit ?? 0;
           return (
@@ -424,13 +428,39 @@ function BusinessUnitTabs({
         })}
         <button
           type="button"
+          role="tab"
+          aria-selected={projectsActive}
+          onClick={onSelectProjects}
+          className={cn(
+            "min-w-[7.25rem] flex-1 rounded-md px-2.5 py-2 text-left text-sm font-semibold transition-colors",
+            projectsActive
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
+          )}
+        >
+          <span className="block break-words leading-tight">
+            {t(locale, "bizSectionProjects")}
+          </span>
+          <span
+            className={cn(
+              "mt-0.5 block truncate text-[10px] font-semibold",
+              projectsActive
+                ? "text-primary-foreground/85"
+                : "text-muted-foreground",
+            )}
+          >
+            {t(locale, "bizProjectsTopHint")}
+          </span>
+        </button>
+        <button
+          type="button"
           onClick={onAdd}
           className="flex min-h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
           aria-label={t(locale, "bizUnitAdd")}
         >
           <Plus className="h-4 w-4" aria-hidden />
         </button>
-        {activeUnitId ? (
+        {activeUnitId && !projectsActive ? (
           <button
             type="button"
             onClick={() => onEdit(activeUnitId)}
@@ -1556,9 +1586,14 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         <BusinessUnitTabs
           units={visibleUnits}
           activeUnitId={activeUnitId}
+          projectsActive={businessSection === "projects"}
           metricsMap={unitMetricsMap}
           locale={locale}
-          onSelect={setSelectedUnitId}
+          onSelect={(unitId) => {
+            setSelectedUnitId(unitId);
+            if (businessSection === "projects") setBusinessSection("operations");
+          }}
+          onSelectProjects={() => setBusinessSection("projects")}
           onEdit={openEditUnit}
           onAdd={() => setUnitDialogOpen(true)}
         />
@@ -1580,7 +1615,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         ) : null}
       </div>
 
-      {activeUnit && activeMetrics ? (
+      {businessSection === "projects" ? (
+        <BusinessProjectsSection />
+      ) : activeUnit && activeMetrics ? (
         <>
           <BusinessQuickEntry
             locale={locale}
@@ -1628,20 +1665,17 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   "reserve",
                   "tax",
                   "debts",
-                  "projects",
-                ] as BusinessSection[]
+                ] as Exclude<BusinessSection, "projects">[]
               ).map((section) => {
                 const labelKey = {
                   operations: "bizSectionOperations",
                   reserve: "bizSectionReserve",
                   tax: "bizSectionTax",
                   debts: null,
-                  projects: "bizSectionProjects",
                 }[section] as
                   | "bizSectionOperations"
                   | "bizSectionReserve"
                   | "bizSectionTax"
-                  | "bizSectionProjects"
                   | null;
                 return (
                   <button
@@ -1652,7 +1686,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
                       section === "operations" || section === "reserve" || section === "tax"
                         ? "col-span-2"
-                        : "col-span-3",
+                        : "col-span-6",
                       businessSection === section
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
@@ -2251,9 +2285,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               </Card>
             ) : null}
 
-            {businessSection === "projects" ? (
-              <BusinessProjectsSection />
-            ) : null}
           </div>
         </>
       ) : null}
