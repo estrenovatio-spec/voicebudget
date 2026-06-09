@@ -46,6 +46,38 @@ function limitText(value: string, max: number): string {
   return `${slice}…`;
 }
 
+function makeHumanFallback(
+  spotlight: FamilyAdvisorSpotlight,
+  locale: FamilyAdvisorInput["locale"],
+): FamilyAdvisorSpotlight {
+  const badLanguage =
+    /свободн(ый|ого)? запас|запас периода|по операциям|денежн(ый|ого) поток|cash\s*flow|buffer for this period|периодный баланс|алгоритм|модель|ИИ/i;
+  const cuttingBasics =
+    /не добавлять|постав(ить|ьте).*пауз|сократ|урез|режь|откаж|cut|pause|stop/i;
+  const protectedBasics =
+    /ед[ауые]?|продукт|здоров|аптек|лекар|врач|дет|реб|сад|школ|обуч|образован|жкх|аренд|кварт|коммун|транспорт|бензин|проезд|долг|кредит|налог|интернет|телефон|food|grocery|health|medical|child|school|education|rent|utilities|transport|fuel|debt|loan|tax|internet|phone/i;
+  const joined = `${spotlight.title} ${spotlight.text} ${spotlight.action}`;
+  if (!badLanguage.test(joined) && !(cuttingBasics.test(joined) && protectedBasics.test(joined))) {
+    return spotlight;
+  }
+
+  if (locale === "en") {
+    return {
+      ...spotlight,
+      title: "Check the next payments",
+      text: "Some spending needs planning, not harsh cuts. First separate required payments from flexible purchases.",
+      action: "Open the last few entries and mark what is required, one-off, or better planned next month.",
+    };
+  }
+
+  return {
+    ...spotlight,
+    title: "Проверьте ближайшие платежи",
+    text: "Здесь нужна не жёсткая экономия, а порядок. Сначала отделите обязательные траты от покупок, которые можно спокойно перенести.",
+    action: "Откройте последние операции и отметьте: что обязательно, что разовое, а что лучше заранее заложить в план.",
+  };
+}
+
 function normalizeTone(
   value: unknown,
   fallback: FamilyAdvisorSpotlight["tone"],
@@ -73,7 +105,7 @@ function normalizeSpotlight(
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
       : {};
-  return {
+  return makeHumanFallback({
     title: limitText(
       stringValue(object.title) ||
         stringValue(object.heading) ||
@@ -95,7 +127,7 @@ function normalizeSpotlight(
       260,
     ),
     tone: normalizeTone(object.tone, fallback.tone),
-  };
+  }, input.locale);
 }
 
 function familyAdvisorPrompt(input: FamilyAdvisorInput): string {
@@ -106,10 +138,11 @@ Rewrite the rule-based signal into very simple human language and add ONE small 
 Rules:
 - Use ONLY the facts from the provided signal and context.
 - Do not invent balances, income, categories, debts, goals, or risks.
-- Write so a 10-year-old can understand.
+- Write so a 10-year-old can understand: short words, no financial jargon.
 - No jargon, no shame, no fear, no consultant language.
+- Forbidden phrases in Russian: "свободный запас", "запас периода", "по операциям", "денежный поток", "кассовый разрыв" unless the user is in business context.
 - Never suggest cutting groceries/food, health, children, education, debt minimum payments, rent, utilities, transport, internet, phone, taxes, or mandatory bills.
-- For basics, suggest planning/checking/list/observing, not cutting.
+- For basics, suggest planning/checking/listing/setting aside money, not cutting or pausing.
 - Do not mention AI, model, algorithm, or "I noticed from data".
 - title <= 60 characters, text <= 260 characters, action <= 180 characters.
 - Language: ${input.locale === "ru" ? "Russian" : "English"}.

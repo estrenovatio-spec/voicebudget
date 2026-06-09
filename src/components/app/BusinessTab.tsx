@@ -727,10 +727,10 @@ function BusinessAdvisor({
     text:
       safeWithdraw > 0
         ? isRu
-          ? `Безопасно к выводу сейчас: ${formatMoney(safeWithdraw, locale)}. Это после налога и минимальных платежей.`
+          ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены налог и минимальные платежи.`
           : `Safe to withdraw now: ${formatMoney(safeWithdraw, locale)} after tax and minimum payments.`
         : isRu
-          ? "К выводу лучше не забирать: сначала закрыть налог, минимальные платежи и резерв."
+          ? "Пока лучше не выводить деньги собственнику. Сначала оставьте сумму на налог, обязательные платежи и резерв."
           : "Better not withdraw yet: cover tax, minimum payments, and reserve first.",
     tone: safeWithdraw > 0 ? "ok" : "risk",
   });
@@ -744,14 +744,14 @@ function BusinessAdvisor({
           : "Too early to read margin: no revenue this period."
         : margin < 0
           ? isRu
-            ? `Маржа ${margin}%. Бизнес продаёт ниже расходов — нужен разбор цены, себестоимости и рекламы.`
+            ? `Маржа ${margin}%. Расходы съели выручку: проверьте цену, себестоимость и рекламу.`
             : `Margin is ${margin}%. Sales are below costs — review pricing, cost base, and ads.`
           : margin < 20
             ? isRu
-              ? `Маржа ${margin}%. Зона внимания: небольшой сбой в расходах может съесть прибыль.`
+              ? `Маржа ${margin}%. Прибыль есть, но запас небольшой: рост расходов может быстро её съесть.`
               : `Margin is ${margin}%. Watch closely: a small cost jump can erase profit.`
             : isRu
-              ? `Маржа ${margin}%. Есть пространство для резерва, налога и аккуратного вывода.`
+              ? `Маржа ${margin}%. Бизнес оставляет место для налога, резерва и аккуратного вывода собственнику.`
               : `Margin is ${margin}%. There is room for reserve, tax, and careful withdrawal.`,
     tone: metrics.income <= 0 ? "warn" : margin < 0 ? "risk" : margin < 20 ? "warn" : "ok",
   });
@@ -762,10 +762,10 @@ function BusinessAdvisor({
       text:
         metrics.income > 0
           ? isRu
-            ? `На рекламу ушло ${formatMoney(adSpend, locale)} (${adShare}% выручки). Проверьте: сколько заявок/продаж дал этот расход.`
+            ? `На рекламу ушло ${formatMoney(adSpend, locale)} — это ${adShare}% выручки. Проверьте, сколько заявок или продаж она принесла.`
             : `Ad spend is ${formatMoney(adSpend, locale)} (${adShare}% of revenue). Check leads/sales from this spend.`
           : isRu
-            ? `На рекламу ушло ${formatMoney(adSpend, locale)}, но выручки за период нет. Это тревожный сигнал по окупаемости.`
+            ? `На рекламу ушло ${formatMoney(adSpend, locale)}, а выручки за период нет. Проверьте, не сливает ли реклама деньги без продаж.`
             : `Ad spend is ${formatMoney(adSpend, locale)}, but there is no revenue this period. ROI risk signal.`,
       tone: metrics.income <= 0 || adShare >= 25 ? "risk" : adShare >= 12 ? "warn" : "ok",
     });
@@ -776,10 +776,10 @@ function BusinessAdvisor({
     text:
       cashGap < 0
         ? isRu
-          ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} до налога и обязательных платежей. Вывод денег лучше поставить на паузу.`
+          ? `Не хватает ${formatMoney(Math.abs(cashGap), locale)} на налог и обязательные платежи. Деньги собственнику пока лучше не выводить.`
           : `${formatMoney(Math.abs(cashGap), locale)} short for tax and required payments. Pause withdrawals.`
         : isRu
-          ? `После налога и обязательных платежей остаётся запас ${formatMoney(cashGap, locale)}.`
+          ? `После налога и обязательных платежей остаётся ${formatMoney(cashGap, locale)}. Эту сумму можно дальше делить между резервом и выводом.`
           : `After tax and required payments, buffer is ${formatMoney(cashGap, locale)}.`,
     tone: cashGap < 0 ? "risk" : cashGap < metrics.avgMonthlyExpense * 0.5 ? "warn" : "ok",
   });
@@ -789,10 +789,10 @@ function BusinessAdvisor({
     text:
       reserveMonths >= 3
         ? isRu
-          ? `Резерв закрывает ${reserveMonths} мес расходов. Это сильная позиция для собственника.`
+          ? `Резерв закрывает ${reserveMonths} мес расходов. Бизнесу легче пережить просадку выручки или задержку оплат.`
           : `Reserve covers ${reserveMonths} months of expenses. Strong owner position.`
         : isRu
-          ? `Резерв закрывает ${reserveMonths} мес из цели 3 мес. До активного вывода лучше постепенно усилить запас.`
+          ? `Резерв закрывает ${reserveMonths} мес из цели 3 мес. До крупных выводов лучше постепенно усилить запас.`
           : `Reserve covers ${reserveMonths} of 3 target months. Strengthen it before aggressive withdrawals.`,
     tone: reserveMonths >= 3 ? "ok" : reserveMonths >= 1 ? "warn" : "risk",
   });
@@ -801,7 +801,7 @@ function BusinessAdvisor({
     addSignal({
       label: isRu ? "Налог" : "Tax",
       text: isRu
-        ? `Отложить под налог: ${formatMoney(metrics.taxReserve, locale)}. Эти деньги не считать прибылью собственника.`
+        ? `Под налог стоит держать отдельно ${formatMoney(metrics.taxReserve, locale)}. Это не прибыль собственника, а будущий обязательный платёж.`
         : `Set aside for tax: ${formatMoney(metrics.taxReserve, locale)}. Do not treat it as owner profit.`,
       tone: "warn",
     });
@@ -960,7 +960,7 @@ function BusinessAdvisor({
               )}
             >
               <p className="font-semibold">
-                {isRu ? "ИИ-вывод финсоветника" : "Advisor AI insight"}
+                {isRu ? "Вывод финсоветника" : "Advisor insight"}
               </p>
               <p className="mt-0.5">{aiAdvice.summary}</p>
               <p className="mt-1">
@@ -973,8 +973,8 @@ function BusinessAdvisor({
           ) : aiLoading ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
               {isRu
-                ? "ИИ формулирует короткий вывод по бизнесу..."
-                : "AI is preparing a short business insight..."}
+                ? "Финсоветник формулирует короткий вывод по бизнесу..."
+                : "Advisor is preparing a short business insight..."}
             </p>
           ) : null}
           <div className="mt-2 grid gap-1.5">

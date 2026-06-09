@@ -39,6 +39,13 @@ export type FamilyAdvisorSpotlight = {
   tone: "ok" | "watch" | "risk";
 };
 
+const protectedCategoryPattern =
+  /ед[ауые]?|продукт|здоров|аптек|лекар|врач|дет|реб|сад|школ|обуч|образован|жкх|аренд|кварт|коммун|транспорт|бензин|проезд|долг|кредит|налог|интернет|телефон|food|grocery|health|medical|child|school|education|rent|utilities|transport|fuel|debt|loan|tax|internet|phone/i;
+
+function isProtectedCategoryName(name: string): boolean {
+  return protectedCategoryPattern.test(name);
+}
+
 function daysBetween(from: string, to: string): number {
   const a = new Date(from);
   const b = new Date(to);
@@ -154,28 +161,38 @@ export function buildFamilyAdvisorSpotlight(
     .sort((a, b) => b.spent - b.limit - (a.spent - a.limit))[0];
   if (overLimit) {
     const over = Math.max(0, Math.round(overLimit.spent - overLimit.limit));
+    const protectedCategory = isProtectedCategoryName(overLimit.category);
     return {
       title: isRu ? "Тут потратили больше плана" : "Spent over plan here",
       text: isRu
-        ? `В категории «${overLimit.category}» уже на ${over.toLocaleString("ru-RU")} ₽ больше лимита. Ничего страшного: надо понять, это разовая покупка или лимит слишком маленький.`
+        ? `В категории «${overLimit.category}» уже на ${over.toLocaleString("ru-RU")} ₽ больше плана. Это не повод себя ругать: сначала поймите, это разовый случай или план был слишком низкий.`
         : `${overLimit.category}: ${over.toLocaleString("en-US")} RUB over limit. Not a reason to blame yourself — check if the limit is realistic or the spend was one-off.`,
       action: isRu
-        ? `До конца недели не добавлять лишние траты в «${overLimit.category}».`
-        : `Keep ${overLimit.category} free of new non-essential purchases until week end.`,
+        ? protectedCategory
+          ? `Откройте 3 последние операции в «${overLimit.category}» и решите: план увеличить или часть трат заранее заложить на следующий месяц.`
+          : `До конца недели добавляйте в «${overLimit.category}» только то, что действительно нужно.`
+        : protectedCategory
+          ? `Review the last 3 ${overLimit.category} entries and decide whether the plan should be raised next month.`
+          : `Keep ${overLimit.category} to truly needed purchases until week end.`,
       tone: "risk",
     };
   }
 
   const habit = ctx.personalMemory?.categoryHabits[0] ?? null;
   if (habit && habit.sharePercent >= 40) {
+    const protectedCategory = isProtectedCategoryName(habit.category);
     return {
       title: isRu ? "Сюда уходит много денег" : "A lot goes here",
       text: isRu
-        ? `«${habit.category}» заняла ${habit.sharePercent}% всех расходов. Средний чек — ${habit.avgAmount.toLocaleString("ru-RU")} ₽. Проверьте: это нужные траты или что-то повторяется по привычке.`
+        ? `«${habit.category}» заняла ${habit.sharePercent}% расходов. Средний чек — ${habit.avgAmount.toLocaleString("ru-RU")} ₽. Это сигнал для планирования, а не команда резко экономить.`
         : `${habit.category}: ${habit.sharePercent}% of period expenses, avg ${habit.avgAmount.toLocaleString("en-US")} RUB. Check whether this is planned or leaking money.`,
       action: isRu
-        ? `Откройте 3 последние операции в «${habit.category}» и найдите одну, которую можно делать реже.`
-        : `Review the last 3 ${habit.category} entries and pick one to repeat less often.`,
+        ? protectedCategory
+          ? `Проверьте 3 последние операции в «${habit.category}»: что обязательно, что разовое, а что лучше заранее внести в план.`
+          : `Откройте 3 последние операции в «${habit.category}» и выберите одну покупку, которую можно делать реже.`
+        : protectedCategory
+          ? `Review the last 3 ${habit.category} entries: required, one-off, or better planned ahead.`
+          : `Review the last 3 ${habit.category} entries and pick one to repeat less often.`,
       tone: "watch",
     };
   }
@@ -200,10 +217,10 @@ export function buildFamilyAdvisorSpotlight(
     return {
       title: isRu ? "Нужно проверить ближайшие платежи" : "Check upcoming payments",
       text: isRu
-        ? "По записям видно: траты идут активно, а новых доходов в этом периоде мало или нет. Это не значит, что баланс плохой. Просто стоит проверить, хватит ли денег на обязательные платежи."
+        ? "За этот период расходов больше, чем новых доходов. Это не значит, что денег нет: доход мог прийти раньше. Просто сейчас важно проверить ближайшие обязательные платежи."
         : "The entries do not show a free buffer for this period. This is not your real account balance: income may have arrived earlier while expenses are current.",
       action: isRu
-        ? "Выпишите, что точно нужно оплатить до конца недели, и поставьте одну необязательную категорию на паузу на 2 дня."
+        ? "Выпишите, что точно нужно оплатить до конца недели. Остальные покупки решайте после этого списка."
         : "Separate required payments from flexible spending and pause one category for 48 hours.",
       tone: "watch",
     };

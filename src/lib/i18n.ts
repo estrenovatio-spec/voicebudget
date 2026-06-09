@@ -353,7 +353,7 @@ export const DICT = {
       "Можно вывести после налога: {amount} ₽. Резерв бизнеса — отдельное решение собственника.",
     bizAdvisorReserve: "Резерв закрывает {months} мес расходов из цели 3 мес.",
     bizAdvisorNoRevenue:
-      "За период уже есть расходы, но нет выручки. Проверьте, какие траты прямо ведут к продажам, а какие можно поставить на паузу.",
+      "За период уже есть расходы, но нет выручки. Проверьте, какие траты прямо ведут к продажам, а какие пока лучше не увеличивать.",
     bizAdvisorLoss:
       "Расходы выше выручки. Сначала отделите обязательные платежи от роста, затем проверьте окупаемость рекламы, закупок и подрядчиков.",
     bizAdvisorExpenseRatio:
@@ -361,7 +361,7 @@ export const DICT = {
     bizAdvisorProfit:
       "Бизнес в плюсе. Дальше действуйте как собственник: сначала налог и резерв, затем только безопасная сумма к выводу.",
     bizAdvisorEmpty:
-      "Запишите первый доход или расход. После нескольких операций ИИ начнёт видеть маржу, денежный разрыв, резерв и безопасный вывод.",
+      "Запишите первый доход или расход. После нескольких операций финсоветник начнёт видеть маржу, риск кассового разрыва, резерв и безопасный вывод.",
     bizQuickEntryTitle: "Быстрый ввод",
     bizQuickEntryHint:
       "Например: «15000» или «1000 1000» — создаст несколько доходов/расходов.",
@@ -1418,7 +1418,7 @@ export const DICT = {
     bizAdvisorProfit:
       "The business is profitable. Act like an owner: tax and reserve first, then only the safe withdrawal amount.",
     bizAdvisorEmpty:
-      "Add the first income or expense. After several operations, AI will see margin, cash gap, reserve, and safe withdrawal.",
+      "Add the first income or expense. After several operations, the advisor will see margin, cash gap, reserve, and safe withdrawal.",
     bizQuickEntryTitle: "Quick entry",
     bizQuickEntryHint:
       "For example: “15000” or “1000 1000” — creates several income/expense entries.",

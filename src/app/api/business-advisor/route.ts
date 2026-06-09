@@ -37,17 +37,20 @@ type BusinessAdvisorInput = z.infer<typeof bodySchema>;
 type BusinessAdvisorAdvice = z.infer<typeof adviceSchema>;
 
 function fallbackAdvice(input: z.infer<typeof bodySchema>) {
-  const topRisk = input.signals.find((s) => s.tone === "risk") ?? input.signals.find((s) => s.tone === "warn");
+  const topRisk =
+    input.signals.find((s) => s.tone === "risk") ??
+    input.signals.find((s) => /касс|cash|реклам|ad|марж|margin|налог|tax|резерв|reserve/i.test(s.label) && s.tone === "warn") ??
+    input.signals.find((s) => s.tone === "warn");
   if (input.locale === "en") {
     return {
-      summary: topRisk?.text ?? "The business picture is stable. Keep tax, reserve, and withdrawal separate.",
-      action: "This week: check one number manually — tax, reserve, ad ROI, or safe withdrawal.",
+      summary: topRisk?.text ?? "The business is stable: revenue covers current expenses. Keep tax, reserve, and owner withdrawal as three separate pockets.",
+      action: "This week, check one owner number: how much can be withdrawn without touching tax and reserve.",
       tone: topRisk?.tone ?? ("ok" as const),
     };
   }
   return {
-    summary: topRisk?.text ?? "Картина бизнеса спокойная. Держите отдельно налог, резерв и деньги к выводу.",
-    action: "На этой неделе проверьте один показатель вручную: налог, резерв, окупаемость рекламы или безопасный вывод.",
+    summary: topRisk?.text ?? "Бизнес выглядит спокойно: выручка перекрывает текущие расходы. Налог, резерв и деньги собственника лучше держать как три разные корзины.",
+    action: "На этой неделе проверьте одну цифру: сколько можно вывести, не трогая налог и резерв.",
     tone: topRisk?.tone ?? ("ok" as const),
   };
 }
@@ -141,6 +144,17 @@ function normalizeAdvice(raw: unknown, input: BusinessAdvisorInput): BusinessAdv
   };
 }
 
+function sanitizeAdvice(
+  advice: BusinessAdvisorAdvice,
+  input: BusinessAdvisorInput,
+): BusinessAdvisorAdvice {
+  const bad =
+    /свободн(ый|ого)? запас|запас периода|по операциям|юнит|операционн(ый|ого) баланс|алгоритм|модель|ИИ|unit|algorithm|model/i;
+  const joined = `${advice.summary} ${advice.action}`;
+  if (!bad.test(joined)) return advice;
+  return fallbackAdvice(input);
+}
+
 function advisorPrompt(input: BusinessAdvisorInput): string {
   return `
 You are a senior business financial advisor with 20 years of practical experience.
@@ -149,9 +163,11 @@ Write a short management insight for a small business/freelancer.
 Rules:
 - Use ONLY the provided calculated metrics and signals.
 - Do not invent revenue sources, conversion, clients, profit, or legal/tax instructions.
-- Keep it practical, calm, and owner-focused.
-- Mention the main risk or opportunity.
-- Give one action for this week.
+- Keep it practical, calm, and owner-focused. Write like to a smart small business owner, not an accountant.
+- Prefer concrete owner language: выручка, расходы, прибыль, маржа, налог, резерв, реклама, можно вывести.
+- Avoid jargon: no "операционный баланс", "свободный запас", "юнит", "денежный поток периода".
+- Prioritize in this order: cash gap / required payments, tax, reserve, ad ROI, margin, safe withdrawal.
+- Mention the main risk or opportunity and give ONE action for this week.
 - summary <= 280 characters, action <= 180 characters.
 - Language: ${input.locale === "ru" ? "Russian" : "English"}.
 - Return JSON only: { "summary": string, "action": string, "tone": "ok" | "warn" | "risk" }.
@@ -204,7 +220,9 @@ export async function POST(request: NextRequest) {
       if (!content) throw new Error("empty_business_advice");
 
       const raw: unknown = extractJsonFromLlmContent(content);
-      const validated = adviceSchema.safeParse(normalizeAdvice(raw, parsed.data));
+      const validated = adviceSchema.safeParse(
+        sanitizeAdvice(normalizeAdvice(raw, parsed.data), parsed.data),
+      );
       if (!validated.success) throw new Error("invalid_business_advice_json");
 
       return NextResponse.json({ success: true, advice: validated.data });
