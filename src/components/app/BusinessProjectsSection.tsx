@@ -235,6 +235,59 @@ function SourceMetric({
   );
 }
 
+function FreelancerFlowCard({
+  locale,
+  clients,
+  plannedMonthly,
+  receivedTotal,
+}: {
+  locale: "ru" | "en";
+  clients: number;
+  plannedMonthly: number;
+  receivedTotal: number;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+      <div>
+        <p className="text-sm font-semibold text-foreground">
+          {t(locale, "bizFreelanceFlowTitle")}
+        </p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+          {t(locale, "bizFreelanceFlowHint")}
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <SourceMetric
+          label={t(locale, "bizFreelanceClients")}
+          value={String(clients)}
+        />
+        <SourceMetric
+          label={t(locale, "bizFreelancePlan")}
+          value={`+${formatMoney(plannedMonthly, locale)}`}
+        />
+        <SourceMetric
+          label={t(locale, "bizFreelanceReceived")}
+          value={formatMoney(receivedTotal, locale)}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 text-[11px] leading-tight text-muted-foreground">
+        <span className="rounded-md bg-background/70 px-2 py-1">
+          {t(locale, "bizFreelanceStep1")}
+        </span>
+        <span className="rounded-md bg-background/70 px-2 py-1">
+          {t(locale, "bizFreelanceStep2")}
+        </span>
+        <span className="rounded-md bg-background/70 px-2 py-1">
+          {t(locale, "bizFreelanceStep3")}
+        </span>
+        <span className="rounded-md bg-background/70 px-2 py-1">
+          {t(locale, "bizFreelanceStep4")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function BusinessProjectsSection() {
   const locale = useStore((s) => s.locale);
   const assets = useBusinessStore((s) => s.assets);
@@ -250,7 +303,7 @@ export function BusinessProjectsSection() {
   const [addOpen, setAddOpen] = useState(false);
   const [editAsset, setEditAsset] = useState<BusinessAsset | null>(null);
   const [transferAsset, setTransferAsset] = useState<BusinessAsset | null>(null);
-  const [assetType, setAssetType] = useState<BusinessAssetType>("investment");
+  const [assetType, setAssetType] = useState<BusinessAssetType>("freelance");
   const [assetName, setAssetName] = useState("");
   const [assetCapital, setAssetCapital] = useState("");
   const [assetMonthly, setAssetMonthly] = useState("");
@@ -273,6 +326,18 @@ export function BusinessProjectsSection() {
     () => receipts.reduce((s, r) => s + r.amount, 0),
     [receipts],
   );
+  const freelanceAssets = assetsByType.freelance;
+  const freelanceMonthly = useMemo(
+    () => freelanceAssets.reduce((s, a) => s + a.monthlyNet, 0),
+    [freelanceAssets],
+  );
+  const freelanceReceived = useMemo(() => {
+    const ids = new Set(freelanceAssets.map((a) => a.id));
+    return receipts.reduce((sum, receipt) => {
+      if (!ids.has(receipt.assetId)) return sum;
+      return sum + receipt.amount;
+    }, 0);
+  }, [freelanceAssets, receipts]);
 
   const hasAssets =
     assetsByType.investment.length +
@@ -365,6 +430,12 @@ export function BusinessProjectsSection() {
               <li>{t(locale, "bizProjectsHow3")}</li>
             </ul>
           </div>
+          <FreelancerFlowCard
+            locale={locale}
+            clients={freelanceAssets.length}
+            plannedMonthly={freelanceMonthly}
+            receivedTotal={freelanceReceived}
+          />
 
           {!hasAssets ? (
             <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
@@ -399,6 +470,15 @@ export function BusinessProjectsSection() {
                 </div>
               ) : null}
               <AssetTypeSection
+                type="freelance"
+                assets={assetsByType.freelance}
+                locale={locale}
+                receipts={receipts}
+                onTransfer={setTransferAsset}
+                onEdit={openEdit}
+                onRemove={confirmRemoveAsset}
+              />
+              <AssetTypeSection
                 type="investment"
                 assets={assetsByType.investment}
                 locale={locale}
@@ -410,15 +490,6 @@ export function BusinessProjectsSection() {
               <AssetTypeSection
                 type="rental"
                 assets={assetsByType.rental}
-                locale={locale}
-                receipts={receipts}
-                onTransfer={setTransferAsset}
-                onEdit={openEdit}
-                onRemove={confirmRemoveAsset}
-              />
-              <AssetTypeSection
-                type="freelance"
-                assets={assetsByType.freelance}
                 locale={locale}
                 receipts={receipts}
                 onTransfer={setTransferAsset}
@@ -446,7 +517,7 @@ export function BusinessProjectsSection() {
           </DialogHeader>
           <p className="text-xs text-muted-foreground">{t(locale, "bizAssetDialogHint")}</p>
           <div className="flex gap-2">
-            {(["investment", "rental", "freelance"] as BusinessAssetType[]).map((kind) => (
+            {(["freelance", "investment", "rental"] as BusinessAssetType[]).map((kind) => (
               <Button
                 key={kind}
                 type="button"

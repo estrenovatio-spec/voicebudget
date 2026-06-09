@@ -860,8 +860,8 @@ function BusinessAdvisor({
       label: isRu ? "Налог" : "Tax",
       text: isRu
         ? metrics.taxGap > 0
-          ? `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}. Уже отдельно ${formatMoney(metrics.taxDeposited, locale)}, осталось отложить ${formatMoney(metrics.taxGap, locale)}.`
-          : `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}, а отдельно уже ${formatMoney(metrics.taxDeposited, locale)}. Налоговый конверт закрыт.`
+          ? `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}. Уже отложено ${formatMoney(metrics.taxDeposited, locale)}, осталось отложить ${formatMoney(metrics.taxGap, locale)}.`
+          : `Под налог рекомендовано ${formatMoney(metrics.taxReserve, locale)}, уже отложено ${formatMoney(metrics.taxDeposited, locale)}. Налоговый конверт закрыт.`
         : `Set aside for tax: ${formatMoney(metrics.taxReserve, locale)}. Do not treat it as owner profit.`,
       tone: metrics.taxGap > 0 ? "warn" : "ok",
     });
