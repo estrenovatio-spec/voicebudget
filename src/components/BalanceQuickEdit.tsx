@@ -101,7 +101,7 @@ export function BalanceQuickEdit({
           setOpen(true);
           onEditDialogOpenChange?.(true);
         }}
-        className={`rounded-md px-0.5 tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:bg-muted/60 hover:text-foreground ${className}`}
+        className={`rounded-md tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:bg-muted/60 hover:text-foreground ${className}`}
         aria-label={t(locale, "balanceTapToEdit")}
       >
         {formatMoney(displayed, locale)} {t(locale, "currency")}

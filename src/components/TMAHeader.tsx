@@ -26,7 +26,7 @@ import { BALANCE_AMOUNTS_HIDDEN_KEY } from "@/lib/storage-reset";
 import { useHouseholdBalances, useStore } from "@/store/useStore";
 
 const balanceAmountClass =
-  "shrink-0 text-sm font-semibold leading-tight tabular-nums text-foreground";
+  "inline-flex min-w-[7.5rem] items-baseline justify-end gap-1 whitespace-nowrap text-right text-sm font-semibold leading-tight tabular-nums text-foreground";
 
 /** Подпись слева (до 2 строк для длинных имён), суммы — справа */
 function BalanceRow({
@@ -78,7 +78,10 @@ function BalanceRow({
           label
         )}
       </button>
-      <div className="shrink-0 justify-self-end tabular-nums" data-balance-amount-zone>
+      <div
+        className="flex shrink-0 justify-self-end text-right tabular-nums"
+        data-balance-amount-zone
+      >
         {children}
       </div>
     </div>
