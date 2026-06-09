@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
 import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
+import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -1605,11 +1606,16 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               locale={locale}
             />
           </div>
-          {headerControls}
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {headerControls}
+            <div className="rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
+              <LiveRatesBar />
+            </div>
+          </div>
         </div>
       ) : (
         <>
-          <div>
+          <div className="flex items-start justify-between gap-2">
             <h2 className="flex items-center gap-2 text-lg font-bold">
               <BriefcaseBusiness
                 className="h-5 w-5 text-primary"
@@ -1617,6 +1623,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               />
               {t(locale, "bizTitle")}
             </h2>
+            <div className="shrink-0 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
+              <LiveRatesBar />
+            </div>
           </div>
           <BusinessTotalBalance
             income={totalMetrics.income}
