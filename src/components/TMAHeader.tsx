@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BalanceQuickEdit } from "@/components/BalanceQuickEdit";
 import { PreviewHeaderNav } from "@/components/app/PreviewHeaderNav";
-import { CloudHeaderStatus } from "@/components/CloudHeaderStatus";
 import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { PartnerTransferDialog } from "@/components/PartnerTransferDialog";
 import { Settings } from "lucide-react";
@@ -254,7 +253,6 @@ export function TMAHeader({
               </Button>
             ) : null}
           </div>
-          <CloudHeaderStatus />
           <LiveRatesBar />
         </div>
       </div>
