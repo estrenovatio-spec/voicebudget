@@ -19,14 +19,16 @@ const FinancialChart = dynamic(
 
 export function HomeSections() {
   const locale = useStore((s) => s.locale);
+  const familyTabClass =
+    "h-auto min-h-10 rounded-md px-1 text-[11px] font-semibold leading-tight text-foreground/70 transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   return (
     <Tabs defaultValue="operations" className="space-y-2">
-      <TabsList className="grid h-auto w-full grid-cols-4 gap-1 p-1">
-        <TabsTrigger value="operations" className="h-auto min-h-10 px-1 text-[11px] leading-tight">
+      <TabsList className="grid h-auto w-full grid-cols-4 gap-1 rounded-lg border border-primary/25 bg-primary/10 p-1 shadow-sm">
+        <TabsTrigger value="operations" className={familyTabClass}>
           {locale === "ru" ? "Операции" : "Entries"}
         </TabsTrigger>
-        <TabsTrigger value="planning" className="h-auto min-h-10 px-1 text-[11px] leading-tight">
+        <TabsTrigger value="planning" className={familyTabClass}>
           {locale === "ru" ? (
             <span className="text-center">
               Цели
@@ -41,10 +43,10 @@ export function HomeSections() {
             </span>
           )}
         </TabsTrigger>
-        <TabsTrigger value="stats" className="h-auto min-h-10 px-1 text-[11px] leading-tight">
+        <TabsTrigger value="stats" className={familyTabClass}>
           {locale === "ru" ? "Статистика" : "Stats"}
         </TabsTrigger>
-        <TabsTrigger value="advisor" className="h-auto min-h-10 px-1 text-[11px] leading-tight">
+        <TabsTrigger value="advisor" className={familyTabClass}>
           {locale === "ru" ? (
             <span className="text-center">
               Фин
