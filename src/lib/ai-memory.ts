@@ -5,7 +5,9 @@ export type AiMemoryRule = {
   categoryId: string;
   type: TxType;
   weight: number;
+  signalCount: number;
   source: "voice" | "text" | "correction";
+  firstSeenAt: string;
   lastSeenAt: string;
 };
 
@@ -40,6 +42,32 @@ function normalizeText(input: string): string {
     .replace(/\b\d+[\d\s.,]*\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function tokenSet(phrase: string): Set<string> {
+  return new Set(normalizeText(phrase).split(" ").filter((w) => w.length >= 3));
+}
+
+function phraseSimilarity(a: string, b: string): number {
+  const left = tokenSet(a);
+  const right = tokenSet(b);
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  for (const token of left) {
+    if (right.has(token)) overlap += 1;
+  }
+  return overlap / Math.max(left.size, right.size);
+}
+
+function areSimilarPhrases(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length >= 5 && b.length >= 5 && (a.includes(b) || b.includes(a))) return true;
+  return phraseSimilarity(a, b) >= 0.72;
+}
+
+function mergePhraseLabel(current: string, next: string): string {
+  if (next.length < current.length && areSimilarPhrases(current, next)) return next;
+  return current;
 }
 
 function phraseCandidates(input: string): string[] {
@@ -90,15 +118,40 @@ function readAiMemory(): AiUserMemory {
     return {
       version: 1,
       rules: parsed.rules
-        .filter(
-          (r): r is AiMemoryRule =>
-            Boolean(
-              r &&
-                typeof r.phrase === "string" &&
-                typeof r.categoryId === "string" &&
-                (r.type === "income" || r.type === "expense"),
-            ),
+        .filter((r) =>
+          Boolean(
+            r &&
+              typeof r.phrase === "string" &&
+              typeof r.categoryId === "string" &&
+              (r.type === "income" || r.type === "expense"),
+          ),
         )
+        .map((r) => {
+          const rule = r as Partial<AiMemoryRule>;
+          const lastSeenAt =
+            typeof rule.lastSeenAt === "string" ? rule.lastSeenAt : nowIso();
+          return {
+            phrase: normalizeText(rule.phrase ?? ""),
+            categoryId: String(rule.categoryId ?? ""),
+            type: rule.type === "income" ? "income" : "expense",
+            weight:
+              typeof rule.weight === "number" && Number.isFinite(rule.weight)
+                ? Math.max(1, Math.round(rule.weight))
+                : 1,
+            signalCount:
+              typeof rule.signalCount === "number" && Number.isFinite(rule.signalCount)
+                ? Math.max(1, Math.round(rule.signalCount))
+                : 1,
+            source:
+              rule.source === "correction" || rule.source === "voice" || rule.source === "text"
+                ? rule.source
+                : "text",
+            firstSeenAt:
+              typeof rule.firstSeenAt === "string" ? rule.firstSeenAt : lastSeenAt,
+            lastSeenAt,
+          } satisfies AiMemoryRule;
+        })
+        .filter((r) => r.phrase.length >= 3 && r.categoryId.length > 0)
         .slice(0, MAX_RULES),
     };
   } catch {
@@ -143,14 +196,26 @@ function rememberRule(rule: Omit<AiMemoryRule, "lastSeenAt">): void {
   const phrase = normalizeText(rule.phrase);
   if (phrase.length < 3) return;
   const existing = memory.rules.find(
-    (r) => r.phrase === phrase && r.categoryId === rule.categoryId && r.type === rule.type,
+    (r) =>
+      r.categoryId === rule.categoryId &&
+      r.type === rule.type &&
+      areSimilarPhrases(r.phrase, phrase),
   );
   if (existing) {
     existing.weight = Math.min(99, existing.weight + rule.weight);
+    existing.signalCount = Math.min(999, (existing.signalCount ?? 1) + 1);
+    existing.phrase = mergePhraseLabel(existing.phrase, phrase);
     existing.source = rule.source === "correction" ? "correction" : existing.source;
     existing.lastSeenAt = nowIso();
   } else {
-    memory.rules.push({ ...rule, phrase, lastSeenAt: nowIso() });
+    const seenAt = nowIso();
+    memory.rules.push({
+      ...rule,
+      phrase,
+      signalCount: Math.max(1, rule.signalCount ?? 1),
+      firstSeenAt: rule.firstSeenAt ?? seenAt,
+      lastSeenAt: seenAt,
+    });
   }
   memory.rules.sort((a, b) => b.weight - a.weight || b.lastSeenAt.localeCompare(a.lastSeenAt));
   writeAiMemory({ version: 1, rules: memory.rules.slice(0, MAX_RULES) });
@@ -169,7 +234,9 @@ export function recordAiInputLearning(
       categoryId: tx.categoryId,
       type: tx.type,
       weight: source === "voice" ? 2 : 1,
+      signalCount: 1,
       source,
+      firstSeenAt: nowIso(),
     });
   }
 }
@@ -186,7 +253,9 @@ export function recordAiCorrectionLearning(params: {
       categoryId: after.categoryId,
       type: after.type,
       weight: 7,
+      signalCount: 1,
       source: "correction",
+      firstSeenAt: nowIso(),
     });
   }
 }
@@ -227,13 +296,36 @@ export function matchAiMemoryCategoryId(
 
   for (const rule of memory.rules) {
     if (rule.type !== type || !categoryIds.has(rule.categoryId)) continue;
-    if (!candidates.has(rule.phrase)) continue;
+    const matches = candidates.has(rule.phrase) || [...candidates].some((candidate) => areSimilarPhrases(candidate, rule.phrase));
+    if (!matches) continue;
     if (!best || rule.weight > best.weight || rule.lastSeenAt > best.lastSeenAt) {
       best = rule;
     }
   }
 
   return best?.categoryId ?? null;
+}
+
+export function aiMemoryConfidence(rule: AiMemoryRule): number {
+  const sourceBoost = rule.source === "correction" ? 22 : rule.source === "voice" ? 10 : 4;
+  const weightScore = Math.min(45, Math.round(rule.weight * 3.2));
+  const signalScore = Math.min(25, Math.round((rule.signalCount ?? 1) * 6));
+  return Math.max(35, Math.min(98, 28 + sourceBoost + weightScore + signalScore));
+}
+
+export function aiMemoryReason(rule: AiMemoryRule, locale: Locale): string {
+  const confidence = aiMemoryConfidence(rule);
+  if (locale !== "ru") {
+    if (rule.source === "correction") {
+      return `You corrected this category. Confidence ${confidence}%.`;
+    }
+    return `${rule.signalCount} signal(s) from ${rule.source}. Confidence ${confidence}%.`;
+  }
+  if (rule.source === "correction") {
+    return `Вы исправили категорию вручную. Уверенность ${confidence}%.`;
+  }
+  const source = rule.source === "voice" ? "голоса" : "текста";
+  return `${rule.signalCount} сигнал(ов) из ${source}. Уверенность ${confidence}%.`;
 }
 
 export function buildAiMemorySnapshot(
