@@ -39,10 +39,16 @@ import { t } from "@/lib/i18n";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStore } from "@/store/useStore";
 
-function AssetIcon({ type }: { type: BusinessAssetType }) {
-  if (type === "rental") return <Building2 className="h-4 w-4 text-primary" aria-hidden />;
-  if (type === "freelance") return <Wallet className="h-4 w-4 text-primary" aria-hidden />;
-  return <LineChart className="h-4 w-4 text-primary" aria-hidden />;
+function AssetIcon({
+  type,
+  className = "text-primary",
+}: {
+  type: BusinessAssetType;
+  className?: string;
+}) {
+  if (type === "rental") return <Building2 className={`h-4 w-4 ${className}`} aria-hidden />;
+  if (type === "freelance") return <Wallet className={`h-4 w-4 ${className}`} aria-hidden />;
+  return <LineChart className={`h-4 w-4 ${className}`} aria-hidden />;
 }
 
 function assetTypeLabel(type: BusinessAssetType, locale: "ru" | "en"): string {
@@ -252,15 +258,22 @@ function AssetTypeSection({
               amount: formatMoney(summary.monthlyNet, locale),
             })
       : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`;
+  const isMainSource = type === "freelance" || type === "rental";
+  const headerClass = isMainSource
+    ? "flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-emerald-600 px-2.5 py-1.5 text-white shadow-sm shadow-emerald-900/10"
+    : "flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5";
+  const summaryClass = isMainSource
+    ? "text-right text-[11px] tabular-nums text-white/90"
+    : "text-right text-[11px] tabular-nums text-muted-foreground";
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5">
+      <div className={headerClass}>
         <p className="flex items-center gap-1.5 text-sm font-semibold">
-          <AssetIcon type={type} />
+          <AssetIcon type={type} className={isMainSource ? "text-white" : "text-primary"} />
           {assetTypeLabel(type, locale)}
         </p>
-        <span className="text-right text-[11px] tabular-nums text-muted-foreground">
+        <span className={summaryClass}>
           {summary.capital > 0
             ? t(locale, "bizTypeSummary", {
                 capital: formatMoney(summary.capital, locale),
@@ -294,7 +307,7 @@ function SourceMetric({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-lg bg-muted/45 px-2.5 py-2">
+    <div className="min-w-0 rounded-lg border border-emerald-500/15 bg-emerald-50 px-2.5 py-2 dark:border-emerald-400/15 dark:bg-emerald-950/20">
       <p className="text-[10px] font-medium leading-tight text-muted-foreground">{label}</p>
       <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{value}</p>
     </div>
@@ -464,7 +477,7 @@ export function BusinessProjectsSection() {
                 />
               </div>
               {portfolio.totalCapital > 0 ? (
-                <div className="rounded-lg bg-primary/8 px-3 py-2 text-xs">
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-xs dark:border-emerald-400/15 dark:bg-emerald-950/25">
                   <p className="font-medium">{t(locale, "bizPortfolioSummary")}</p>
                   <p className="mt-0.5 tabular-nums text-muted-foreground">
                     {t(locale, "bizAssetsTotal", {
