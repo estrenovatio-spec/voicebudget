@@ -224,9 +224,6 @@ export function TMAHeader({
                 </>
               ) : null}
             </div>
-            <div className="mt-2 flex w-full justify-center border-t border-primary/10 pt-2">
-              <LiveRatesBar />
-            </div>
             {hasPartner ? (
               <div className="mt-2 border-t border-primary/10 pt-2">
                 <PartnerTransferDialog
@@ -258,6 +255,9 @@ export function TMAHeader({
                 <Settings className="h-4 w-4" aria-hidden />
               </Button>
             ) : null}
+          </div>
+          <div className="mt-2.5 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
+            <LiveRatesBar />
           </div>
         </div>
       </div>
