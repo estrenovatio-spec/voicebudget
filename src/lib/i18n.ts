@@ -685,9 +685,11 @@ export const DICT = {
     cloudTitle: "Сохранение и семья",
     cloudHint:
       "Сохранение, партнёр и запуск заново — всё в одном месте.",
-    cloudDeviceResetTitle: "Начать с чистого телефона",
+    cloudDeviceResetTitle: "Начать с чистого листа",
     cloudDeviceResetHint:
-      "Очистит данные только на этом устройстве и остановит автосинхронизацию. Если старые данные в облаке больше не нужны, после очистки нажмите здесь «Начать заново в облаке».",
+      "Очистит данные только на этом телефоне и остановит автосинхронизацию. После очистки нажмите ниже «Заменить операции в облаке», чтобы старая история с сервера не вернулась.",
+    cloudDeviceResetDone:
+      "Телефон очищен. Теперь нажмите «Заменить операции в облаке», если хотите начать заново и на сервере.",
     cloudWebLoginTitle: "Войти через Telegram",
     cloudWebLoginHint:
       "Тот же аккаунт, что в Mini App: операции с телефона и с сайта будут в одном облаке.",
@@ -732,17 +734,17 @@ export const DICT = {
     cloudSyncPullHint: "Облако важнее — список здесь заменится",
     cloudSyncPush: "Отправить на облако",
     cloudSyncPushHint: "Это устройство важнее — допишется в облако",
-    cloudSyncReplace: "Заменить облако этим телефоном",
+    cloudSyncReplace: "Заменить операции в облаке",
     cloudSyncReplaceHint: "В облаке останутся только операции этого телефона: {count}",
     cloudSyncPullConfirm:
       "Заменить операции на этом устройстве данными из облака? Локальные записи, которых нет в облаке, пропадут с экрана.",
     cloudSyncPushConfirm:
       "Отправить все операции с этого устройства в облако? Совпадающие по ID обновятся, остальное в облаке останется.",
     cloudSyncReplaceConfirm:
-      "Начать заново в облаке? Старые операции на сервере удалятся, а останутся только операции с этого телефона. Это нужно, если вы очистили телефон и не хотите возвращать старую историю.",
+      "Заменить операции в облаке данными этого телефона? Старые операции на сервере удалятся, а останутся только операции с этого телефона. Если телефон очищен, в облаке тоже будет чистый список.",
     cloudSyncSuccessPull: "Скачано с облака",
     cloudSyncSuccessPush: "Отправлено в облако",
-    cloudSyncSuccessReplace: "Облако заменено данными этого телефона",
+    cloudSyncSuccessReplace: "Операции в облаке заменены",
     cloudSyncFailed: "Синхронизация не удалась",
     cloudWriteLocalOnly:
       "Операция на этом телефоне есть, в облако не записалась — нажмите «Синхронизировать» в настройках",
@@ -1801,9 +1803,11 @@ export const DICT = {
     settingsSaved: "Saved",
     cloudTitle: "Save & household",
     cloudHint: "Saving, partner setup and fresh start are in one place.",
-    cloudDeviceResetTitle: "Start with a clean phone",
+    cloudDeviceResetTitle: "Start fresh",
     cloudDeviceResetHint:
-      "Clears data only on this device and pauses auto-sync. If old cloud data is no longer needed, after clearing tap “Start fresh in cloud” here.",
+      "Clears data only on this phone and pauses auto-sync. After clearing, tap “Replace cloud operations” below so old server history does not come back.",
+    cloudDeviceResetDone:
+      "Phone cleared. Now tap “Replace cloud operations” if you want to start fresh on the server too.",
     cloudWebLoginTitle: "Log in with Telegram",
     cloudWebLoginHint:
       "Same account as in the Mini App — phone and web stay in sync.",
@@ -1850,17 +1854,17 @@ export const DICT = {
     cloudSyncPush: "Upload to cloud",
     cloudSyncPushHint:
       "This device wins — merges your operations into the cloud",
-    cloudSyncReplace: "Replace cloud with this phone",
+    cloudSyncReplace: "Replace cloud operations",
     cloudSyncReplaceHint: "Cloud will keep only this phone's operations: {count}",
     cloudSyncPullConfirm:
       "Replace operations on this device with cloud data? Local-only entries will disappear from this screen.",
     cloudSyncPushConfirm:
       "Upload all operations from this device to the cloud? Matching IDs update; other cloud data stays.",
     cloudSyncReplaceConfirm:
-      "Start fresh in cloud? Old server operations will be deleted; only this phone's operations will remain. Use this after clearing the phone when you do not want old history back.",
+      "Replace cloud operations with this phone's data? Old server operations will be deleted; only this phone's operations will remain. If the phone is cleared, the cloud list will be clean too.",
     cloudSyncSuccessPull: "Downloaded from cloud",
     cloudSyncSuccessPush: "Uploaded to cloud",
-    cloudSyncSuccessReplace: "Cloud replaced with this phone's data",
+    cloudSyncSuccessReplace: "Cloud operations replaced",
     cloudSyncFailed: "Sync failed",
     cloudWriteLocalOnly:
       "Saved on this device only — cloud upload failed; tap Sync in settings",

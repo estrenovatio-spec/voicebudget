@@ -171,7 +171,7 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
           {t(locale, "cloudProtectedNotice")}
         </p>
 
-        <CloudSyncActions embedded />
+        <CloudSyncActions embedded showReplace={false} />
         <ArchiveRestorePanel />
 
         {subscription?.enforced && subscription.active && (

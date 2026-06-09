@@ -14,6 +14,7 @@ type Props = {
   /** Hide section title (e.g. inside settings panel) */
   embedded?: boolean;
   onDisconnect?: () => void;
+  showReplace?: boolean;
 };
 
 const cloudPullButtonClass =
@@ -24,7 +25,7 @@ const cloudPushButtonClass =
 
 const cloudActionHintClass = "text-white/80";
 
-export function CloudSyncActions({ embedded, onDisconnect }: Props) {
+export function CloudSyncActions({ embedded, onDisconnect, showReplace = true }: Props) {
   const locale = useStore((s) => s.locale);
   const txCount = useStore((s) => s.transactions.length);
   const lastSyncedAt = useCloudStore((s) => s.lastSyncedAt);
@@ -144,25 +145,27 @@ export function CloudSyncActions({ embedded, onDisconnect }: Props) {
         </Button>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
-        disabled={loading}
-        onClick={() => void handleReplace()}
-      >
-        <span className="flex w-full min-w-0 items-center gap-2 font-medium leading-snug">
-          {loading && lastAction === "replace" ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-          ) : (
-            <RotateCcw className="h-4 w-4 shrink-0" />
-          )}
-          <span className="min-w-0 break-words">{t(locale, "cloudSyncReplace")}</span>
-        </span>
-        <span className="w-full break-words text-xs font-normal leading-snug text-muted-foreground">
-          {t(locale, "cloudSyncReplaceHint", { count: String(txCount) })}
-        </span>
-      </Button>
+      {showReplace ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-11 w-full min-w-0 whitespace-normal flex-col items-start gap-0.5 px-3 py-2 text-left"
+          disabled={loading}
+          onClick={() => void handleReplace()}
+        >
+          <span className="flex w-full min-w-0 items-center gap-2 font-medium leading-snug">
+            {loading && lastAction === "replace" ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4 shrink-0" />
+            )}
+            <span className="min-w-0 break-words">{t(locale, "cloudSyncReplace")}</span>
+          </span>
+          <span className="w-full break-words text-xs font-normal leading-snug text-muted-foreground">
+            {t(locale, "cloudSyncReplaceHint", { count: String(txCount) })}
+          </span>
+        </Button>
+      ) : null}
 
       {error && (
         <p className="text-xs text-destructive">

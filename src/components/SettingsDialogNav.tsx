@@ -13,8 +13,11 @@ import { OwnerChipColorPicker } from "@/components/OwnerChipColorPicker";
 import { VehicleSettingsPanel } from "@/components/VehicleSettingsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
+import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
 import { parsePartnerKeywordsInput } from "@/lib/detect-owner";
+import { defaultBusinessUnit } from "@/lib/business/types";
 import {
   DEFAULT_MY_CHIP_COLOR,
   DEFAULT_PARTNER_CHIP_COLOR,
@@ -22,8 +25,9 @@ import {
 import { myDisplayName, partnerDisplayName, partnerTabLabel } from "@/lib/owner-labels";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { hardReloadApp } from "@/lib/storage-reset";
+import { clearAppStorage } from "@/lib/storage-reset";
 import type { Locale } from "@/types";
+import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStore } from "@/store/useStore";
 
 type SettingsScreen =
@@ -70,6 +74,8 @@ export function SettingsDialogNav({
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
   const setPartnerChipColor = useStore((s) => s.setPartnerChipColor);
+  const { loading: cloudLoading, replaceCloudWithThisDevice } = useHouseholdCloud();
+  const { toast } = useToast();
   const [screen, setScreen] = useState<SettingsScreen>("menu");
   const [myNameInput, setMyNameInput] = useState(userName ?? "");
   const [partnerInput, setPartnerInput] = useState(partnerName ?? "");
@@ -136,7 +142,44 @@ export function SettingsDialogNav({
       setConfirmClear(true);
       return;
     }
-    hardReloadApp();
+    clearAppStorage();
+    useStore.getState().clearAll();
+    useStore.setState({
+      savingsGoals: [],
+      categoryBudgets: [],
+      recurringTransactions: [],
+      debts: [],
+      deletedCategoryArchive: [],
+      vehicles: [],
+      lastFuelVehicleId: null,
+      pendingOdometerPrompt: null,
+      cashOffsetMe: 0,
+      cashOffsetPartner: 0,
+      statsPeriodOverride: null,
+    });
+    useBusinessStore.setState({
+      units: [defaultBusinessUnit()],
+      transactions: [],
+      deletedTransactionIds: [],
+      assets: [],
+      debts: [],
+      deletedUnitsArchive: [],
+      passiveReceipts: [],
+      selectedUnitId: null,
+      cloudSyncedAt: null,
+      taxRatePct: 0,
+    });
+    setConfirmClear(false);
+    toast(t(locale, "cloudDeviceResetDone"), "success");
+  };
+
+  const handleReplaceCloudOperations = async () => {
+    if (!window.confirm(t(locale, "cloudSyncReplaceConfirm"))) return;
+    const ok = await replaceCloudWithThisDevice();
+    toast(
+      ok ? t(locale, "cloudSyncSuccessReplace") : t(locale, "cloudSyncFailed"),
+      ok ? "success" : "error",
+    );
   };
 
   const activeItem = MENU_ITEMS.find((m) => m.id === screen);
@@ -193,6 +236,15 @@ export function SettingsDialogNav({
           </div>
           <Button variant="destructive" className="w-full" onClick={handleClear} type="button">
             {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto min-h-10 w-full whitespace-normal text-xs"
+            disabled={cloudLoading}
+            onClick={() => void handleReplaceCloudOperations()}
+          >
+            {t(locale, "cloudSyncReplace")}
           </Button>
         </div>
         <UpdateAppButton />
