@@ -12,16 +12,12 @@ function looksLikeSingleFormattedAmount(parts: string[], separators: string[]): 
   if (parts.length === 2 && parts[1].length <= 2) {
     return separators.length === 1 && /^[,.]+$/.test(separators[0]);
   }
-  if (
-    parts.length === 2 &&
+  return (
+    parts.length >= 3 &&
+    separators.length === parts.length - 1 &&
     parts[0].length <= 3 &&
-    parts[1].length === 3 &&
-    separators.length === 1 &&
-    /[,.]/.test(separators[0])
-  ) {
-    return true;
-  }
-  return separators.length === parts.length - 1 && parts[0].length <= 3 && parts.slice(1).every((p) => p.length === 3);
+    parts.slice(1).every((p) => p.length === 3)
+  );
 }
 
 function parseSeparatedAmountSequence(sequence: string): number[] {
