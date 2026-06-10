@@ -53,6 +53,7 @@ type BusinessStore = {
   transactions: BusinessTransaction[];
   deletedTransactionIds: string[];
   assets: BusinessAsset[];
+  deletedAssetIds: string[];
   debts: BusinessDebt[];
   deletedUnitsArchive: DeletedBusinessUnitArchive[];
   passiveReceipts: BusinessPassiveReceipt[];
@@ -137,6 +138,7 @@ function migratePersisted(raw: unknown): Pick<
   | "transactions"
   | "deletedTransactionIds"
   | "assets"
+  | "deletedAssetIds"
   | "debts"
   | "deletedUnitsArchive"
   | "passiveReceipts"
@@ -179,6 +181,10 @@ function migratePersisted(raw: unknown): Pick<
     : [];
   const deletedTransactionIdSet = new Set(deletedTransactionIds);
   const visibleTransactions = transactions.filter((tx) => !deletedTransactionIdSet.has(tx.id));
+  const deletedAssetIds = Array.isArray(r.deletedAssetIds)
+    ? (r.deletedAssetIds as unknown[]).filter((id): id is string => typeof id === "string")
+    : [];
+  const deletedAssetIdSet = new Set(deletedAssetIds);
   const assets = (Array.isArray(r.assets) ? r.assets : [])
     .filter((a) => {
       const asset = a as BusinessAsset;
@@ -190,6 +196,7 @@ function migratePersisted(raw: unknown): Pick<
         typeof asset.type === "string"
       );
     })
+    .filter((asset) => !deletedAssetIdSet.has(asset.id))
     .map((a) => {
       const asset = a as BusinessAsset;
       const base: BusinessAsset = {
@@ -213,7 +220,8 @@ function migratePersisted(raw: unknown): Pick<
         rec &&
         typeof rec.id === "string" &&
         typeof rec.assetId === "string" &&
-        typeof rec.linkedFamilyTxId === "string"
+        typeof rec.linkedFamilyTxId === "string" &&
+        !deletedAssetIdSet.has(rec.assetId)
       );
     },
   ) as BusinessPassiveReceipt[];
@@ -260,6 +268,7 @@ function migratePersisted(raw: unknown): Pick<
     transactions: visibleTransactions,
     deletedTransactionIds,
     assets,
+    deletedAssetIds,
     debts,
     deletedUnitsArchive,
     passiveReceipts,
@@ -280,6 +289,7 @@ export const useBusinessStore = create<BusinessStore>()(
       transactions: [],
       deletedTransactionIds: [],
       assets: [],
+      deletedAssetIds: [],
       debts: [],
       deletedUnitsArchive: [],
       passiveReceipts: [],
@@ -751,6 +761,7 @@ export const useBusinessStore = create<BusinessStore>()(
       removeAsset: (id) => {
         set((s) => ({
           assets: s.assets.filter((a) => a.id !== id),
+          deletedAssetIds: [...new Set([...s.deletedAssetIds, id])].slice(-500),
           passiveReceipts: s.passiveReceipts.filter((r) => r.assetId !== id),
         }));
         void pushBusinessToCloud();
@@ -772,6 +783,7 @@ export const useBusinessStore = create<BusinessStore>()(
         transactions: get().transactions,
         deletedTransactionIds: get().deletedTransactionIds,
         assets: get().assets,
+        deletedAssetIds: get().deletedAssetIds,
         debts: get().debts,
         deletedUnitsArchive: get().deletedUnitsArchive,
         passiveReceipts: get().passiveReceipts,
@@ -805,6 +817,7 @@ export const useBusinessStore = create<BusinessStore>()(
         transactions: state.transactions,
         deletedTransactionIds: state.deletedTransactionIds,
         assets: state.assets,
+        deletedAssetIds: state.deletedAssetIds,
         debts: state.debts,
         deletedUnitsArchive: state.deletedUnitsArchive,
         passiveReceipts: state.passiveReceipts,

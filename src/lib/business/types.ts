@@ -149,6 +149,7 @@ export type BusinessCloudPayload = {
   transactions: BusinessTransaction[];
   deletedTransactionIds?: string[];
   assets: BusinessAsset[];
+  deletedAssetIds?: string[];
   passiveReceipts?: BusinessPassiveReceipt[];
   debts?: BusinessDebt[];
   deletedUnitsArchive?: DeletedBusinessUnitArchive[];

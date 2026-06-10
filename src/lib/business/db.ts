@@ -105,6 +105,7 @@ function emptyPayload(): BusinessCloudPayload {
     transactions: [],
     deletedTransactionIds: [],
     assets: [],
+    deletedAssetIds: [],
     debts: [],
     deletedUnitsArchive: [],
     passiveReceipts: [],
@@ -121,6 +122,10 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
     ? o.deletedTransactionIds.filter((id): id is string => typeof id === "string")
     : [];
   const deletedTransactionIdSet = new Set(deletedTransactionIds);
+  const deletedAssetIds = Array.isArray(o.deletedAssetIds)
+    ? o.deletedAssetIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const deletedAssetIdSet = new Set(deletedAssetIds);
   const assets = Array.isArray(o.assets) ? o.assets : [];
   const debts = Array.isArray(o.debts) ? o.debts : [];
   const deletedUnitsArchive = Array.isArray(o.deletedUnitsArchive) ? o.deletedUnitsArchive : [];
@@ -136,10 +141,11 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
         }))
         .filter((t) => !deletedTransactionIdSet.has((t as { id?: string }).id ?? "")) as BusinessCloudPayload["transactions"],
       deletedTransactionIds,
+      deletedAssetIds,
       assets: assets.map((a) => ({
         ...(a as object),
         unitId: (a as { unitId?: string }).unitId ?? unit.id,
-      })) as BusinessCloudPayload["assets"],
+      })).filter((a) => !deletedAssetIdSet.has((a as { id?: string }).id ?? "")) as BusinessCloudPayload["assets"],
       debts: debts.map((d) => ({
         ...(d as object),
         unitId: (d as { unitId?: string }).unitId ?? unit.id,
@@ -165,7 +171,8 @@ function normalizePayload(raw: unknown): BusinessCloudPayload {
       (t) => !deletedTransactionIdSet.has(t.id),
     ),
     deletedTransactionIds,
-    assets: assets as BusinessCloudPayload["assets"],
+    deletedAssetIds,
+    assets: (assets as BusinessCloudPayload["assets"]).filter((a) => !deletedAssetIdSet.has(a.id)),
     debts: debts as BusinessCloudPayload["debts"],
     deletedUnitsArchive:
       deletedUnitsArchive as BusinessCloudPayload["deletedUnitsArchive"],
@@ -186,6 +193,7 @@ export function hasMeaningfulBusinessPayload(payload: BusinessCloudPayload | nul
     nonDefaultUnits.length > 0 ||
     (payload.transactions?.length ?? 0) > 0 ||
     (payload.assets?.length ?? 0) > 0 ||
+    (payload.deletedAssetIds?.length ?? 0) > 0 ||
     (payload.debts?.length ?? 0) > 0 ||
     (payload.passiveReceipts?.length ?? 0) > 0 ||
     (payload.deletedUnitsArchive?.length ?? 0) > 0
@@ -363,6 +371,10 @@ export function mergeBusinessPayload(
     ...(remote.deletedTransactionIds ?? []),
     ...(local.deletedTransactionIds ?? []),
   ]);
+  const deletedAssetIds = new Set<string>([
+    ...(remote.deletedAssetIds ?? []),
+    ...(local.deletedAssetIds ?? []),
+  ]);
 
   const txMap = new Map<string, (typeof local.transactions)[0]>();
   for (const t of remote.transactions) {
@@ -376,6 +388,7 @@ export function mergeBusinessPayload(
   const assetMap = new Map<string, (typeof local.assets)[0]>();
   for (const a of [...remote.assets, ...local.assets]) {
     if (deletedUnitIds.has(a.unitId)) continue;
+    if (deletedAssetIds.has(a.id)) continue;
     if (a && typeof a.id === "string") assetMap.set(a.id, a);
   }
   const visibleAssetIds = new Set(assetMap.keys());
@@ -399,6 +412,7 @@ export function mergeBusinessPayload(
     units,
     transactions: Array.from(txMap.values()).sort((a, b) => b.date.localeCompare(a.date)),
     deletedTransactionIds: Array.from(deletedTransactionIds).slice(-500),
+    deletedAssetIds: Array.from(deletedAssetIds).slice(-500),
     assets: Array.from(assetMap.values()),
     debts: Array.from(debtMap.values()),
     deletedUnitsArchive: Array.from(archiveMap.values())

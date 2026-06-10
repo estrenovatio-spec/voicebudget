@@ -24,6 +24,7 @@ const payloadSchema = z.object({
   transactions: z.array(z.any()),
   deletedTransactionIds: z.array(z.string()).optional(),
   assets: z.array(z.any()),
+  deletedAssetIds: z.array(z.string()).optional(),
   debts: z.array(z.any()).optional(),
   deletedUnitsArchive: z.array(z.any()).optional(),
   passiveReceipts: z.array(z.any()).optional(),
@@ -88,6 +89,7 @@ export async function PUT(req: NextRequest) {
       const incomingHasDeletedUnitArchive = (incoming.deletedUnitsArchive?.length ?? 0) > 0;
       if (
         !incomingHasDeletedUnitArchive &&
+        (incoming.deletedAssetIds?.length ?? 0) === 0 &&
         incoming.assets.length === 0 &&
         existing.assets.length > 0
       ) {
