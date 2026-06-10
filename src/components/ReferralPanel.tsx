@@ -19,7 +19,7 @@ import { useStore } from "@/store/useStore";
 import { cn } from "@/lib/utils";
 
 const referralShareBtnClass =
-  "h-auto min-h-10 w-full shrink-0 whitespace-normal border-2 border-emerald-600/35 bg-gradient-to-br from-emerald-500/15 to-primary/10 px-3 py-2 text-center text-sm font-medium leading-snug text-emerald-950 shadow-none hover:from-emerald-500/25 hover:to-primary/15 dark:text-emerald-50";
+  "h-auto min-h-10 w-full shrink-0 whitespace-normal border-2 border-emerald-600/35 bg-gradient-to-br from-emerald-500/15 to-primary/10 px-3 py-2 text-center text-sm font-medium leading-snug text-emerald-950 shadow-none hover:from-emerald-500/25 hover:to-primary/15 dark:border-emerald-400/30 dark:from-emerald-950/80 dark:to-primary/20 dark:text-emerald-50 dark:hover:from-emerald-900/70 dark:hover:to-primary/25";
 
 type ReferralPanelState = Partial<ReferralProfilePublic> & {
   ok?: boolean;

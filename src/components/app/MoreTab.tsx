@@ -303,7 +303,7 @@ export function MoreTab() {
           <UserPlus className="h-4 w-4 text-primary" aria-hidden />
           {t(locale, "moreReferralTitle")}
         </h3>
-        <div className="min-w-0 overflow-hidden rounded-lg border border-primary/20 bg-primary/5 px-3 py-3">
+        <div className="min-w-0 overflow-hidden rounded-lg border border-primary/20 bg-primary/5 px-3 py-3 dark:border-primary/30 dark:bg-primary/10">
           <ReferralPanel />
         </div>
       </section>

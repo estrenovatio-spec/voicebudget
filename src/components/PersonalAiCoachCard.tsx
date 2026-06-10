@@ -132,10 +132,10 @@ export function PersonalAiCoachCard() {
           className={cn(
             "rounded-md border p-2.5 leading-snug",
             spotlight.tone === "risk"
-              ? "border-red-500/20 bg-red-500/5"
+              ? "border-red-500/25 bg-red-500/5 dark:border-red-400/30 dark:bg-red-950/35"
               : spotlight.tone === "watch"
-                ? "border-amber-500/25 bg-amber-500/5"
-                : "border-emerald-500/20 bg-emerald-500/5",
+                ? "border-amber-500/25 bg-amber-500/5 dark:border-amber-400/30 dark:bg-amber-950/35"
+                : "border-emerald-500/20 bg-emerald-500/5 dark:border-emerald-400/30 dark:bg-emerald-950/35",
           )}
         >
           <p className="font-medium">{spotlight.title}</p>

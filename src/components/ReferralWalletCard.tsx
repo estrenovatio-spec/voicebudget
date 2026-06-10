@@ -34,7 +34,7 @@ export function ReferralWalletCard({
   };
 
   return (
-    <section className="space-y-2 rounded-xl border-2 border-emerald-600/35 bg-gradient-to-br from-emerald-500/15 to-primary/10 p-3">
+    <section className="space-y-2 rounded-xl border-2 border-emerald-600/35 bg-gradient-to-br from-emerald-500/15 to-primary/10 p-3 dark:border-emerald-400/30 dark:from-emerald-950/80 dark:to-primary/20">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-emerald-700 dark:text-emerald-300" aria-hidden />

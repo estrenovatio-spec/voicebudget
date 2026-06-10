@@ -1076,13 +1076,13 @@ function BusinessAdvisor({
 
   const toneClass = (tone: BusinessAdvisorTone) =>
     tone === "risk"
-      ? "border-red-500/20 bg-red-500/5 text-red-900 dark:text-red-100"
+      ? "border-red-500/25 bg-red-500/5 text-red-900 dark:border-red-400/30 dark:bg-red-950/35 dark:text-red-100"
       : tone === "warn"
-        ? "border-amber-500/25 bg-amber-500/5 text-amber-900 dark:text-amber-100"
-        : "border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:text-emerald-100";
+        ? "border-amber-500/25 bg-amber-500/5 text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/35 dark:text-amber-100"
+        : "border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/35 dark:text-emerald-100";
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+    <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm dark:border-primary/30 dark:bg-primary/10">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 text-left"

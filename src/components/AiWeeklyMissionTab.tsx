@@ -807,10 +807,10 @@ export function AiWeeklyMissionTab() {
       </ul>
 
       {allMissionsDone ? (
-        <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3">
+        <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-3 dark:border-emerald-400/30 dark:bg-emerald-950/35">
           <div className="flex items-start gap-2">
             <Sparkles
-              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300"
               aria-hidden
             />
             <div className="min-w-0">
