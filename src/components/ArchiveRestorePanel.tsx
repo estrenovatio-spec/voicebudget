@@ -97,6 +97,23 @@ function ContentLine({
   );
 }
 
+function SectionTitle({
+  title,
+  action,
+}: {
+  title: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border border-primary/15 bg-primary/10 px-2.5 py-2">
+      <p className="min-w-0 break-words text-xs font-bold uppercase tracking-wide text-primary">
+        {title}
+      </p>
+      {action}
+    </div>
+  );
+}
+
 export function ArchiveRestorePanel() {
   const locale = useStore((s) => s.locale);
   const categoryArchive = useStore((s) => s.deletedCategoryArchive);
@@ -120,6 +137,11 @@ export function ArchiveRestorePanel() {
     businessArchive.length > 0 ||
     serverBackups.length > 0 ||
     householdBackups.length > 0;
+  const totalBackups =
+    categoryArchive.length +
+    businessArchive.length +
+    serverBackups.length +
+    householdBackups.length;
 
   const loadServerBackups = async () => {
     if (!token) {
@@ -297,17 +319,26 @@ export function ArchiveRestorePanel() {
   };
 
   return (
-    <div className="min-w-0 max-w-full space-y-2 overflow-hidden rounded-lg border border-border/80 bg-background p-3">
+    <div className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-lg border-2 border-primary/25 bg-primary/5 p-3 shadow-sm">
       <div className="flex items-start gap-2">
-        <ArchiveRestore className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+          <ArchiveRestore className="h-5 w-5" aria-hidden />
+        </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium">
-            {locale === "ru" ? "Восстановление из архива" : "Restore from archive"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-bold leading-tight text-foreground">
+              {locale === "ru" ? "Резервные копии и восстановление" : "Backups and restore"}
+            </p>
+            {totalBackups > 0 ? (
+              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                {locale === "ru" ? `${totalBackups} коп.` : `${totalBackups} saved`}
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {locale === "ru"
-              ? "Выберите, что вернуть: удалённую категорию или бизнес. Архив нужен как страховка от случайного удаления."
-              : "Choose what to restore: a deleted category or business. The archive protects against accidental deletion."}
+              ? "Здесь можно вернуть семью, бизнес, проекты или категории, если что-то удалилось или пошло не так."
+              : "Restore household data, business, projects, or categories if something was deleted or went wrong."}
           </p>
         </div>
       </div>
@@ -326,26 +357,26 @@ export function ArchiveRestorePanel() {
 
       {token ? (
         <div className="space-y-1.5">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <p className="min-w-0 break-words text-xs font-medium text-muted-foreground">
-              {locale === "ru" ? "Резервные копии семьи" : "Household backups"}
-            </p>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs"
-              disabled={creatingHouseholdBackup}
-              onClick={() => void createHouseholdBackup()}
-            >
-              {creatingHouseholdBackup ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : locale === "ru" ? (
-                "Создать сейчас"
-              ) : (
-                "Create now"
-              )}
-            </Button>
-          </div>
+          <SectionTitle
+            title={locale === "ru" ? "Семья: операции, цели, долги" : "Household: entries, goals, debts"}
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 px-2 text-xs"
+                disabled={creatingHouseholdBackup}
+                onClick={() => void createHouseholdBackup()}
+              >
+                {creatingHouseholdBackup ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : locale === "ru" ? (
+                  "Создать копию"
+                ) : (
+                  "Create copy"
+                )}
+              </Button>
+            }
+          />
           {householdBackups.length > 0 ? (
             <div className="max-h-60 max-w-full space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
               {groupArchiveItems(householdBackups, (item) => item.createdAt).map((group) => (
@@ -402,14 +433,13 @@ export function ArchiveRestorePanel() {
 
       {token ? (
         <div className="space-y-1.5">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <p className="min-w-0 break-words text-xs font-medium text-muted-foreground">
-              {locale === "ru" ? "Резервные копии бизнеса" : "Business backups"}
-            </p>
+          <SectionTitle
+            title={locale === "ru" ? "Бизнес: источники, проекты, долги" : "Business: sources, projects, debts"}
+            action={
             <div className="flex gap-1">
               <Button
                 size="sm"
-                variant="ghost"
+                variant="secondary"
                 className="h-7 px-2 text-xs"
                 disabled={creatingBusinessBackup}
                 onClick={() => void createBusinessBackup()}
@@ -417,16 +447,17 @@ export function ArchiveRestorePanel() {
                 {creatingBusinessBackup ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : locale === "ru" ? (
-                  "Создать сейчас"
+                  "Создать копию"
                 ) : (
-                  "Create now"
+                  "Create copy"
                 )}
               </Button>
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void loadServerBackups()}>
                 {locale === "ru" ? "Обновить" : "Refresh"}
               </Button>
             </div>
-          </div>
+            }
+          />
           {serverBackups.length > 0 ? (
             <div className="max-h-60 max-w-full space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
               {groupArchiveItems(serverBackups, (item) => item.createdAt).map((group) => (
@@ -492,9 +523,7 @@ export function ArchiveRestorePanel() {
 
       {categoryArchive.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
-            {locale === "ru" ? "Категории" : "Categories"}
-          </p>
+          <SectionTitle title={locale === "ru" ? "Удалённые категории" : "Deleted categories"} />
           <div className="max-h-60 max-w-full space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
             {groupArchiveItems(categoryArchive, (item) => item.deletedAt).map((group) => (
               <div key={group.key} className="space-y-1.5">
@@ -531,9 +560,7 @@ export function ArchiveRestorePanel() {
 
       {businessArchive.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
-            {locale === "ru" ? "Бизнес" : "Business"}
-          </p>
+          <SectionTitle title={locale === "ru" ? "Удалённые бизнесы" : "Deleted businesses"} />
           <div className="max-h-60 max-w-full space-y-1.5 overflow-y-auto overflow-x-hidden pr-1">
             {groupArchiveItems(businessArchive, (item) => item.deletedAt).map((group) => (
               <div key={group.key} className="space-y-1.5">
