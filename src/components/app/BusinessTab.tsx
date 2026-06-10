@@ -73,6 +73,14 @@ type BusinessAiAdvice = {
   action: string;
   tone: BusinessAdvisorTone;
 };
+type SafeWithdrawPlan = {
+  amount: number;
+  taxGap: number;
+  reserveGap: number;
+  upcomingDebt: number;
+  futureDebt: number;
+  lockedNow: number;
+};
 
 function txKindLabel(tx: BusinessTransaction, locale: "ru" | "en"): string {
   switch (tx.kind) {
@@ -490,20 +498,61 @@ function BusinessUnitTabs({
   );
 }
 
-function safeWithdrawAmount(metrics: UnitCardMetrics): number {
+function debtDueSoonAmount(debts: BusinessDebt[], now = new Date()) {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setDate(horizon.getDate() + 31);
+  let upcoming = 0;
+  let future = 0;
+
+  for (const debt of debts) {
+    if (debt.balance <= 0 || debt.minPayment <= 0) continue;
+    if (!debt.nextPaymentDate) {
+      upcoming += debt.minPayment;
+      continue;
+    }
+    const due = new Date(`${debt.nextPaymentDate}T12:00:00`);
+    if (!Number.isFinite(due.getTime())) {
+      upcoming += debt.minPayment;
+      continue;
+    }
+    if (due <= horizon) upcoming += debt.minPayment;
+    else future += debt.minPayment;
+  }
+
+  return {
+    upcoming: Math.round(upcoming),
+    future: Math.round(future),
+  };
+}
+
+function buildSafeWithdrawPlan(
+  metrics: UnitCardMetrics,
+  debts: BusinessDebt[] = [],
+): SafeWithdrawPlan {
   const reserveGap =
     metrics.cushionBalance < metrics.cushionTarget
       ? Math.max(0, metrics.cushionTarget - metrics.cushionBalance)
       : 0;
-  return Math.max(
+  const debtDue = debtDueSoonAmount(debts);
+  const lockedNow = Math.round(metrics.taxGap + debtDue.upcoming + reserveGap);
+  const amount = Math.max(
     0,
-    Math.floor(
-      metrics.operatingBalance -
-        metrics.taxGap -
-        metrics.debtMinPayment -
-        reserveGap,
-    ),
+    Math.floor(metrics.operatingBalance - lockedNow),
   );
+  return {
+    amount,
+    taxGap: Math.round(metrics.taxGap),
+    reserveGap: Math.round(reserveGap),
+    upcomingDebt: debtDue.upcoming,
+    futureDebt: debtDue.future,
+    lockedNow,
+  };
+}
+
+function safeWithdrawAmount(metrics: UnitCardMetrics, debts: BusinessDebt[] = []): number {
+  return buildSafeWithdrawPlan(metrics, debts).amount;
 }
 
 function debtStrategyLabel(strategy: DebtRepaymentStrategy, locale: "ru" | "en"): string {
@@ -725,14 +774,14 @@ function BusinessKpis({
 
 function BusinessAdvisor({
   metrics,
-  safeWithdraw,
+  withdrawPlan,
   adSpend,
   locale,
   open,
   onToggle,
 }: {
   metrics: UnitCardMetrics;
-  safeWithdraw: number;
+  withdrawPlan: SafeWithdrawPlan;
   adSpend: number;
   locale: "ru" | "en";
   open: boolean;
@@ -741,6 +790,7 @@ function BusinessAdvisor({
   const isRu = locale === "ru";
   const [aiAdvice, setAiAdvice] = useState<BusinessAiAdvice | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const safeWithdraw = withdrawPlan.amount;
   const reserveMonths =
     metrics.avgMonthlyExpense > 0
       ? Math.min(
@@ -758,7 +808,7 @@ function BusinessAdvisor({
       : 0;
   const margin = Math.round(metrics.profitMarginPct);
   const adShare = metrics.income > 0 ? Math.round((adSpend / metrics.income) * 100) : 0;
-  const cashNeeded = Math.max(0, metrics.taxGap + metrics.debtMinPayment);
+  const cashNeeded = Math.max(0, withdrawPlan.taxGap + withdrawPlan.upcomingDebt);
   const cashGap = metrics.operatingBalance - cashNeeded;
 
   let main = t(locale, "bizAdvisorProfit");
@@ -784,15 +834,36 @@ function BusinessAdvisor({
         ? isRu
           ? reserveMonths >= 3
             ? `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. Налог, минимальные платежи и резерв на ${reserveMonths} мес уже учтены.`
-            : `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены остаток налога и минимальные платежи.`
+            : `Сейчас можно вывести до ${formatMoney(safeWithdraw, locale)}. В этой сумме уже учтены налог, ближайшие платежи и резерв до цели.`
           : `Safe to withdraw now: ${formatMoney(safeWithdraw, locale)} after tax and minimum payments.`
         : isRu
           ? reserveMonths >= 3
             ? "Пока лучше не выводить деньги собственнику: причина не в резерве, а в налоге, долгах или текущем остатке на счёте."
-            : "Пока лучше не выводить деньги собственнику. Сначала оставьте сумму на налог, обязательные платежи и резерв."
+            : "Пока лучше не выводить деньги собственнику. Сначала оставьте деньги на налог, ближайшие платежи и резерв бизнеса."
           : "Better not withdraw yet: cover tax, minimum payments, and reserve first.",
     tone: safeWithdraw > 0 ? "ok" : "risk",
   });
+
+  if (withdrawPlan.lockedNow > 0) {
+    const parts = [
+      withdrawPlan.taxGap > 0
+        ? `${isRu ? "налог" : "tax"} ${formatMoney(withdrawPlan.taxGap, locale)}`
+        : "",
+      withdrawPlan.upcomingDebt > 0
+        ? `${isRu ? "ближайшие долги" : "near debt payments"} ${formatMoney(withdrawPlan.upcomingDebt, locale)}`
+        : "",
+      withdrawPlan.reserveGap > 0
+        ? `${isRu ? "резерв" : "reserve"} ${formatMoney(withdrawPlan.reserveGap, locale)}`
+        : "",
+    ].filter(Boolean);
+    addSignal({
+      label: isRu ? "Почему такая сумма" : "Why this amount",
+      text: isRu
+        ? `Из денег на счёте сначала удержано: ${parts.join(", ")}. Остаток и есть безопасный вывод собственнику.`
+        : `First locked from cash: ${parts.join(", ")}. The rest is the safe owner withdrawal.`,
+      tone: safeWithdraw > 0 ? "ok" : "warn",
+    });
+  }
 
   addSignal({
     label: isRu ? "Маржинальность" : "Margin",
@@ -946,6 +1017,10 @@ function BusinessAdvisor({
           taxGap: metrics.taxGap,
           reserveMonths,
           debtMinPayment: metrics.debtMinPayment,
+          upcomingDebt: withdrawPlan.upcomingDebt,
+          futureDebt: withdrawPlan.futureDebt,
+          reserveGap: withdrawPlan.reserveGap,
+          lockedNow: withdrawPlan.lockedNow,
           cashGap,
         },
         signals: visibleSignals,
@@ -989,6 +1064,10 @@ function BusinessAdvisor({
     metrics.taxReserve,
     metrics.taxDeposited,
     metrics.taxGap,
+    withdrawPlan.futureDebt,
+    withdrawPlan.lockedNow,
+    withdrawPlan.reserveGap,
+    withdrawPlan.upcomingDebt,
     open,
     reserveMonths,
     safeWithdraw,
@@ -1382,20 +1461,28 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       (acc, unit) => {
         const metrics = unitMetricsMap.get(unit.id);
         if (!metrics) return acc;
+        const unitDebts = debts.filter((debt) => debt.unitId === unit.id);
         acc.income += metrics.income;
         acc.expense += metrics.expense;
         acc.profit += metrics.profit;
-        acc.safeWithdraw += safeWithdrawAmount(metrics);
+        acc.safeWithdraw += safeWithdrawAmount(metrics, unitDebts);
         return acc;
       },
       { income: 0, expense: 0, profit: 0, safeWithdraw: 0 },
     );
-  }, [visibleUnits, unitMetricsMap]);
-  const safeWithdraw = activeMetrics ? safeWithdrawAmount(activeMetrics) : 0;
+  }, [visibleUnits, unitMetricsMap, debts]);
   const activeDebts = useMemo(
     () => (activeUnitId ? debts.filter((d) => d.unitId === activeUnitId) : []),
     [debts, activeUnitId],
   );
+  const safeWithdrawPlan = useMemo(
+    () =>
+      activeMetrics
+        ? buildSafeWithdrawPlan(activeMetrics, activeDebts)
+        : null,
+    [activeDebts, activeMetrics],
+  );
+  const safeWithdraw = safeWithdrawPlan?.amount ?? 0;
   const sortedActiveDebts = useMemo(
     () => sortBusinessDebtsByStrategy(activeDebts, businessDebtStrategy),
     [activeDebts, businessDebtStrategy],
@@ -1710,7 +1797,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
 
       {businessSection === "projects" ? (
         <BusinessProjectsSection />
-      ) : activeUnit && activeMetrics ? (
+      ) : activeUnit && activeMetrics && safeWithdrawPlan ? (
         <>
           <BusinessQuickEntry
             locale={locale}
@@ -1743,7 +1830,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           />
           <BusinessAdvisor
             metrics={activeMetrics}
-            safeWithdraw={safeWithdraw}
+            withdrawPlan={safeWithdrawPlan}
             adSpend={activeAdSpend}
             locale={locale}
             open={businessAdvisorOpen}

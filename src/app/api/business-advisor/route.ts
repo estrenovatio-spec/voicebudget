@@ -24,6 +24,10 @@ const bodySchema = z.object({
     taxGap: z.number().optional(),
     reserveMonths: z.number(),
     debtMinPayment: z.number(),
+    upcomingDebt: z.number().optional(),
+    futureDebt: z.number().optional(),
+    reserveGap: z.number().optional(),
+    lockedNow: z.number().optional(),
     cashGap: z.number(),
   }),
   signals: z.array(signalSchema).min(1).max(8),
@@ -205,6 +209,8 @@ Rules:
 - Prefer concrete owner language: выручка, расходы, прибыль, маржа, налог, резерв, реклама, можно вывести.
 - Avoid jargon: no "операционный баланс", "свободный запас", "юнит", "денежный поток периода".
 - Prioritize in this order: cash gap / required payments, tax, reserve, ad ROI, margin, safe withdrawal.
+- Safe withdrawal already excludes taxGap, upcomingDebt, and reserveGap. Explain this in simple owner language if needed.
+- upcomingDebt means required payments due soon; futureDebt means later payments that should be watched but not necessarily locked today.
 - Reserve logic: if reserveMonths >= 3, do NOT recommend adding more to reserve by default. If reserveMonths >= 6, call the reserve strong and focus on owner withdrawal, reinvestment, tax, debt, or ad ROI.
 - Only recommend adding to reserve when reserveMonths < 3 or there is a clear risk from the provided signals.
 - Mention the main risk or opportunity and give ONE action for this week.

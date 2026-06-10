@@ -302,7 +302,7 @@ export const DICT = {
     bizAssetNamePh: "Название: квартира, клиент, ETF, проект…",
     bizAssetCapitalPh: "Стоимость или вложенный капитал, ₽",
     bizAssetMonthlyPh: "Плановый доход чистыми в месяц, ₽",
-    bizAssetExpectedPh: "Сумма проекта или ожидаемый доход, ₽",
+    bizAssetExpectedPh: "Сколько ждёте к оплате, ₽",
     bizAssetExpected: "Ожидаю",
     bizAddTx: "Операция",
     bizRecentTx: "Последние операции",
@@ -473,7 +473,7 @@ export const DICT = {
     bizTypeSummary: "{capital} ₽ · +{monthly}/мес · {yield}% год",
     bizExpenseBreakdown: "Куда ушли расходы за период",
     bizAssetDialogHint:
-      "Для клиента/проекта достаточно названия. Сумму и часы можно добавить, если хотите видеть ожидаемый доход и ставку в час.",
+      "Для клиента/проекта достаточно названия. Сумму добавляйте, если уже знаете, сколько ждёте к оплате.",
     bizProjectSummary: "{count} · ожидаю {amount}",
     bizProjectSummaryPaid: "{count} · оплата получена {amount}",
     bizProjectSummaryPartial: "{count} · получено {received} · осталось {left}",
@@ -485,7 +485,7 @@ export const DICT = {
     bizFreelanceFlowHint:
       "Ведите путь денег по каждому клиенту или проекту: кто заплатил, сколько пришло, какие были расходы и что можно вывести.",
     bizFreelanceClients: "Клиенты",
-    bizFreelancePlan: "План чистыми",
+    bizFreelancePlan: "Ожидаю оплату",
     bizFreelanceReceived: "Уже вывели",
     bizFreelanceStep1: "1. Клиент / проект",
     bizFreelanceStep2: "2. Доход пришёл",
@@ -1428,7 +1428,7 @@ export const DICT = {
     bizAssetNamePh: "Name: flat, client, ETF, project…",
     bizAssetCapitalPh: "Value or invested capital",
     bizAssetMonthlyPh: "Planned net monthly income",
-    bizAssetExpectedPh: "Project amount or expected income",
+    bizAssetExpectedPh: "Expected payment amount",
     bizAssetExpected: "Expected",
     bizAddTx: "Transaction",
     bizRecentTx: "Recent",
@@ -1600,7 +1600,7 @@ export const DICT = {
     bizTypeSummary: "{capital} · +{monthly}/mo · {yield}% p.a.",
     bizExpenseBreakdown: "Where expenses went this period",
     bizAssetDialogHint:
-      "For client/project, the name is enough. Add amount and hours only if you want expected income and hourly rate.",
+      "For client/project, the name is enough. Add amount only if you already know what you expect to receive.",
     bizProjectSummary: "{count} · expected {amount}",
     bizProjectSummaryPaid: "{count} · payment received {amount}",
     bizProjectSummaryPartial: "{count} · received {received} · left {left}",
@@ -1612,7 +1612,7 @@ export const DICT = {
     bizFreelanceFlowHint:
       "Track the money path for each client or project: who paid, how much arrived, what costs happened, and what can be withdrawn.",
     bizFreelanceClients: "Clients",
-    bizFreelancePlan: "Net plan",
+    bizFreelancePlan: "Expected payment",
     bizFreelanceReceived: "Withdrawn",
     bizFreelanceStep1: "1. Client / project",
     bizFreelanceStep2: "2. Income arrived",

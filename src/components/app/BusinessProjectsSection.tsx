@@ -595,7 +595,7 @@ export function BusinessProjectsSection() {
           </DialogHeader>
           <p className="text-xs text-muted-foreground">{t(locale, "bizAssetDialogHint")}</p>
           <div className="flex gap-2">
-            {(["freelance", "investment", "rental"] as BusinessAssetType[]).map((kind) => (
+            {(["freelance", "rental", "investment"] as BusinessAssetType[]).map((kind) => (
               <Button
                 key={kind}
                 type="button"
