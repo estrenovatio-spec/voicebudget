@@ -755,9 +755,9 @@ export const DICT = {
       "Операция на этом телефоне есть, в облако не записалась — нажмите «Синхронизировать» в настройках",
     cloudSyncPushEmpty: "Нет операций для отправки",
     cloudProtectedNotice:
-      "Семейное облако нельзя удалить из приложения — только очистить данные на этом телефоне. На сервере бюджет семьи сохраняется.",
+      "Синхронизацию можно приостановить на этом телефоне. Резервная копия останется доступна в облаке.",
     cloudErrLeaveForbidden:
-      "Выход из семейного облака отключён — данные семьи защищены.",
+      "Синхронизацию можно приостановить на этом телефоне. Данные семьи останутся в облаке.",
     cloudDisconnect: "Приостановить синхронизацию на этом телефоне",
     cloudDisconnectConfirm:
       "Отключить автосинхронизацию? Данные на сервере останутся, но телефон перестанет их подгружать сам. Можно снова подключить позже.",
@@ -1880,9 +1880,9 @@ export const DICT = {
       "Saved on this device only — cloud upload failed; tap Sync in settings",
     cloudSyncPushEmpty: "No operations to upload",
     cloudProtectedNotice:
-      "Family cloud cannot be deleted from the app — only clear data on this device. Server copy stays.",
+      "You can pause sync on this device. A backup copy stays available in the cloud.",
     cloudErrLeaveForbidden:
-      "Leaving household cloud is disabled to protect family data.",
+      "You can pause sync on this device. Household data stays in the cloud.",
     cloudDisconnect: "Pause sync on this device",
     cloudDisconnectConfirm:
       "Stop auto-sync? Server data stays, but this phone won't load it automatically. You can reconnect later.",
