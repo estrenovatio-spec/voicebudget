@@ -1357,6 +1357,10 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     () => visibleUnits.find((unit) => unit.id === activeUnitId) ?? null,
     [visibleUnits, activeUnitId],
   );
+  const editUnit = useMemo(
+    () => units.find((unit) => unit.id === editUnitId) ?? null,
+    [units, editUnitId],
+  );
   const activeMetrics = useMemo(() => {
     if (!activeUnit) return null;
     return (
@@ -1418,6 +1422,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     setEditUnitName(u.name);
     setEditTaxRate(u.taxRatePct ?? 0);
     setEditTaxPeriod(u.taxPeriod ?? "quarter");
+    setBusinessSaleAmount("");
     setSelectedUnitId(unitId);
   };
 
@@ -1469,6 +1474,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     }
     setEditUnitId(null);
     setEditUnitName("");
+    setBusinessSaleAmount("");
     toast(t(locale, "bizUnitDeleted"), "success");
   };
 
@@ -1556,18 +1562,18 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     );
   };
 
-  const submitBusinessSale = () => {
-    if (!activeUnit) return;
+  const submitBusinessSale = (unit: BusinessUnit | null = activeUnit) => {
+    if (!unit) return;
     const amount = parseMoneyAmount(businessSaleAmount);
     if (!amount || amount <= 0) {
       toast(locale === "ru" ? "Укажите сумму продажи" : "Enter sale amount", "error");
       return;
     }
     addOperatingTx(
-      activeUnit.id,
+      unit.id,
       "income",
       amount,
-      `${locale === "ru" ? "Продажа бизнеса" : "Business sale"}: ${activeUnit.name}`,
+      `${locale === "ru" ? "Продажа бизнеса" : "Business sale"}: ${unit.name}`,
     );
     setBusinessSaleAmount("");
     toast(
@@ -2117,29 +2123,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
-                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-                      {locale === "ru" ? "Продажа бизнеса" : "Business sale"}
-                    </p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                      {locale === "ru"
-                        ? "Если продаёте бизнес целиком, укажите сумму — она запишется как доход этого бизнеса."
-                        : "If you sell the whole business, enter the amount — it will be recorded as income for this business."}
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder={locale === "ru" ? "Сумма продажи" : "Sale amount"}
-                        value={businessSaleAmount}
-                        onChange={(e) => setBusinessSaleAmount(e.target.value)}
-                      />
-                      <Button type="button" onClick={submitBusinessSale}>
-                        {locale === "ru" ? "Продать" : "Sell"}
-                      </Button>
-                    </div>
-                  </div>
-
                   {activeDebts.length > 0 ? (
                     <div className="space-y-2">
                       <div className="rounded-lg border border-border/80 bg-background p-2">
@@ -2421,6 +2404,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           if (!open) {
             setEditUnitId(null);
             setEditUnitName("");
+            setBusinessSaleAmount("");
           }
         }}
       >
@@ -2496,6 +2480,32 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           <Button type="button" className="w-full" onClick={submitEditUnit}>
             {t(locale, "bizSave")}
           </Button>
+          {!editUnitIsProjects && editUnit ? (
+            <div className="space-y-2 rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  {locale === "ru" ? "Продажа бизнеса" : "Business sale"}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  {locale === "ru"
+                    ? "Если бизнес продан, укажите сумму — она запишется как доход этого бизнеса."
+                    : "If this business is sold, enter the amount — it will be recorded as income for this business."}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={locale === "ru" ? "Сумма продажи" : "Sale amount"}
+                  value={businessSaleAmount}
+                  onChange={(e) => setBusinessSaleAmount(e.target.value)}
+                />
+                <Button type="button" onClick={() => submitBusinessSale(editUnit)}>
+                  {locale === "ru" ? "Продать" : "Sell"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {visibleUnits.length > 1 && !editUnitIsProjects ? (
             <div className="space-y-1 border-t border-border/60 pt-3">
               <p className="text-[11px] text-muted-foreground">
