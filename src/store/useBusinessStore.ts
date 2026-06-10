@@ -575,17 +575,35 @@ export const useBusinessStore = create<BusinessStore>()(
         const amt = roundMoneyUp(amount);
         if (amt <= 0) return false;
         let ok = false;
-        set((s) => ({
-          debts: s.debts.map((debt) => {
+        let paidDebt: BusinessDebt | null = null;
+        const now = new Date().toISOString();
+        set((s) => {
+          const debts = s.debts.map((debt) => {
             if (debt.id !== id) return debt;
             ok = true;
+            paidDebt = debt;
             return {
               ...debt,
               balance: Math.max(0, roundMoneyUp(debt.balance - amt)),
-              updatedAt: new Date().toISOString(),
+              updatedAt: now,
             };
-          }),
-        }));
+          });
+          if (!paidDebt) return { debts };
+          const tx: BusinessTransaction = {
+            id: makeId("biz"),
+            unitId: paidDebt.unitId,
+            type: "expense",
+            amount: amt,
+            kind: "operating_expense",
+            note: `Погашение долга: ${paidDebt.name}`,
+            date: now.slice(0, 10),
+            createdAt: now,
+          };
+          return {
+            debts,
+            transactions: [tx, ...s.transactions],
+          };
+        });
         if (ok) void pushBusinessToCloud();
         return ok;
       },
