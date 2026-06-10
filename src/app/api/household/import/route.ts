@@ -25,9 +25,56 @@ const txSchema = z.object({
   businessTxId: z.string().nullable().optional(),
 });
 
+const goalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  targetAmount: z.number(),
+  savedAmount: z.number(),
+  deadline: z.string().nullable().optional(),
+  monthlyContribution: z.number().nullable().optional(),
+  kind: z.enum(["custom", "emergency"]).optional(),
+  emergencyMonths: z.number().nullable().optional(),
+});
+
+const categoryBudgetSchema = z.object({
+  categoryId: z.string(),
+  monthlyLimit: z.number(),
+});
+
+const recurringSchema = z.object({
+  id: z.string(),
+  amount: z.number(),
+  type: z.enum(["income", "expense"]),
+  categoryId: z.string(),
+  note: z.string(),
+  owner: z.enum(["me", "partner"]).optional(),
+  frequency: z.enum(["weekly", "monthly", "yearly"]),
+  dayOfMonth: z.number().nullable(),
+  nextRunDate: z.string(),
+  enabled: z.boolean(),
+  skippedDates: z.array(z.string()).optional(),
+});
+
+const debtSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  owner: z.enum(["me", "partner", "all"]),
+  balance: z.number(),
+  minPayment: z.number(),
+  ratePct: z.number().nullable(),
+  nextPaymentDate: z.string().nullable(),
+  strategy: z.enum(["avalanche", "snowball"]),
+  priority: z.enum(["normal", "high"]).optional(),
+});
+
 const bodySchema = z.object({
   transactions: z.array(txSchema),
   replaceTransactions: z.boolean().optional(),
+  replacePlanning: z.boolean().optional(),
+  savingsGoals: z.array(goalSchema).optional(),
+  categoryBudgets: z.array(categoryBudgetSchema).optional(),
+  recurringTransactions: z.array(recurringSchema).optional(),
+  debts: z.array(debtSchema).optional(),
   categories: z
     .array(
       z.object({
@@ -68,7 +115,25 @@ export async function POST(req: NextRequest) {
         keywords: c.keywords,
         isSystem: c.isSystem,
       })),
+      savingsGoals: body.savingsGoals?.map((g) => ({
+        ...g,
+        deadline: g.deadline ?? null,
+        monthlyContribution: g.monthlyContribution ?? null,
+        kind: g.kind ?? "custom",
+        emergencyMonths: g.emergencyMonths ?? null,
+      })),
+      categoryBudgets: body.categoryBudgets,
+      recurringTransactions: body.recurringTransactions?.map((r) => ({
+        ...r,
+        owner: r.owner ?? "me",
+        skippedDates: r.skippedDates ?? [],
+      })),
+      debts: body.debts?.map((d) => ({
+        ...d,
+        priority: d.priority ?? "normal",
+      })),
       replaceTransactions: body.replaceTransactions === true,
+      replacePlanning: body.replacePlanning === true,
     });
     return NextResponse.json({ ok: true, sync });
   } catch (e) {

@@ -37,25 +37,14 @@ function escapeSvg(input: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function translit(input: string): string {
-  const map: Record<string, string> = {
-    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
-    к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f",
-    х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
-  };
-  return input.replace(/[а-яё]/gi, (ch) => {
-    const lower = ch.toLowerCase();
-    const next = map[lower] ?? ch;
-    return ch === lower ? next : next.toUpperCase();
-  });
-}
-
-function pdfEscape(input: string): string {
-  return translit(input)
-    .replace(/[^\x20-\x7E]/g, "")
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
+function pdfHexText(input: string): string {
+  const bytes: number[] = [];
+  for (const ch of input.replace(/\r?\n/g, " ")) {
+    const code = ch.codePointAt(0) ?? 32;
+    if (code > 0xffff) continue;
+    bytes.push((code >> 8) & 0xff, code & 0xff);
+  }
+  return Buffer.from(bytes).toString("hex").toUpperCase();
 }
 
 function businessKindLabel(kind: BusinessTransaction["kind"], locale: Locale): string {
@@ -139,7 +128,10 @@ function makeTextPdf(params: {
     objects.push(body);
     return objects.length;
   };
-  const fontId = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const cidInfoId = add("<< /Registry (Adobe) /Ordering (Identity) /Supplement 0 >>");
+  const fontDescriptorId = add("<< /Type /FontDescriptor /FontName /ArialUnicodeMS /Flags 4 /FontBBox [0 -250 1000 900] /ItalicAngle 0 /Ascent 900 /Descent -250 /CapHeight 700 /StemV 80 >>");
+  const cidFontId = add(`<< /Type /Font /Subtype /CIDFontType2 /BaseFont /ArialUnicodeMS /CIDSystemInfo ${cidInfoId} 0 R /FontDescriptor ${fontDescriptorId} 0 R /DW 500 >>`);
+  const fontId = add(`<< /Type /Font /Subtype /Type0 /BaseFont /ArialUnicodeMS /Encoding /Identity-H /DescendantFonts [${cidFontId} 0 R] >>`);
   const pageIds: number[] = [];
   for (const pageLines of pages) {
     const content = [
@@ -148,7 +140,7 @@ function makeTextPdf(params: {
       `${margin} ${pageH - margin} Td`,
       ...pageLines.flatMap((line, index) => [
         index === 0 ? "" : `0 -${lineH} Td`,
-        `(${pdfEscape(line)}) Tj`,
+        `<${pdfHexText(line)}> Tj`,
       ]).filter(Boolean),
       "ET",
     ].join("\n");

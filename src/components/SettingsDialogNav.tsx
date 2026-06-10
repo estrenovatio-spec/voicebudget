@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
+import { replaceBusinessCloudWithThisDevice } from "@/lib/cloud/business-sync";
 import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
 import { parsePartnerKeywordsInput } from "@/lib/detect-owner";
 import { defaultBusinessUnit } from "@/lib/business/types";
@@ -74,7 +75,7 @@ export function SettingsDialogNav({
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
   const setPartnerChipColor = useStore((s) => s.setPartnerChipColor);
-  const { loading: cloudLoading, replaceCloudWithThisDevice } = useHouseholdCloud();
+  const { replaceCloudWithThisDevice } = useHouseholdCloud();
   const { toast } = useToast();
   const [screen, setScreen] = useState<SettingsScreen>("menu");
   const [myNameInput, setMyNameInput] = useState(userName ?? "");
@@ -137,12 +138,7 @@ export function SettingsDialogNav({
     flashSaved("keywords");
   };
 
-  const handleClear = () => {
-    if (!confirmClear) {
-      setConfirmClear(true);
-      return;
-    }
-    clearAppStorage();
+  const resetLocalData = () => {
     useStore.getState().clearAll();
     useStore.setState({
       savingsGoals: [],
@@ -170,16 +166,32 @@ export function SettingsDialogNav({
       cloudSyncedAt: null,
       taxRatePct: 0,
     });
-    setConfirmClear(false);
-    toast(t(locale, "cloudDeviceResetDone"), "success");
   };
 
-  const handleReplaceCloudOperations = async () => {
-    if (!window.confirm(t(locale, "cloudSyncReplaceConfirm"))) return;
-    const ok = await replaceCloudWithThisDevice();
+  const handleClear = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
+    const cloudActive = isCloudSyncActive();
+    if (!cloudActive) {
+      clearAppStorage();
+      resetLocalData();
+      setConfirmClear(false);
+      toast(t(locale, "cloudDeviceResetDone"), "success");
+      return;
+    }
+    resetLocalData();
+    const [familyOk, businessOk] = await Promise.all([
+      replaceCloudWithThisDevice(),
+      replaceBusinessCloudWithThisDevice(),
+    ]);
+    setConfirmClear(false);
     toast(
-      ok ? t(locale, "cloudSyncSuccessReplace") : t(locale, "cloudSyncFailed"),
-      ok ? "success" : "error",
+      familyOk && businessOk
+        ? t(locale, "cloudDeviceResetCloudDone")
+        : t(locale, "cloudSyncFailed"),
+      familyOk && businessOk ? "success" : "error",
     );
   };
 
@@ -235,17 +247,8 @@ export function SettingsDialogNav({
               {t(locale, "cloudDeviceResetHint")}
             </p>
           </div>
-          <Button variant="destructive" className="w-full" onClick={handleClear} type="button">
+          <Button variant="destructive" className="w-full" onClick={() => void handleClear()} type="button">
             {confirmClear ? t(locale, "clearDataConfirmAgain") : t(locale, "clearData")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-auto min-h-10 w-full whitespace-normal text-xs"
-            disabled={cloudLoading}
-            onClick={() => void handleReplaceCloudOperations()}
-          >
-            {t(locale, "cloudSyncReplace")}
           </Button>
         </div>
         <UpdateAppButton />

@@ -491,9 +491,18 @@ function BusinessUnitTabs({
 }
 
 function safeWithdrawAmount(metrics: UnitCardMetrics): number {
+  const reserveGap =
+    metrics.cushionBalance < metrics.cushionTarget
+      ? Math.max(0, metrics.cushionTarget - metrics.cushionBalance)
+      : 0;
   return Math.max(
     0,
-    Math.floor(metrics.operatingBalance - metrics.taxGap - metrics.debtMinPayment),
+    Math.floor(
+      metrics.operatingBalance -
+        metrics.taxGap -
+        metrics.debtMinPayment -
+        reserveGap,
+    ),
   );
 }
 

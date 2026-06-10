@@ -106,6 +106,17 @@ function phraseCandidates(input: string): string[] {
   return [...candidates].slice(0, 12);
 }
 
+export function getAiMemoryKeywordCandidates(input: string, limit = 3): string[] {
+  return phraseCandidates(input)
+    .filter((phrase) => phrase.length >= 3 && phrase.length <= 40)
+    .sort((a, b) => {
+      const aw = a.split(" ").length;
+      const bw = b.split(" ").length;
+      return aw - bw || a.length - b.length;
+    })
+    .slice(0, Math.max(1, limit));
+}
+
 function readAiMemory(): AiUserMemory {
   if (!canUseLocalStorage()) return { version: 1, rules: [] };
   try {

@@ -165,6 +165,11 @@ export async function apiImportLocal(
     transactions: Transaction[];
     categories: CategoryDefinition[];
     replaceTransactions?: boolean;
+    replacePlanning?: boolean;
+    savingsGoals?: SavingsGoal[];
+    categoryBudgets?: CategoryBudget[];
+    recurringTransactions?: RecurringTransaction[];
+    debts?: DebtItem[];
   },
 ) {
   const res = await apiFetch("/api/household/import", {

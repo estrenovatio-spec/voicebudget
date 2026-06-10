@@ -687,9 +687,11 @@ export const DICT = {
       "Сохранение, партнёр и запуск заново — всё в одном месте.",
     cloudDeviceResetTitle: "Начать с чистого листа",
     cloudDeviceResetHint:
-      "Очистит данные только на этом телефоне и остановит автосинхронизацию. После очистки нажмите ниже «Заменить операции в облаке», чтобы старая история с сервера не вернулась.",
+      "Очистит данные на телефоне. Если облако подключено, сразу заменит облако чистым состоянием, чтобы старая история не вернулась.",
     cloudDeviceResetDone:
-      "Телефон очищен. Теперь нажмите «Заменить операции в облаке», если хотите начать заново и на сервере.",
+      "Телефон очищен.",
+    cloudDeviceResetCloudDone:
+      "Готово: телефон очищен, облако заменено чистым состоянием.",
     cloudWebLoginTitle: "Войти через Telegram",
     cloudWebLoginHint:
       "Тот же аккаунт, что в Mini App: операции с телефона и с сайта будут в одном облаке.",
@@ -1805,9 +1807,11 @@ export const DICT = {
     cloudHint: "Saving, partner setup and fresh start are in one place.",
     cloudDeviceResetTitle: "Start fresh",
     cloudDeviceResetHint:
-      "Clears data only on this phone and pauses auto-sync. After clearing, tap “Replace cloud operations” below so old server history does not come back.",
+      "Clears this phone. If cloud is connected, it also replaces the cloud with a clean state so old history does not return.",
     cloudDeviceResetDone:
-      "Phone cleared. Now tap “Replace cloud operations” if you want to start fresh on the server too.",
+      "Phone cleared.",
+    cloudDeviceResetCloudDone:
+      "Done: phone cleared and cloud replaced with a clean state.",
     cloudWebLoginTitle: "Log in with Telegram",
     cloudWebLoginHint:
       "Same account as in the Mini App — phone and web stay in sync.",

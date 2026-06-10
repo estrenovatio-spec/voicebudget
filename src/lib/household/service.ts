@@ -21,6 +21,7 @@ import {
 export { VehicleGarageDbNotConfiguredError };
 import {
   deleteDebtForHousehold,
+  ensureHouseholdDebtTable,
   fetchDebtsForHousehold,
   upsertDebtForHousehold,
 } from "./debts-db";
@@ -447,6 +448,11 @@ export async function importLocalSnapshot(
     transactions: Transaction[];
     categories?: CategoryDefinition[];
     replaceTransactions?: boolean;
+    replacePlanning?: boolean;
+    savingsGoals?: SavingsGoal[];
+    categoryBudgets?: CategoryBudget[];
+    recurringTransactions?: RecurringTransaction[];
+    debts?: DebtItem[];
   },
 ) {
   await assertMember(userId, householdId);
@@ -482,6 +488,58 @@ export async function importLocalSnapshot(
         ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
       },
     });
+  }
+  if (data.replacePlanning) {
+    await Promise.all([
+      prisma.savingsGoal.deleteMany({ where: { householdId } }).catch((err) => {
+        if (!isMissingDbColumn(err)) throw err;
+      }),
+      prisma.categoryBudget.deleteMany({ where: { householdId } }).catch((err) => {
+        if (!isMissingDbColumn(err)) throw err;
+      }),
+      prisma.recurringTransaction.deleteMany({ where: { householdId } }).catch((err) => {
+        if (!isMissingDbColumn(err)) throw err;
+      }),
+      ensureHouseholdDebtTable().then((ready) =>
+        ready
+          ? prisma.$executeRaw`
+              DELETE FROM "HouseholdDebt"
+              WHERE "householdId" = ${householdId}
+            `
+          : undefined,
+      ),
+    ]);
+  }
+
+  for (const goal of data.savingsGoals ?? []) {
+    await prisma.savingsGoal.upsert({
+      where: { householdId_id: { householdId, id: goal.id } },
+      create: appGoalToDb(householdId, goal),
+      update: appGoalToDb(householdId, goal),
+    }).catch((err) => {
+      if (!isMissingDbColumn(err)) throw err;
+    });
+  }
+  for (const budget of data.categoryBudgets ?? []) {
+    await prisma.categoryBudget.upsert({
+      where: { householdId_categoryId: { householdId, categoryId: budget.categoryId } },
+      create: appCategoryBudgetToDb(householdId, budget),
+      update: { monthlyLimit: budget.monthlyLimit },
+    }).catch((err) => {
+      if (!isMissingDbColumn(err)) throw err;
+    });
+  }
+  for (const item of data.recurringTransactions ?? []) {
+    await prisma.recurringTransaction.upsert({
+      where: { id: item.id },
+      create: appRecurringToDb(householdId, item),
+      update: appRecurringToDb(householdId, item),
+    }).catch((err) => {
+      if (!isMissingDbColumn(err)) throw err;
+    });
+  }
+  for (const debt of data.debts ?? []) {
+    await upsertDebtForHousehold(householdId, debt);
   }
   for (const tx of data.transactions) {
     const createdBy =

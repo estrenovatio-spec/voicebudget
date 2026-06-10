@@ -142,7 +142,14 @@ export function useHouseholdCloud() {
       return false;
     }
 
-    const { transactions, categories } = useStore.getState();
+    const {
+      transactions,
+      categories,
+      savingsGoals,
+      categoryBudgets,
+      recurringTransactions,
+      debts,
+    } = useStore.getState();
     setLoading(true);
     setError(null);
     try {
@@ -161,7 +168,12 @@ export function useHouseholdCloud() {
       const res = await apiImportLocal(sessionToken, {
         transactions,
         categories,
+        savingsGoals,
+        categoryBudgets,
+        recurringTransactions,
+        debts,
         replaceTransactions: true,
+        replacePlanning: true,
       });
       setCloudPaused(false);
       applyHouseholdSync(res.sync, sessionToken);

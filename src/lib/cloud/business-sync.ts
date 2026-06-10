@@ -60,3 +60,19 @@ export async function pushBusinessToCloud(): Promise<boolean> {
     return false;
   }
 }
+
+export async function replaceBusinessCloudWithThisDevice(): Promise<boolean> {
+  if (isCloudPaused()) return false;
+  const token = useCloudStore.getState().token;
+  if (!token || !useBusinessStore.persist.hasHydrated()) return false;
+  try {
+    const business: BusinessCloudPayload = useBusinessStore.getState().exportPayload();
+    const res = await apiPushBusiness(token, business);
+    if (!res.ok) return false;
+    businessCloudReady = true;
+    useBusinessStore.getState().markCloudSynced();
+    return true;
+  } catch {
+    return false;
+  }
+}

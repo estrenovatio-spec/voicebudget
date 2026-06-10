@@ -88,6 +88,7 @@ import { useCloudStore } from "@/store/useCloudStore";
 import { resolveTransactionAmount } from "@/lib/parse-amount";
 import {
   enrichCategoriesWithAiMemory,
+  getAiMemoryKeywordCandidates,
   recordAiCorrectionLearning,
   recordAiInputLearning,
 } from "@/lib/ai-memory";
@@ -778,6 +779,31 @@ export const useStore = create<StoreState>()(
         const after = get().transactions.find((t) => t.id === id);
         if (after) {
           recordAiCorrectionLearning({ before: prev, after });
+          if (
+            prev &&
+            (prev.categoryId !== after.categoryId || prev.type !== after.type)
+          ) {
+            const learnedKeywords = getAiMemoryKeywordCandidates(after.note, 3);
+            if (learnedKeywords.length > 0) {
+              let learnedCategory: CategoryDefinition | null = null;
+              set((state) => ({
+                categories: state.categories.map((cat) => {
+                  if (cat.id !== after.categoryId || cat.type !== after.type) return cat;
+                  const keywords = [
+                    ...new Set([
+                      ...cat.keywords,
+                      ...learnedKeywords.filter(
+                        (kw) => !cat.keywords.some((existing) => existing.toLowerCase() === kw.toLowerCase()),
+                      ),
+                    ]),
+                  ].slice(0, 400);
+                  learnedCategory = { ...cat, keywords };
+                  return learnedCategory;
+                }),
+              }));
+              if (learnedCategory) void cloudPushCategory(learnedCategory);
+            }
+          }
           clearCachedMonthlyAnalysis();
           useCloudStore.getState().markTransactionUpdatePending(id, after.updatedAt);
           const goalIds = new Set<string>();
