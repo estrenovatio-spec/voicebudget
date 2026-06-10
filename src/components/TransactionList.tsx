@@ -81,7 +81,13 @@ function writeTypeFilter(filter: "all" | TxType): void {
   }
 }
 
-type TxDayGroup = { dateKey: string; label: string; items: Transaction[] };
+type TxDayGroup = {
+  dateKey: string;
+  label: string;
+  items: Transaction[];
+  incomeTotal: number;
+  expenseTotal: number;
+};
 
 function groupTransactionsByDay(
   transactions: Transaction[],
@@ -102,11 +108,45 @@ function groupTransactionsByDay(
   }
 
   return order.map((dateKey) => {
+    const items = buckets.get(dateKey) ?? [];
+    const incomeTotal = items.reduce(
+      (sum, tx) => (tx.type === "income" ? sum + tx.amount : sum),
+      0,
+    );
+    const expenseTotal = items.reduce(
+      (sum, tx) => (tx.type === "expense" ? sum + tx.amount : sum),
+      0,
+    );
     let label = formatTransactionDateShort(dateKey, locale);
     if (dateKey === today) label = t(locale, "txDayToday");
     else if (dateKey === yesterday) label = t(locale, "txDayYesterday");
-    return { dateKey, label, items: buckets.get(dateKey) ?? [] };
+    return { dateKey, label, items, incomeTotal, expenseTotal };
   });
+}
+
+function DayGroupTotals({
+  income,
+  expense,
+  locale,
+}: {
+  income: number;
+  expense: number;
+  locale: "ru" | "en";
+}) {
+  if (income <= 0 && expense <= 0) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold tabular-nums">
+      {income > 0 ? (
+        <span className="text-emerald-600">+{formatMoney(income, locale)}</span>
+      ) : null}
+      {income > 0 && expense > 0 ? (
+        <span className="text-muted-foreground">·</span>
+      ) : null}
+      {expense > 0 ? (
+        <span className="text-red-600">−{formatMoney(expense, locale)}</span>
+      ) : null}
+    </span>
+  );
 }
 
 type TransactionRowProps = {
@@ -322,9 +362,14 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
     <div className="max-h-72 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
       {dayGroups.map((group) => (
         <section key={group.dateKey} className="space-y-1">
-          <p className="sticky top-0 z-[1] bg-card/95 py-0.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-            {group.label}
-          </p>
+          <div className="sticky top-0 z-[1] flex items-center justify-between gap-2 bg-card/95 py-0.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+            <span>{group.label}</span>
+            <DayGroupTotals
+              income={group.incomeTotal}
+              expense={group.expenseTotal}
+              locale={locale}
+            />
+          </div>
           <ul className="space-y-1">
             {group.items.map((tx) => (
               <TransactionRow key={tx.id} tx={tx} {...rowProps} />
