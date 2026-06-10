@@ -22,6 +22,7 @@ import { transcribeTelegramVoice } from "@/lib/stt";
 import {
   escapeHtml,
   miniAppKeyboard,
+  urlKeyboard,
   sendChatAction,
   sendMessage,
   editMessageText,
@@ -36,6 +37,7 @@ import type { TelegramWebAppUser } from "@/lib/telegram/init-data";
 import { formatBotHelpHtml, formatBotStartHtml } from "@/lib/help-faq-content";
 import { getTelegramBotName } from "@/lib/telegram/bot-name";
 import { getPublicSiteUrl } from "@/lib/site-url";
+import { createWebLoginToken } from "@/lib/household/web-login-token";
 import type { Locale, ParsedTransaction, Transaction } from "@/types";
 import type { SavingsGoal } from "@/types/planning";
 
@@ -609,6 +611,37 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   }
 
   const command = lower.split(/\s/)[0] ?? "";
+
+  if (
+    command === "/web" ||
+    command.startsWith("/web@") ||
+    command === "/desktop" ||
+    command.startsWith("/desktop@") ||
+    command === "/login" ||
+    command.startsWith("/login@")
+  ) {
+    const from = message.from;
+    if (!from) return;
+    const tgUser = toWebAppUser(from);
+    const user = await upsertTelegramUser(tgUser);
+    await ensureHousehold(user.id, tgUser);
+    const token = await createWebLoginToken(user.id);
+    const url = `${siteUrl()}/?web_login=${encodeURIComponent(token)}`;
+    await sendMessage(
+      chatId,
+      locale === "en"
+        ? "Open this link on your computer. It works once and expires in 5 minutes."
+        : "Откройте эту ссылку на компьютере. Она работает один раз и сгорит через 5 минут.",
+      {
+        reply_markup: urlKeyboard(
+          locale === "en" ? "Log in on computer" : "Войти на компьютере",
+          url,
+        ),
+      },
+    );
+    return;
+  }
+
   if (command === "/appss_verify" || command.startsWith("/appss_verify@")) {
     const token =
       process.env.TELEGRAM_APPSS_VERIFY_RESPONSE?.trim() || "appss_48b635";

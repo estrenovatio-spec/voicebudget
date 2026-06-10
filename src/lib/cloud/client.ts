@@ -75,6 +75,26 @@ export async function apiBootstrap(auth: CloudAuthBody): Promise<BootstrapRespon
   return parseJson(res);
 }
 
+export async function apiConsumeWebLoginToken(token: string): Promise<BootstrapResponse> {
+  const res = await apiFetch("/api/household/web-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return {
+      ok: false,
+      error: data.error ?? `http_${res.status}`,
+      household: null,
+      token: null,
+      sync: null,
+    };
+  }
+  return parseJson(res);
+}
+
 export async function apiCreateHousehold(
   body: CloudAuthBody & {
     name?: string;

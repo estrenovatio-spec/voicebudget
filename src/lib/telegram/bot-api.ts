@@ -108,3 +108,9 @@ export function miniAppKeyboard(label: string, webAppUrl: string) {
     inline_keyboard: [[{ text: label, web_app: { url: webAppUrl } }]],
   };
 }
+
+export function urlKeyboard(label: string, url: string) {
+  return {
+    inline_keyboard: [[{ text: label, url }]],
+  };
+}
