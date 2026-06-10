@@ -24,14 +24,6 @@ export async function pullBusinessFromCloud(): Promise<boolean> {
     const local = useBusinessStore.getState().exportPayload();
     const remote = res.business;
     const merged = mergeBusinessPayload(local, remote);
-    const assetIds = new Set<string>();
-    const mergedAssets: typeof merged.assets = [];
-    for (const a of [...merged.assets, ...local.assets]) {
-      if (!a?.id || assetIds.has(a.id)) continue;
-      assetIds.add(a.id);
-      mergedAssets.push(a);
-    }
-    merged.assets = mergedAssets;
     useBusinessStore.getState().importPayload(merged);
     useBusinessStore.getState().markCloudSynced();
     return true;

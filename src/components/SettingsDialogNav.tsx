@@ -162,6 +162,7 @@ export function SettingsDialogNav({
       transactions: [],
       deletedTransactionIds: [],
       assets: [],
+      deletedAssetIds: [],
       debts: [],
       deletedUnitsArchive: [],
       passiveReceipts: [],
