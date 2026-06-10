@@ -682,6 +682,9 @@ export const DICT = {
       "Кружок с буквой на вкладке «Все» в операциях. Меняется сразу при выборе.",
     partnerSave: "Сохранить имя партнёра",
     settingsSaved: "Сохранено",
+    settingsFinancialMemory: "Финансовая память",
+    settingsFinancialMemoryHint:
+      "Что приложение выучило по вашим словам, категориям и исправлениям.",
     cloudTitle: "Сохранение и семья",
     cloudHint:
       "Сохранение, партнёр и запуск заново — всё в одном месте.",
@@ -694,7 +697,7 @@ export const DICT = {
       "Готово: телефон очищен, облако заменено чистым состоянием.",
     cloudWebLoginTitle: "Войти через Telegram",
     cloudWebLoginHint:
-      "Тот же аккаунт, что в Mini App: операции с телефона и с сайта будут в одном облаке.",
+      "На компьютере сайт не видит Telegram автоматически. Войдите через тот же Telegram-аккаунт, что на телефоне — операции подтянутся из облака.",
     cloudWebAttachTitle: "Подключить браузер к облаку",
     cloudWebAttachHint:
       "Семья уже создана на телефоне — код и «создать заново» не нужны. Нажмите кнопку ниже (лимита устройств нет).",
@@ -1803,6 +1806,9 @@ export const DICT = {
       "Letter circle on the “All” tab in transactions. Updates when you pick a color.",
     partnerSave: "Save partner’s name",
     settingsSaved: "Saved",
+    settingsFinancialMemory: "Financial memory",
+    settingsFinancialMemoryHint:
+      "What the app learned from your words, categories, and corrections.",
     cloudTitle: "Save & household",
     cloudHint: "Saving, partner setup and fresh start are in one place.",
     cloudDeviceResetTitle: "Start fresh",
@@ -1814,7 +1820,7 @@ export const DICT = {
       "Done: phone cleared and cloud replaced with a clean state.",
     cloudWebLoginTitle: "Log in with Telegram",
     cloudWebLoginHint:
-      "Same account as in the Mini App — phone and web stay in sync.",
+      "On desktop, the website cannot see Telegram automatically. Log in with the same Telegram account as on your phone to load cloud data.",
     cloudWebAttachTitle: "Connect browser to cloud",
     cloudWebAttachHint:
       "Household already exists on your phone — no invite code needed. Tap below (unlimited devices).",

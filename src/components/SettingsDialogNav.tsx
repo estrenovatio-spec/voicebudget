@@ -3,6 +3,7 @@
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
+import { AiMemoryCenter } from "@/components/AiMemoryCenter";
 import { CategoryManager } from "@/components/CategoryManager";
 import { HelpFeedbackCard } from "@/components/HelpFeedbackCard";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
@@ -35,6 +36,7 @@ type SettingsScreen =
   | "menu"
   | "language"
   | "help"
+  | "memory"
   | "categories"
   | "vehicle"
   | "cloud"
@@ -49,6 +51,7 @@ type MenuItem = {
 
 const MENU_ITEMS: MenuItem[] = [
   { id: "categories", titleKey: "categoriesTitle", descriptionKey: "categoriesHint" },
+  { id: "memory", titleKey: "settingsFinancialMemory", descriptionKey: "settingsFinancialMemoryHint" },
   { id: "household", titleKey: "householdTitle", descriptionKey: "householdHint" },
   { id: "cloud", titleKey: "cloudTitle", descriptionKey: "cloudHint" },
   { id: "vehicle", titleKey: "vehicleGarageTitle", descriptionKey: "vehicleHintMulti" },
@@ -233,6 +236,7 @@ export function SettingsDialogNav({
         <HelpFeedbackCard locale={locale} />
       </div>
     ),
+    memory: <AiMemoryCenter />,
     categories: <CategoryManager />,
     vehicle: <VehicleSettingsPanel />,
     cloud: (
