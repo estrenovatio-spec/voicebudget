@@ -167,10 +167,6 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
           </div>
         ) : null}
 
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-950 dark:text-emerald-100">
-          {t(locale, "cloudProtectedNotice")}
-        </p>
-
         <CloudSyncActions embedded showReplace={false} />
         <ArchiveRestorePanel />
 
