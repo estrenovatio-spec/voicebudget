@@ -1,7 +1,6 @@
 "use client";
 
 import { PreviewHeaderNav } from "@/components/app/PreviewHeaderNav";
-import { LiveRatesBar } from "@/components/LiveRatesBar";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 
 /** Верхняя полоска для «Бизнес» / «Ещё» (навигация; настройки — во вкладке Ещё). */
@@ -30,9 +29,6 @@ export function PreviewViewControls({
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
       <PreviewHeaderNav active={active} onChange={onChange} />
-      {active === "business" ? (
-        <LiveRatesBar />
-      ) : null}
     </div>
   );
 }
