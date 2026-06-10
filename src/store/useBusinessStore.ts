@@ -438,6 +438,7 @@ export const useBusinessStore = create<BusinessStore>()(
           createdAt: new Date().toISOString(),
         };
         set((s) => ({ transactions: [tx, ...s.transactions] }));
+        void pushBusinessToCloud();
       },
       transferToCushion: (unitId, amount) => {
         const amt = roundMoneyUp(amount);

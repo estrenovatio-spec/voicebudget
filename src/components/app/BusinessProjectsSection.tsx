@@ -323,6 +323,7 @@ export function BusinessProjectsSection() {
   const addAsset = useBusinessStore((s) => s.addAsset);
   const removeAsset = useBusinessStore((s) => s.removeAsset);
   const updateAsset = useBusinessStore((s) => s.updateAsset);
+  const addOperatingTx = useBusinessStore((s) => s.addOperatingTx);
   const setAssetUtilitiesMonth = useBusinessStore((s) => s.setAssetUtilitiesMonth);
   const transferPassiveToFamily = useBusinessStore((s) => s.transferPassiveToFamily);
   const ensureProjectsUnitId = useBusinessStore((s) => s.ensureProjectsUnitId);
@@ -342,6 +343,7 @@ export function BusinessProjectsSection() {
   const [editHours, setEditHours] = useState("");
   const [editUtilities, setEditUtilities] = useState("");
   const [editUtilitiesMonth, setEditUtilitiesMonth] = useState(() => currentUtilitiesMonthKey());
+  const [saleAmount, setSaleAmount] = useState("");
   const [showProjectsHow, setShowProjectsHow] = useState(false);
 
   useEffect(() => {
@@ -403,6 +405,7 @@ export function BusinessProjectsSection() {
     setEditUtilitiesMonth(currentUtilitiesMonthKey());
     const utils = utilitiesAmountForMonth(a, currentUtilitiesMonthKey());
     setEditUtilities(utils > 0 ? String(utils) : "");
+    setSaleAmount("");
   };
 
   const submitEdit = () => {
@@ -426,6 +429,30 @@ export function BusinessProjectsSection() {
     if (!window.confirm(t(locale, "bizAssetDeleteConfirm", { name: asset.name }))) return;
     removeAsset(asset.id);
     toast(t(locale, "bizAssetDeleted"), "success");
+  };
+
+  const confirmSellAsset = () => {
+    if (!editAsset) return;
+    const amount = parseMoneyAmount(saleAmount);
+    if (!amount || amount <= 0) {
+      toast(locale === "ru" ? "Укажите сумму продажи" : "Enter sale amount", "error");
+      return;
+    }
+    addOperatingTx(
+      editAsset.unitId,
+      "income",
+      amount,
+      `${locale === "ru" ? "Продажа актива" : "Asset sale"}: ${editAsset.name}`,
+    );
+    removeAsset(editAsset.id);
+    setEditAsset(null);
+    setSaleAmount("");
+    toast(
+      locale === "ru"
+        ? `Продажа записана: ${formatMoney(amount, locale)}`
+        : `Sale recorded: ${formatMoney(amount, locale)}`,
+      "success",
+    );
   };
 
   const confirmTransfer = (amount: number, date: string) => {
@@ -676,6 +703,30 @@ export function BusinessProjectsSection() {
               <p className="text-[11px] text-muted-foreground">{t(locale, "projectsUtilitiesHint")}</p>
               <RentalUtilitiesHistory asset={editAsset} locale={locale} />
             </>
+          ) : null}
+          {editAsset ? (
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
+              <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                {locale === "ru" ? "Продажа актива" : "Asset sale"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                {locale === "ru"
+                  ? "Запишет доход в бизнес и уберёт актив из списка."
+                  : "Records business income and removes the asset from the list."}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={locale === "ru" ? "Сумма продажи" : "Sale amount"}
+                  value={saleAmount}
+                  onChange={(e) => setSaleAmount(e.target.value)}
+                />
+                <Button type="button" variant="default" onClick={confirmSellAsset}>
+                  {locale === "ru" ? "Продать" : "Sell"}
+                </Button>
+              </div>
+            </div>
           ) : null}
           <Button type="button" className="w-full" onClick={submitEdit}>
             {t(locale, "bizSave")}

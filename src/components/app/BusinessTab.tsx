@@ -1271,6 +1271,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     useState<DebtRepaymentStrategy>("avalanche");
   const [debtPayId, setDebtPayId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
+  const [businessSaleAmount, setBusinessSaleAmount] = useState("");
   const [editDebtId, setEditDebtId] = useState<string | null>(null);
   const [editDebtName, setEditDebtName] = useState("");
   const [editDebtBalance, setEditDebtBalance] = useState("");
@@ -1551,6 +1552,28 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       locale === "ru"
         ? `Платёж по долгу: ${formatMoney(amount, locale)}`
         : `Debt payment: ${formatMoney(amount, locale)}`,
+      "success",
+    );
+  };
+
+  const submitBusinessSale = () => {
+    if (!activeUnit) return;
+    const amount = parseMoneyAmount(businessSaleAmount);
+    if (!amount || amount <= 0) {
+      toast(locale === "ru" ? "Укажите сумму продажи" : "Enter sale amount", "error");
+      return;
+    }
+    addOperatingTx(
+      activeUnit.id,
+      "income",
+      amount,
+      `${locale === "ru" ? "Продажа бизнеса" : "Business sale"}: ${activeUnit.name}`,
+    );
+    setBusinessSaleAmount("");
+    toast(
+      locale === "ru"
+        ? `Продажа бизнеса записана: ${formatMoney(amount, locale)}`
+        : `Business sale recorded: ${formatMoney(amount, locale)}`,
       "success",
     );
   };
@@ -2091,6 +2114,29 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       <p className="font-bold tabular-nums">
                         {formatMoney(activeMetrics.debtMinPayment, locale)}
                       </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
+                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                      {locale === "ru" ? "Продажа бизнеса" : "Business sale"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                      {locale === "ru"
+                        ? "Если продаёте бизнес целиком, укажите сумму — она запишется как доход этого бизнеса."
+                        : "If you sell the whole business, enter the amount — it will be recorded as income for this business."}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={locale === "ru" ? "Сумма продажи" : "Sale amount"}
+                        value={businessSaleAmount}
+                        onChange={(e) => setBusinessSaleAmount(e.target.value)}
+                      />
+                      <Button type="button" onClick={submitBusinessSale}>
+                        {locale === "ru" ? "Продать" : "Sell"}
+                      </Button>
                     </div>
                   </div>
 
