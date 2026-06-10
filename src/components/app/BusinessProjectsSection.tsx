@@ -260,7 +260,7 @@ function AssetTypeSection({
               amount: formatMoney(summary.monthlyNet, locale),
             })
       : `+${formatMoney(summary.monthlyNet, locale)}/${t(locale, "bizPerMonth")}`;
-  const isMainSource = type === "freelance" || type === "rental";
+  const isMainSource = true;
   const headerClass = isMainSource
     ? "flex items-center justify-between gap-2 rounded-lg border border-emerald-500/35 bg-emerald-600 px-2.5 py-1.5 text-white shadow-sm shadow-emerald-900/10"
     : "flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5";
