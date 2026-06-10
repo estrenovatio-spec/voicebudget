@@ -156,6 +156,7 @@ export function AiMemoryCenter() {
   const categoryBudgets = useStore((s) => s.categoryBudgets);
   const transactions = useTransactions();
   const categories = useCategories();
+  const updateCategory = useStore((s) => s.updateCategory);
   const [learnedRules, setLearnedRules] = useState(() => getAiMemoryRules());
   const [openDateKey, setOpenDateKey] = useState<string | null>(null);
   const [memoryInfoOpen, setMemoryInfoOpen] = useState(false);
@@ -229,12 +230,31 @@ export function AiMemoryCenter() {
 
   const removeRule = (rule: AiMemoryRule) => {
     deleteAiMemoryRule(rule);
+    const category = categories.find((cat) => cat.id === rule.categoryId && cat.type === rule.type);
+    if (category?.keywords.some((kw) => kw.toLowerCase() === rule.phrase.toLowerCase())) {
+      updateCategory(category.id, {
+        keywords: category.keywords.filter(
+          (kw) => kw.toLowerCase() !== rule.phrase.toLowerCase(),
+        ),
+      });
+    }
     setLearnedRules(getAiMemoryRules());
   };
 
   const forgetCategoryGroup = (group: CategoryRuleGroup) => {
+    const phrases = new Set(group.rules.map((rule) => rule.phrase.toLowerCase()));
     for (const rule of group.rules) {
       deleteAiMemoryRule(rule);
+    }
+    const category = categories.find(
+      (cat) => cat.id === group.categoryId && cat.type === group.type,
+    );
+    if (category) {
+      updateCategory(category.id, {
+        keywords: category.keywords.filter(
+          (kw) => !phrases.has(kw.toLowerCase()),
+        ),
+      });
     }
     setLearnedRules(getAiMemoryRules());
   };
