@@ -227,6 +227,8 @@ interface StoreState {
   confirmPendingTransaction: (id: string) => boolean;
   /** Регулярный расход — не было оплаты */
   dismissPendingTransaction: (id: string) => boolean;
+  /** Регулярный расход уже внесён вручную — убрать напоминание без долга */
+  skipPendingTransaction: (id: string) => boolean;
   setLocale: (locale: Locale) => void;
   setIsRecording: (value: boolean) => void;
   setUserName: (name: string | null) => void;
@@ -328,16 +330,44 @@ function hasManualRecurringPayment(
 ): boolean {
   const expectedAmount = roundMoneyUp(item.amount);
   const expectedOwner = item.owner ?? "me";
+  const recurringName = normalizeRecurringMatchText(item.note);
   return transactions.some(
-    (tx) =>
-      tx.confirmed !== false &&
-      !tx.recurringId &&
-      tx.date === runDate &&
-      tx.type === item.type &&
-      (tx.owner ?? "me") === expectedOwner &&
-      tx.categoryId === item.categoryId &&
-      roundMoneyUp(tx.amount) === expectedAmount,
+    (tx) => {
+      if (
+        tx.confirmed === false ||
+        tx.recurringId ||
+        tx.date !== runDate ||
+        tx.type !== item.type ||
+        (tx.owner ?? "me") !== expectedOwner ||
+        roundMoneyUp(tx.amount) !== expectedAmount
+      ) {
+        return false;
+      }
+      if (tx.categoryId === item.categoryId) return true;
+      return hasRecurringNameOverlap(tx.note, recurringName);
+    },
   );
+}
+
+function normalizeRecurringMatchText(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^a-zа-я0-9]+/g, " ")
+    .trim();
+}
+
+function hasRecurringNameOverlap(
+  transactionNote: string | null | undefined,
+  recurringName: string,
+): boolean {
+  if (!recurringName) return false;
+  const txWords = new Set(normalizeRecurringMatchText(transactionNote).split(" ").filter(Boolean));
+  if (txWords.size === 0) return false;
+  return recurringName
+    .split(" ")
+    .filter((word) => word.length >= 3)
+    .some((word) => txWords.has(word));
 }
 
 function pushGarageFromState(get: () => StoreState) {
@@ -1365,6 +1395,12 @@ export const useStore = create<StoreState>()(
             });
           }
         }
+        get().deleteTransaction(id);
+        return true;
+      },
+      skipPendingTransaction: (id) => {
+        const tx = get().transactions.find((t) => t.id === id);
+        if (!tx || tx.confirmed !== false) return false;
         get().deleteTransaction(id);
         return true;
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Ban, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCategoryLabel } from "@/lib/categories";
@@ -25,6 +25,7 @@ export function PendingRecurringCard() {
   const recurringTransactions = useStore((s) => s.recurringTransactions);
   const confirmPending = useStore((s) => s.confirmPendingTransaction);
   const dismissPending = useStore((s) => s.dismissPendingTransaction);
+  const skipPending = useStore((s) => s.skipPendingTransaction);
   const cloudUserId = useCloudStore((s) => s.cloudUserId);
   const token = useCloudStore((s) => s.token);
   const storedMemberIds = useCloudStore((s) => s.householdMemberUserIds);
@@ -73,7 +74,7 @@ export function PendingRecurringCard() {
               <p className="min-w-0 truncate text-xs leading-snug text-muted-foreground tabular-nums">
                 {meta}
               </p>
-              <div className="flex justify-end gap-1.5 justify-self-end">
+              <div className="flex flex-wrap justify-end gap-1.5 justify-self-end">
                 <Button
                   type="button"
                   size="sm"
@@ -82,6 +83,16 @@ export function PendingRecurringCard() {
                 >
                   <Check className="mr-1 h-3.5 w-3.5 shrink-0" />
                   {t(locale, "recurringPendingConfirm")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0 px-2.5 text-xs"
+                  onClick={() => skipPending(tx.id)}
+                >
+                  <Ban className="mr-1 h-3.5 w-3.5 shrink-0" />
+                  {t(locale, "recurringPendingSkip")}
                 </Button>
                 <Button
                   type="button"
