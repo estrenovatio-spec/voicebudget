@@ -1524,11 +1524,6 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                           count: "6",
                         })}
                       </option>
-                      <option value={12}>
-                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
-                          count: "12",
-                        })}
-                      </option>
                     </select>
                   ) : null}
                   <Input
