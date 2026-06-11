@@ -171,6 +171,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     if (budget) void cloudPushCategoryBudget(budget);
   }
   for (const id of merged.localOnlyRecurringIds) {
+    if (deletedRecurring.has(id)) continue;
     const item = merged.recurringTransactions.find((r) => r.id === id);
     if (item) void cloudPushRecurring(item);
   }

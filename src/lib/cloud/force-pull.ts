@@ -33,12 +33,15 @@ export async function forcePullSharedDataFromCloud(): Promise<boolean> {
   useCloudStore.getState().setBalanceOffsets(balanceOffsets);
 
   const local = useStore.getState();
+  const deletedRecurringIds = new Set(useCloudStore.getState().deletedRecurringIds ?? []);
   useStore.setState({
     transactions: remote.transactions,
     categories: remote.categories,
     savingsGoals,
     categoryBudgets: remote.categoryBudgets ?? [],
-    recurringTransactions: remote.recurringTransactions ?? local.recurringTransactions,
+    recurringTransactions:
+      remote.recurringTransactions?.filter((item) => !deletedRecurringIds.has(item.id)) ??
+      local.recurringTransactions,
     ...resolveRemoteGarage(
       remote,
       local.vehicles,

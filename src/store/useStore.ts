@@ -1269,7 +1269,6 @@ export const useStore = create<StoreState>()(
           recurringTransactions: state.recurringTransactions.filter((r) => r.id !== id),
         }));
         useCloudStore.getState().markRecurringDeleted(id);
-        useCloudStore.getState().removeFromLastSyncedRemoteRecurringIds(id);
         void cloudPushRecurringDelete(id);
       },
       addDebt: (data) => {
