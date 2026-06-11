@@ -35,6 +35,12 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const cloud = useCloudStore.getState();
   const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
   const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
+  const previouslySyncedPlanning = {
+    goalIds: new Set(cloud.lastSyncedRemoteGoalIds),
+    budgetCategoryIds: new Set(cloud.lastSyncedRemoteBudgetCategoryIds),
+    recurringIds: new Set(cloud.lastSyncedRemoteRecurringIds),
+    debtIds: new Set(cloud.lastSyncedRemoteDebtIds),
+  };
   const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
   const deletedDebts = new Set(cloud.deletedDebtIds ?? []);
   const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
@@ -53,7 +59,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     remote,
     previouslySynced,
     previouslySyncedCategories,
-    undefined,
+    previouslySyncedPlanning,
     deletedRecurring,
     deletedTransactions,
     deletedDebts,

@@ -186,13 +186,14 @@ export function mergeCategoryBudgets(
 export function mergeRecurringTransactions(
   local: RecurringTransaction[],
   remote: RecurringTransaction[],
-  _previouslySynced?: ReadonlySet<string>,
+  previouslySynced?: ReadonlySet<string>,
   deletedIds?: ReadonlySet<string>,
 ): RecurringTransaction[] {
-  const merged = mergePlanningByKey(
+  const merged = mergeByKey(
     local.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     remote.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     (r) => r.id,
+    previouslySynced,
   );
   if (!deletedIds?.size) return merged;
   return merged.filter((r) => !deletedIds.has(r.id));
@@ -201,10 +202,10 @@ export function mergeRecurringTransactions(
 export function mergeDebts(
   local: DebtItem[],
   remote: DebtItem[],
-  _previouslySynced?: ReadonlySet<string>,
+  previouslySynced?: ReadonlySet<string>,
   deletedIds?: ReadonlySet<string>,
 ): DebtItem[] {
-  const merged = mergePlanningByKey(local, remote, (d) => d.id);
+  const merged = mergeByKey(local, remote, (d) => d.id, previouslySynced);
   if (!deletedIds?.size) return merged;
   return merged.filter((d) => !deletedIds.has(d.id));
 }
@@ -313,10 +314,20 @@ export function mergeSyncPayload(
     .filter((id) => !remoteBudgetIds.has(id));
   const localOnlyRecurringIds = localPlanning.recurringTransactions
     .map((r) => r.id)
-    .filter((id) => !remoteRecurringIds.has(id));
+    .filter((id) => {
+      if (remoteRecurringIds.has(id)) return false;
+      if (previouslySyncedPlanning?.recurringIds?.has(id)) return false;
+      if (deletedRecurringIds?.has(id)) return false;
+      return true;
+    });
   const localOnlyDebtIds = localPlanning.debts
     .map((d) => d.id)
-    .filter((id) => !remoteDebtIds.has(id) && !deletedDebtIds?.has(id));
+    .filter((id) => {
+      if (remoteDebtIds.has(id)) return false;
+      if (previouslySyncedPlanning?.debtIds?.has(id)) return false;
+      if (deletedDebtIds?.has(id)) return false;
+      return true;
+    });
 
   return {
     transactions,
