@@ -35,6 +35,8 @@ export interface RecurringTransaction {
   skippedDates?: string[];
   owner: BudgetOwner;
   frequency: RecurringFrequency;
+  /** Для monthly: раз в N месяцев. Старые записи без поля считаются ежемесячными. */
+  intervalMonths?: number | null;
   dayOfMonth: number | null;
   nextRunDate: string;
   enabled: boolean;

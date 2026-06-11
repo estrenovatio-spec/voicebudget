@@ -333,6 +333,7 @@ model RecurringTransaction {
   note        String             @default("")
   owner       String             @default("me")
   frequency   RecurringFrequency
+  intervalMonths Int?
   dayOfMonth  Int?
   nextRunDate String
   enabled     Boolean            @default(true)

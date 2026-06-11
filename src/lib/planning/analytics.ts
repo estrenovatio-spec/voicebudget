@@ -159,13 +159,18 @@ export function advanceRecurringDate(
   dateIso: string,
   frequency: "weekly" | "monthly" | "yearly",
   dayOfMonth: number | null,
+  intervalMonths = 1,
 ): string {
   const d = new Date(`${dateIso}T12:00:00`);
   if (frequency === "weekly") {
     d.setDate(d.getDate() + 7);
   } else if (frequency === "monthly") {
-    d.setMonth(d.getMonth() + 1);
-    if (dayOfMonth) d.setDate(Math.min(dayOfMonth, 28));
+    const targetMonth = d.getMonth() + Math.max(1, Math.min(60, Math.round(intervalMonths)));
+    const targetDay = dayOfMonth ?? d.getDate();
+    d.setDate(1);
+    d.setMonth(targetMonth);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(targetDay, lastDay));
   } else {
     d.setFullYear(d.getFullYear() + 1);
   }

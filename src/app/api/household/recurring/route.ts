@@ -13,6 +13,7 @@ const bodySchema = z.object({
   note: z.string(),
   owner: z.enum(["me", "partner"]),
   frequency: z.enum(["weekly", "monthly", "yearly"]),
+  intervalMonths: z.number().int().min(1).max(60).nullable().optional(),
   dayOfMonth: z.number().nullable(),
   nextRunDate: z.string(),
   enabled: z.boolean(),

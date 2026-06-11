@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS "RecurringTransaction" (
     "note" TEXT NOT NULL DEFAULT '',
     "owner" TEXT NOT NULL DEFAULT 'me',
     "frequency" "RecurringFrequency" NOT NULL,
+    "intervalMonths" INTEGER,
     "dayOfMonth" INTEGER,
     "nextRunDate" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
@@ -74,6 +75,7 @@ END $$;
 
 ALTER TABLE "SavingsGoal" ADD COLUMN IF NOT EXISTS "monthlyContribution" DOUBLE PRECISION;
 ALTER TABLE "Household" ADD COLUMN IF NOT EXISTS "balanceOffsets" JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE "RecurringTransaction" ADD COLUMN IF NOT EXISTS "intervalMonths" INTEGER;
 
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalId" TEXT;
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "goalAmount" DOUBLE PRECISION;

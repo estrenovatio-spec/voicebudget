@@ -72,6 +72,10 @@ export function dbRecurringToApp(row: DbRecurring): RecurringTransaction {
     note: row.note,
     owner: row.owner === "partner" ? "partner" : "me",
     frequency: row.frequency,
+    intervalMonths:
+      row.frequency === "monthly"
+        ? Math.max(1, Math.min(60, Math.round(Number(row.intervalMonths) || 1)))
+        : null,
     dayOfMonth: row.dayOfMonth,
     nextRunDate: row.nextRunDate,
     enabled: row.enabled,
@@ -93,6 +97,10 @@ export function appRecurringToDb(
     note: item.note,
     owner: item.owner ?? "me",
     frequency: item.frequency,
+    intervalMonths:
+      item.frequency === "monthly"
+        ? Math.max(1, Math.min(60, Math.round(Number(item.intervalMonths) || 1)))
+        : null,
     dayOfMonth: item.dayOfMonth,
     nextRunDate: item.nextRunDate,
     enabled: item.enabled,

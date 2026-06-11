@@ -269,6 +269,7 @@ async function restoreHouseholdFromPayload(
         note: item.note,
         owner: item.owner ?? "me",
         frequency: item.frequency,
+        intervalMonths: item.frequency === "monthly" ? item.intervalMonths ?? 1 : null,
         dayOfMonth: item.dayOfMonth,
         nextRunDate: item.nextRunDate,
         enabled: item.enabled,

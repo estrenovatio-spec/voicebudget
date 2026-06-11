@@ -49,6 +49,7 @@ const recurringSchema = z.object({
   note: z.string(),
   owner: z.enum(["me", "partner"]).optional(),
   frequency: z.enum(["weekly", "monthly", "yearly"]),
+  intervalMonths: z.number().int().min(1).max(60).nullable().optional(),
   dayOfMonth: z.number().nullable(),
   nextRunDate: z.string(),
   enabled: z.boolean(),
@@ -126,6 +127,7 @@ export async function POST(req: NextRequest) {
       recurringTransactions: body.recurringTransactions?.map((r) => ({
         ...r,
         owner: r.owner ?? "me",
+        intervalMonths: r.frequency === "monthly" ? r.intervalMonths ?? 1 : null,
         skippedDates: r.skippedDates ?? [],
       })),
       debts: body.debts?.map((d) => ({

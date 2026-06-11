@@ -243,6 +243,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [recAmount, setRecAmount] = useState("");
   const [recNote, setRecNote] = useState("");
   const [recFrequency, setRecFrequency] = useState<RecurringFrequency>("monthly");
+  const [recIntervalMonths, setRecIntervalMonths] = useState(1);
   const [recStartDate, setRecStartDate] = useState(() => todayIso());
   const [debtName, setDebtName] = useState("");
   const [debtBalance, setDebtBalance] = useState("");
@@ -392,6 +393,8 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
     if (!amount || !recStartDate) return;
     const start = new Date(`${recStartDate}T12:00:00`);
     const dayOfMonth = recFrequency === "monthly" ? start.getDate() : null;
+    const intervalMonths =
+      recFrequency === "monthly" ? Math.max(1, Math.min(60, Math.round(recIntervalMonths))) : null;
     addRecurring({
       amount,
       type: "expense",
@@ -399,6 +402,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
       note: recNote.trim(),
       owner: entryOwner,
       frequency: recFrequency,
+      intervalMonths,
       dayOfMonth,
       nextRunDate: recStartDate,
     });
@@ -1372,7 +1376,11 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                             {item.frequency === "weekly"
                               ? t(locale, "planningRecurringWeekly")
                               : item.frequency === "monthly"
-                                ? t(locale, "planningRecurringMonthly")
+                                ? (item.intervalMonths ?? 1) > 1
+                                  ? replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                                      count: String(item.intervalMonths ?? 1),
+                                    })
+                                  : t(locale, "planningRecurringMonthly")
                                 : t(locale, "planningRecurringYearly")}
                             {" · "}
                             {replaceTokens(t(locale, "planningRecurringNext"), {
@@ -1488,6 +1496,41 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                     <option value="monthly">{t(locale, "planningRecurringMonthly")}</option>
                     <option value="yearly">{t(locale, "planningRecurringYearly")}</option>
                   </select>
+                  {recFrequency === "monthly" ? (
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-[11rem]"
+                      value={recIntervalMonths}
+                      onChange={(e) => setRecIntervalMonths(Number(e.target.value))}
+                      aria-label={t(locale, "planningRecurringInterval")}
+                    >
+                      <option value={1}>{t(locale, "planningRecurringEveryMonth")}</option>
+                      <option value={2}>
+                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                          count: "2",
+                        })}
+                      </option>
+                      <option value={3}>
+                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                          count: "3",
+                        })}
+                      </option>
+                      <option value={4}>
+                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                          count: "4",
+                        })}
+                      </option>
+                      <option value={6}>
+                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                          count: "6",
+                        })}
+                      </option>
+                      <option value={12}>
+                        {replaceTokens(t(locale, "planningRecurringEveryMonths"), {
+                          count: "12",
+                        })}
+                      </option>
+                    </select>
+                  ) : null}
                   <Input
                     type="date"
                     className="w-full sm:w-auto"

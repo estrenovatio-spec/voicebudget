@@ -1306,7 +1306,12 @@ export const useStore = create<StoreState>()(
                 recurringId: item.id,
               });
             }
-            runDate = advanceRecurringDate(runDate, item.frequency, item.dayOfMonth);
+            runDate = advanceRecurringDate(
+              runDate,
+              item.frequency,
+              item.dayOfMonth,
+              item.intervalMonths ?? 1,
+            );
           }
           if (runDate !== item.nextRunDate) {
             get().updateRecurring(item.id, { nextRunDate: runDate });
@@ -1494,6 +1499,10 @@ export const useStore = create<StoreState>()(
             ? (raw.recurringTransactions as RecurringTransaction[]).map((r) => ({
                 ...r,
                 skippedDates: Array.isArray(r.skippedDates) ? r.skippedDates : [],
+                intervalMonths:
+                  r.frequency === "monthly"
+                    ? Math.max(1, Math.min(60, Math.round(Number(r.intervalMonths) || 1)))
+                    : null,
               }))
             : [],
           debts: Array.isArray(raw.debts)

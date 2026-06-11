@@ -28,7 +28,12 @@ export function recurringToParsedTransaction(
 export function nextRunAfterProcessing(item: RecurringTransaction, today: string): string {
   let next = item.nextRunDate;
   while (next <= today) {
-    next = advanceRecurringDate(next, item.frequency, item.dayOfMonth);
+    next = advanceRecurringDate(
+      next,
+      item.frequency,
+      item.dayOfMonth,
+      item.intervalMonths ?? 1,
+    );
   }
   return next;
 }
