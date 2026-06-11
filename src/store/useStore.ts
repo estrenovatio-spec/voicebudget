@@ -321,6 +321,25 @@ function calcBalance(transactions: Transaction[]): number {
   }, 0);
 }
 
+function hasManualRecurringPayment(
+  transactions: Transaction[],
+  item: RecurringTransaction,
+  runDate: string,
+): boolean {
+  const expectedAmount = roundMoneyUp(item.amount);
+  const expectedOwner = item.owner ?? "me";
+  return transactions.some(
+    (tx) =>
+      tx.confirmed !== false &&
+      !tx.recurringId &&
+      tx.date === runDate &&
+      tx.type === item.type &&
+      (tx.owner ?? "me") === expectedOwner &&
+      tx.categoryId === item.categoryId &&
+      roundMoneyUp(tx.amount) === expectedAmount,
+  );
+}
+
 function pushGarageFromState(get: () => StoreState) {
   const { vehicles, vehiclePrefs } = get();
   void cloudPushGarage(vehicles, vehiclePrefs);
@@ -1295,9 +1314,10 @@ export const useStore = create<StoreState>()(
           if (!item.enabled || item.nextRunDate > today) continue;
           let runDate = item.nextRunDate;
           while (runDate <= today) {
-            const exists = get().transactions.some(
+            const transactions = get().transactions;
+            const exists = transactions.some(
               (t) => t.recurringId === item.id && t.date === runDate,
-            );
+            ) || hasManualRecurringPayment(transactions, item, runDate);
             if (!exists) {
               const parsed = recurringToParsedTransaction(item, runDate);
               get().addTransaction({
