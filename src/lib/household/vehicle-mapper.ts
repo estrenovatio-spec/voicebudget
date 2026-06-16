@@ -54,12 +54,21 @@ export function garageModeFromDb(mode: VehicleGarageMode): VehicleGaragePrefs["m
 }
 
 export function memberPrefsToDb(prefs: VehicleGaragePrefs): Prisma.InputJsonValue {
-  return prefs.members as unknown as Prisma.InputJsonValue;
+  return {
+    ...prefs.members,
+    __fuelTrackingEnabled: prefs.fuelTrackingEnabled !== false,
+  } as unknown as Prisma.InputJsonValue;
 }
 
 export function memberPrefsFromDb(
   mode: VehicleGarageMode,
   raw: unknown,
 ): VehicleGaragePrefs {
-  return normalizeVehicleGaragePrefs({ mode: garageModeFromDb(mode), members: raw });
+  const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const { __fuelTrackingEnabled, ...members } = obj;
+  return normalizeVehicleGaragePrefs({
+    mode: garageModeFromDb(mode),
+    members,
+    fuelTrackingEnabled: __fuelTrackingEnabled,
+  });
 }

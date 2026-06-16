@@ -127,6 +127,8 @@ import {
   isVehicleServiceExpense,
   markServiceAlertShown,
   needsVehicleOdometerFlow,
+  normalizeVehicleGaragePrefs,
+  normalizeVehicles,
   partnerDefaultVehicleIds,
   updateVehicleInList,
 } from "@/lib/vehicle";
@@ -201,6 +203,7 @@ interface StoreState {
       goalId?: string | null;
       goalAmount?: number | null;
       odometerKm?: number | null;
+      fuelLiters?: number | null;
       vehicleId?: string | null;
       note?: string;
     },
@@ -219,6 +222,7 @@ interface StoreState {
     transactionId: string,
     vehicleId: string,
     odometerKm: number,
+    fuelLiters?: number | null,
   ) => void;
   dismissServiceAlert: (vehicleId: string, level: ServiceAlertLevel) => void;
   clearPendingOdometer: () => void;
@@ -381,7 +385,7 @@ function applyVehicleAfterTransaction(
   created: Transaction,
 ) {
   const { vehicles, vehiclePrefs, lastFuelVehicleId } = get();
-  if (!needsVehicleOdometerFlow(created, vehicles)) return;
+  if (!needsVehicleOdometerFlow(created, vehicles, vehiclePrefs)) return;
 
   const viewerUserId = ensureCloudViewerUserId();
   const partnerIds = partnerDefaultVehicleIds(vehiclePrefs, viewerUserId);
@@ -590,6 +594,9 @@ export const useStore = create<StoreState>()(
             ...(data.odometerKm != null && Number.isFinite(data.odometerKm)
               ? { odometerKm: Math.max(0, Math.round(data.odometerKm)) }
               : {}),
+            ...(data.fuelLiters != null && Number.isFinite(data.fuelLiters)
+              ? { fuelLiters: Math.max(0, Math.round(data.fuelLiters * 100) / 100) }
+              : {}),
             ...(data.transferPairId ? { transferPairId: data.transferPairId } : {}),
             ...(data.businessTxId ? { businessTxId: data.businessTxId } : {}),
           };
@@ -700,15 +707,23 @@ export const useStore = create<StoreState>()(
         set({ vehiclePrefs });
         pushGarageFromState(get);
       },
-      submitOdometerForTransaction: (transactionId, vehicleId, odometerKm) => {
+      submitOdometerForTransaction: (transactionId, vehicleId, odometerKm, fuelLiters) => {
         const km = Math.max(0, Math.round(odometerKm));
+        const liters =
+          fuelLiters != null && Number.isFinite(fuelLiters)
+            ? Math.max(0, Math.round(fuelLiters * 100) / 100)
+            : null;
         const prompt = get().pendingOdometerPrompt;
         const tx = get().transactions.find((t) => t.id === transactionId);
         if (!tx) {
           set({ pendingOdometerPrompt: null });
           return;
         }
-        get().updateTransaction(transactionId, { odometerKm: km, vehicleId });
+        get().updateTransaction(transactionId, {
+          odometerKm: km,
+          vehicleId,
+          fuelLiters: prompt?.kind === "fuel" ? liters : null,
+        });
         const vehicles = get().vehicles;
         const vehicle = vehicles.find((v) => v.id === vehicleId);
         if (vehicle) {
@@ -798,6 +813,12 @@ export const useStore = create<StoreState>()(
                   ? Math.max(0, Math.round(patch.odometerKm))
                   : null
                 : tx.odometerKm ?? null;
+            const fuelLiters =
+              patch.fuelLiters !== undefined
+                ? patch.fuelLiters != null
+                  ? Math.max(0, Math.round(patch.fuelLiters * 100) / 100)
+                  : null
+                : tx.fuelLiters ?? null;
             const vehicleId =
               patch.vehicleId !== undefined ? patch.vehicleId : tx.vehicleId ?? null;
             const note =
@@ -815,6 +836,7 @@ export const useStore = create<StoreState>()(
               goalId: goalId && goalAmount ? goalId : null,
               goalAmount: goalId && goalAmount ? goalAmount : null,
               odometerKm,
+              fuelLiters,
               vehicleId,
               updatedAt: new Date().toISOString(),
             };
@@ -867,6 +889,7 @@ export const useStore = create<StoreState>()(
             goalId: after.goalId,
             goalAmount: after.goalAmount,
             odometerKm: after.odometerKm,
+            fuelLiters: after.fuelLiters,
             vehicleId: after.vehicleId,
             note: after.note,
           });
@@ -1614,13 +1637,13 @@ export const useStore = create<StoreState>()(
           planningPanelCollapsed:
             typeof raw.planningPanelCollapsed === "boolean" ? raw.planningPanelCollapsed : false,
           vehicles: Array.isArray(raw.vehicles)
-            ? (raw.vehicles as Vehicle[])
+            ? normalizeVehicles(raw.vehicles)
             : raw.vehicle && typeof raw.vehicle === "object"
-              ? [raw.vehicle as Vehicle]
+              ? normalizeVehicles([raw.vehicle])
               : [],
           vehiclePrefs:
             raw.vehiclePrefs && typeof raw.vehiclePrefs === "object"
-              ? (raw.vehiclePrefs as VehicleGaragePrefs)
+              ? normalizeVehicleGaragePrefs(raw.vehiclePrefs)
               : defaultVehicleGaragePrefs(),
           lastFuelVehicleId:
             typeof raw.lastFuelVehicleId === "string" ? raw.lastFuelVehicleId : null,
@@ -1968,6 +1991,21 @@ export function useCategoryBreakdown(days = 30): { category: string; value: numb
 /** Сколько операций показываем на главной (раньше 10 — свежие записи терялись из вида). */
 export const TRANSACTION_LIST_PREVIEW = 80;
 
+function transactionListTime(tx: Transaction): number {
+  const updated = tx.updatedAt ? Date.parse(tx.updatedAt) : NaN;
+  if (Number.isFinite(updated)) return updated;
+  const date = Date.parse(`${tx.date}T12:00:00`);
+  return Number.isFinite(date) ? date : 0;
+}
+
+function sortTransactionsForList(a: Transaction, b: Transaction): number {
+  const byDate = b.date.localeCompare(a.date);
+  if (byDate !== 0) return byDate;
+  const byTime = transactionListTime(b) - transactionListTime(a);
+  if (byTime !== 0) return byTime;
+  return b.id.localeCompare(a.id);
+}
+
 export function useFilteredTransactions(filter: "all" | TxType): Transaction[] {
   const viewerTxs = useViewerMappedTransactions(false);
   const householdFilter = useStore((s) => s.householdFilter);
@@ -1975,7 +2013,10 @@ export function useFilteredTransactions(filter: "all" | TxType): Transaction[] {
     householdFilter === "all"
       ? viewerTxs
       : viewerTxs.filter((tx) => tx.owner === householdFilter);
-  const list = byOwner.filter(countsInBalance).slice(0, TRANSACTION_LIST_PREVIEW);
+  const list = byOwner
+    .filter(countsInBalance)
+    .sort(sortTransactionsForList)
+    .slice(0, TRANSACTION_LIST_PREVIEW);
   if (filter === "all") return list;
   return list.filter((tx) => tx.type === filter);
 }

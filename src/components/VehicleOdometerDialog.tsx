@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,9 @@ export function VehicleOdometerDialog() {
   const clearPendingOdometer = useStore((s) => s.clearPendingOdometer);
 
   const [km, setKm] = useState("");
+  const [liters, setLiters] = useState("");
   const [vehicleId, setVehicleId] = useState("");
+  const initializedPromptRef = useRef<string | null>(null);
 
   const open = Boolean(pending && garageHasVehicles(vehicles));
   const tx = pending ? transactions.find((t) => t.id === pending.transactionId) : null;
@@ -35,12 +37,18 @@ export function VehicleOdometerDialog() {
   useEffect(() => {
     if (!open || !pending) {
       setKm("");
+      setLiters("");
+      initializedPromptRef.current = null;
       return;
     }
+    if (initializedPromptRef.current === pending.transactionId) return;
+    initializedPromptRef.current = pending.transactionId;
     setVehicleId(pending.vehicleId);
     const v = vehicles.find((x) => x.id === pending.vehicleId);
     setKm(v?.currentOdometerKm != null ? String(v.currentOdometerKm) : "");
-  }, [open, pending, vehicles]);
+    const existingTx = transactions.find((item) => item.id === pending.transactionId);
+    setLiters(existingTx?.fuelLiters != null ? String(existingTx.fuelLiters) : "");
+  }, [open, pending, transactions, vehicles]);
 
   const title =
     pending?.kind === "service"
@@ -51,7 +59,13 @@ export function VehicleOdometerDialog() {
     if (!pending || !vehicleId) return;
     const n = Number(String(km).replace(/\s/g, ""));
     if (!Number.isFinite(n) || n < 0) return;
-    submitOdometerForTransaction(pending.transactionId, vehicleId, n);
+    const litersRaw = liters.trim().replace(",", ".").replace(/\s/g, "");
+    const fuelLiters =
+      pending.kind === "fuel" && litersRaw.length > 0 ? Number(litersRaw) : null;
+    if (pending.kind === "fuel" && fuelLiters != null && (!Number.isFinite(fuelLiters) || fuelLiters < 0)) {
+      return;
+    }
+    submitOdometerForTransaction(pending.transactionId, vehicleId, n, fuelLiters);
   };
 
   const handleTelegramBack = useCallback(() => {
@@ -109,9 +123,25 @@ export function VehicleOdometerDialog() {
           onChange={(e) => setKm(e.target.value)}
           placeholder="125000"
           onKeyDown={(e) => {
-            if (e.key === "Enter") save();
+            if (e.key === "Enter" && pending?.kind !== "fuel") save();
           }}
         />
+        {pending?.kind === "fuel" ? (
+          <>
+            <label className="text-xs text-muted-foreground">
+              {t(locale, "vehicleFuelLitersLabel")}
+            </label>
+            <Input
+              inputMode="decimal"
+              value={liters}
+              onChange={(e) => setLiters(e.target.value)}
+              placeholder="45"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") save();
+              }}
+            />
+          </>
+        ) : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" onClick={clearPendingOdometer}>
             {t(locale, "vehicleOdometerSkip")}

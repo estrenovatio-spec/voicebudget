@@ -3,6 +3,10 @@ import { migrateCategoryId } from "@/lib/categories";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import type { CategoryDefinition, Transaction } from "@/types";
 
+type DbTransactionWithFuelLiters = DbTransaction & {
+  fuelLiters?: number | null;
+};
+
 export function dbCategoryToApp(row: Category): CategoryDefinition {
   const id = migrateCategoryId(row.id);
   return {
@@ -14,7 +18,7 @@ export function dbCategoryToApp(row: Category): CategoryDefinition {
   };
 }
 
-export function dbTransactionToApp(row: DbTransaction): Transaction {
+export function dbTransactionToApp(row: DbTransactionWithFuelLiters): Transaction {
   return {
     id: row.id,
     amount: row.amount,
@@ -30,6 +34,7 @@ export function dbTransactionToApp(row: DbTransaction): Transaction {
     confirmed: row.confirmed,
     recurringId: row.recurringId ?? null,
     odometerKm: row.odometerKm ?? null,
+    fuelLiters: row.fuelLiters ?? null,
     vehicleId: row.vehicleId ?? null,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -54,7 +59,7 @@ export function appTransactionToDb(
   householdId: string,
   tx: Transaction,
   createdBy?: string,
-): Omit<DbTransaction, "createdAt" | "updatedAt"> {
+): Omit<DbTransaction, "createdAt" | "updatedAt"> & { fuelLiters?: number | null } {
   return {
     id: tx.id,
     householdId,
@@ -73,6 +78,10 @@ export function appTransactionToDb(
     odometerKm:
       tx.odometerKm != null && Number.isFinite(tx.odometerKm)
         ? Math.max(0, Math.round(tx.odometerKm))
+        : null,
+    fuelLiters:
+      tx.fuelLiters != null && Number.isFinite(tx.fuelLiters)
+        ? Math.max(0, Math.round(tx.fuelLiters * 100) / 100)
         : null,
     vehicleId: tx.vehicleId?.trim() || null,
   };

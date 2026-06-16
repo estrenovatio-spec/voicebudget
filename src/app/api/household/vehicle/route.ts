@@ -91,6 +91,7 @@ export async function DELETE(req: NextRequest) {
     await saveVehicleGarageForHousehold(session.userId, session.householdId, [], {
       mode: "both",
       members: {},
+      fuelTrackingEnabled: true,
     });
     const sync = await buildSyncPayload(session.householdId, session.userId);
     return NextResponse.json({ ok: true, sync });

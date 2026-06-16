@@ -523,7 +523,7 @@ export const DICT = {
     forcePullCloudDone: "Данные обновлены из облака",
     vehicleTitle: "Автомобиль",
     vehicleHint:
-      "При заправке (бензин, АЗС) спросим пробег. При ТО в расходах — сбросим интервал. Уведомления за 1000, 500 км и при сроке.",
+      "При заправке можно считать пробег и литры. При ТО в расходах — сбросим интервал. Уведомления за 1000, 500 км и при сроке.",
     vehicleAdd: "Добавить автомобиль",
     vehicleNamePlaceholder: "Название (например Kia Rio)",
     vehicleLastServiceKm: "Пробег при последнем ТО (км)",
@@ -548,9 +548,14 @@ export const DICT = {
       "При заправке и ТО выберите машину в операции. ₽/100 км — по двум последним заправкам с пробегом. ТО-уведомления приходят всем в семье.",
     vehicleAddAnother: "Добавить ещё машину",
     vehicleCarNumber: "Машина {n}",
-    vehicleFuelPer100: "≈ {value} ₽ / 100 км",
+    vehicleFuelPer100: "≈ {value} ₽ / 100 км · {liters} л / 100 км",
     vehicleFuelPer100Unknown:
       "Нужны две заправки с пробегом — покажем расход на 100 км",
+    vehicleFuelLitersLabel: "Литры топлива",
+    vehicleFuelTrackingToggle: "Считать пробег и литры у бензина",
+    vehicleFuelTrackingHint:
+      "Если выключить, бензин будет обычной тратой без окна пробега.",
+    vehicleFuelTrackingOff: "Бензин записывается без пробега и литров",
     vehicleGarageModeLabel: "Кто на чём ездит",
     vehicleGarageModeBoth: "Оба ездят на всех машинах",
     vehicleGarageModeSplit:
@@ -1656,7 +1661,7 @@ export const DICT = {
     forcePullCloudDone: "Updated from cloud",
     vehicleTitle: "Vehicle",
     vehicleHint:
-      "Fuel expenses ask for odometer. Maintenance expenses reset the service interval. Alerts at 1000, 500 km and when due.",
+      "Fuel can track odometer and liters. Maintenance expenses reset the service interval. Alerts at 1000, 500 km and when due.",
     vehicleAdd: "Add vehicle",
     vehicleNamePlaceholder: "Name (e.g. Kia Rio)",
     vehicleLastServiceKm: "Odometer at last service (km)",
@@ -1681,9 +1686,14 @@ export const DICT = {
       "Pick the car when logging fuel or service. ₽/100 km uses your last two fuel entries with odometer. Service alerts go to everyone.",
     vehicleAddAnother: "Add another car",
     vehicleCarNumber: "Car {n}",
-    vehicleFuelPer100: "≈ {value} ₽ / 100 km",
+    vehicleFuelPer100: "≈ {value} ₽ / 100 km · {liters} L / 100 km",
     vehicleFuelPer100Unknown:
       "Log two fuel entries with odometer to see ₽/100 km",
+    vehicleFuelLitersLabel: "Fuel liters",
+    vehicleFuelTrackingToggle: "Track odometer and liters for fuel",
+    vehicleFuelTrackingHint:
+      "Turn this off to log fuel as a normal expense without odometer prompts.",
+    vehicleFuelTrackingOff: "Fuel is logged without odometer and liters",
     vehicleGarageModeLabel: "Who drives what",
     vehicleGarageModeBoth: "Everyone drives all cars",
     vehicleGarageModeSplit:

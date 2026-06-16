@@ -33,6 +33,8 @@ export interface Transaction {
   recurringId?: string | null;
   /** Пробег на спидометре (заправка / ТО) */
   odometerKm?: number | null;
+  /** Литры топлива при заправке */
+  fuelLiters?: number | null;
   /** Какая машина из гаража */
   vehicleId?: string | null;
   /** Связка пары переводов me ↔ partner */
@@ -55,6 +57,7 @@ export interface ParsedTransaction {
   confirmed?: boolean;
   recurringId?: string | null;
   odometerKm?: number | null;
+  fuelLiters?: number | null;
   vehicleId?: string | null;
   transferPairId?: string | null;
   createdBy?: string | null;

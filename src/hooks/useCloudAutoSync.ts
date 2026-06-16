@@ -9,9 +9,9 @@ import { isTransientHttpError } from "@/lib/fetch-retry";
 import { apiSync } from "@/lib/cloud/client";
 import { useCloudStore } from "@/store/useCloudStore";
 
-const MIN_PULL_MS = 8_000;
+const MIN_PULL_MS = 20_000;
 /** Browser tab may stay open while phone records — poll occasionally */
-const POLL_MS = 10_000;
+const POLL_MS = 30_000;
 
 /** Pull cloud on load, when tab becomes visible, and on a timer while visible. */
 export function useCloudAutoSync() {

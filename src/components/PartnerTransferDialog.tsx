@@ -144,11 +144,7 @@ export function PartnerTransferDialog({
               onClick={() => setDirection(isToPartner ? "to_partner" : "from_partner")}
             />
             <div className="flex shrink-0 flex-col items-center justify-center px-0.5">
-              {isToPartner ? (
-                <ArrowRight className="h-8 w-8 stroke-[2.5] text-primary" aria-hidden />
-              ) : (
-                <ArrowLeft className="h-8 w-8 stroke-[2.5] text-primary" aria-hidden />
-              )}
+              <ArrowRight className="h-8 w-8 stroke-[2.5] text-primary" aria-hidden />
               {showPreview ? (
                 <span className="mt-0.5 text-[11px] font-semibold tabular-nums text-foreground">
                   {formatMoney(parsedPreview)}

@@ -66,7 +66,7 @@ export function normalizeVehicles(raw: unknown): Vehicle[] {
 }
 
 export function defaultVehicleGaragePrefs(): VehicleGaragePrefs {
-  return { mode: "both", members: {} };
+  return { mode: "both", members: {}, fuelTrackingEnabled: true };
 }
 
 export function normalizeVehicleGaragePrefs(raw: unknown): VehicleGaragePrefs {
@@ -87,7 +87,11 @@ export function normalizeVehicleGaragePrefs(raw: unknown): VehicleGaragePrefs {
       };
     }
   }
-  return { mode, members };
+  return {
+    mode,
+    members,
+    fuelTrackingEnabled: obj.fuelTrackingEnabled !== false,
+  };
 }
 
 export function isFuelExpense(
@@ -111,9 +115,11 @@ export function isVehicleServiceExpense(
 export function needsVehicleOdometerFlow(
   tx: Pick<Transaction, "type" | "categoryId" | "note">,
   vehicles: readonly Vehicle[],
+  prefs: VehicleGaragePrefs = defaultVehicleGaragePrefs(),
 ): boolean {
   if (vehicles.length === 0) return false;
-  return isFuelExpense(tx) || isVehicleServiceExpense(tx);
+  if (isVehicleServiceExpense(tx)) return true;
+  return prefs.fuelTrackingEnabled !== false && isFuelExpense(tx);
 }
 
 export function nextServiceOdometerKm(vehicle: Vehicle): number {
@@ -228,6 +234,7 @@ export function mergeVehicleGaragePrefs(
   return {
     mode: remote.mode ?? local.mode,
     members: { ...local.members, ...remote.members },
+    fuelTrackingEnabled: remote.fuelTrackingEnabled ?? local.fuelTrackingEnabled ?? true,
   };
 }
 

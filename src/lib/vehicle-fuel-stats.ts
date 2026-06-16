@@ -3,6 +3,7 @@ import type { Transaction } from "@/types";
 
 export type FuelStatResult = {
   rubPer100Km: number | null;
+  litersPer100Km: number | null;
   deltaKm: number;
   lastAmount: number;
   detail: "ok" | "need_two_fills" | "no_odometer" | "zero_distance";
@@ -30,6 +31,7 @@ export function fuelRubPer100Km(
   if (fills.length < 2) {
     return {
       rubPer100Km: null,
+      litersPer100Km: null,
       deltaKm: 0,
       lastAmount: fills[0]?.amount ?? 0,
       detail: fills.length === 0 ? "no_odometer" : "need_two_fills",
@@ -40,9 +42,19 @@ export function fuelRubPer100Km(
   const last = fills[fills.length - 1]!;
   const deltaKm = last.odometerKm! - prev.odometerKm!;
   if (deltaKm <= 0) {
-    return { rubPer100Km: null, deltaKm, lastAmount: last.amount, detail: "zero_distance" };
+    return {
+      rubPer100Km: null,
+      litersPer100Km: null,
+      deltaKm,
+      lastAmount: last.amount,
+      detail: "zero_distance",
+    };
   }
 
   const rubPer100Km = Math.round((last.amount / deltaKm) * 100);
-  return { rubPer100Km, deltaKm, lastAmount: last.amount, detail: "ok" };
+  const litersPer100Km =
+    last.fuelLiters != null && last.fuelLiters > 0
+      ? Math.round((last.fuelLiters / deltaKm) * 1000) / 10
+      : null;
+  return { rubPer100Km, litersPer100Km, deltaKm, lastAmount: last.amount, detail: "ok" };
 }

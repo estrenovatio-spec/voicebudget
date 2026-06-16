@@ -225,6 +225,7 @@ model Transaction {
   confirmed  Boolean  @default(true)
   recurringId String?
   odometerKm  Int?
+  fuelLiters  Float?
   vehicleId   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

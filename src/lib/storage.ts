@@ -4,6 +4,7 @@ export const RECOMMENDATIONS_TTL_MS = 24 * 60 * 60 * 1000;
 
 const WEEKLY_KEY = "voicebudget-weekly-analysis-v3";
 const WEEKLY_TS_KEY = "voicebudget-weekly-analysis-ts-v3";
+const WEEKLY_CHAT_KEY = "voicebudget-weekly-chat-v1";
 export const WEEKLY_ANALYSIS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const MONTHLY_KEY = "voicebudget-monthly-analysis-v2";
@@ -48,6 +49,11 @@ export interface CachedWeeklyAnalysis {
   periodEnd: string;
 }
 
+export interface WeeklyChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export function getCachedWeeklyAnalysis(): CachedWeeklyAnalysis | null {
   if (typeof window === "undefined") return null;
   try {
@@ -70,12 +76,35 @@ export function setCachedWeeklyAnalysis(items: string[], periodEnd: string): voi
     JSON.stringify({ items, generatedAt: Date.now(), periodEnd }),
   );
   localStorage.setItem(WEEKLY_TS_KEY, String(Date.now()));
+  clearWeeklyChat();
 }
 
 export function clearCachedWeeklyAnalysis(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(WEEKLY_KEY);
   localStorage.removeItem(WEEKLY_TS_KEY);
+  clearWeeklyChat();
+}
+
+export function getWeeklyChatMessages(): WeeklyChatMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(WEEKLY_CHAT_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as WeeklyChatMessage[];
+  } catch {
+    return [];
+  }
+}
+
+export function setWeeklyChatMessages(messages: WeeklyChatMessage[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(WEEKLY_CHAT_KEY, JSON.stringify(messages));
+}
+
+export function clearWeeklyChat(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(WEEKLY_CHAT_KEY);
 }
 
 export interface MonthlyChatMessage {

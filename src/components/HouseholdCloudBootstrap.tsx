@@ -48,8 +48,6 @@ export function HouseholdCloudBootstrap() {
       await runHouseholdBootstrap();
     };
 
-    void boot();
-
     const persistApi = useCloudStore.persist;
     const afterHydrate = () => {
       void boot();

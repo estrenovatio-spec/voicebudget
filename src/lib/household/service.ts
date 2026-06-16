@@ -620,6 +620,7 @@ export async function updateCloudTransaction(
       | "recurringId"
       | "createdBy"
       | "odometerKm"
+      | "fuelLiters"
       | "vehicleId"
       | "note"
     >

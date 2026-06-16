@@ -13,8 +13,6 @@ import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 
-const OSAGO_URL = process.env.NEXT_PUBLIC_OSAGO_URL?.trim() ?? "";
-
 type DraftCar = {
   id: string;
   name: string;
@@ -135,8 +133,13 @@ export function VehicleSettingsPanel() {
         const nextDue = vehicle ? nextServiceOdometerKm(vehicle) : 0;
         const fuel = fuelStats.find((f) => f.id === d.id)?.stat;
         const fuelLabel =
-          fuel?.detail === "ok" && fuel.rubPer100Km != null
-            ? t(locale, "vehicleFuelPer100", { value: String(fuel.rubPer100Km) })
+          prefs.fuelTrackingEnabled === false
+            ? t(locale, "vehicleFuelTrackingOff")
+            : fuel?.detail === "ok" && fuel.rubPer100Km != null
+              ? t(locale, "vehicleFuelPer100", {
+                  value: String(fuel.rubPer100Km),
+                  liters: fuel.litersPer100Km != null ? String(fuel.litersPer100Km) : "—",
+                })
             : t(locale, "vehicleFuelPer100Unknown");
 
         const carTitle = d.name.trim() || t(locale, "vehicleCarNumber", { n: String(index + 1) });
@@ -222,6 +225,25 @@ export function VehicleSettingsPanel() {
           {t(locale, "vehicleAddAnother")}
         </Button>
       ) : null}
+
+      <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={prefs.fuelTrackingEnabled !== false}
+          onChange={(e) => {
+            const next = { ...prefs, fuelTrackingEnabled: e.target.checked };
+            setPrefs(next);
+            saveVehicleGarage(vehicles, next);
+          }}
+        />
+        <span>
+          <span className="block font-medium">{t(locale, "vehicleFuelTrackingToggle")}</span>
+          <span className="block text-xs text-muted-foreground">
+            {t(locale, "vehicleFuelTrackingHint")}
+          </span>
+        </span>
+      </label>
 
       <SettingsAccordion variant="nested" title={t(locale, "vehicleGarageModeLabel")}>
         <label className="flex items-center gap-2 text-sm">
@@ -312,16 +334,6 @@ export function VehicleSettingsPanel() {
       <Button type="button" className="w-full" onClick={saveAll}>
         {t(locale, "vehicleSaveGarage")}
       </Button>
-
-      {OSAGO_URL ? (
-        <Button type="button" variant="outline" className="w-full" asChild>
-          <a href={OSAGO_URL} target="_blank" rel="noopener noreferrer">
-            {t(locale, "vehicleOsago")}
-          </a>
-        </Button>
-      ) : (
-        <p className="text-center text-xs text-muted-foreground">{t(locale, "vehicleOsagoSoon")}</p>
-      )}
     </div>
   );
 }

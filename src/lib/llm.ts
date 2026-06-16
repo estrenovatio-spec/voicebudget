@@ -40,6 +40,8 @@ export function getLlmClient(): OpenAI | null {
   return new OpenAI({
     apiKey,
     ...(baseURL ? { baseURL } : {}),
+    timeout: 25_000,
+    maxRetries: 0,
   });
 }
 
@@ -62,9 +64,9 @@ export function getLlmModel(): string {
   const explicit = envFirst("LLM_MODEL", "OPENAI_MODEL");
   if (explicit) return explicit;
   if (llmProvider() === "xinghu" || getLlmBaseUrl() === XINGHU_BASE) {
-    return "gemini-2.5-pro-all";
+    return "gemini-2.5-flash";
   }
-  if (getLlmBaseUrl()) return "gemini-2.5-pro-all";
+  if (getLlmBaseUrl()) return "gemini-2.5-flash";
   return "gpt-4o-mini";
 }
 
@@ -110,8 +112,8 @@ export function getPlainTextLlmClient(): OpenAI | null {
   return new OpenAI({
     apiKey,
     ...(baseURL ? { baseURL } : {}),
-    timeout: 60_000,
-    maxRetries: 1,
+    timeout: 25_000,
+    maxRetries: 0,
   });
 }
 

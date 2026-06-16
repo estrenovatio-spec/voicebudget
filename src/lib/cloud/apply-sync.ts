@@ -159,6 +159,7 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
         goalId: tx.goalId,
         goalAmount: tx.goalAmount,
         odometerKm: tx.odometerKm,
+        fuelLiters: tx.fuelLiters,
         vehicleId: tx.vehicleId,
         note: tx.note,
       },

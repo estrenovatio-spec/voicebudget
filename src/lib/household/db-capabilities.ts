@@ -3,12 +3,14 @@ import { prisma } from "@/lib/db";
 /** Какие опциональные объекты реально есть в подключённой БД (не в prisma/schema). */
 export type HouseholdDbCapabilities = {
   txOdometerKm: boolean;
+  txFuelLiters: boolean;
   txVehicleId: boolean;
   vehicleGarage: boolean;
 };
 
 const DEFAULT_CAPS: HouseholdDbCapabilities = {
   txOdometerKm: false,
+  txFuelLiters: false,
   txVehicleId: false,
   vehicleGarage: false,
 };
@@ -42,7 +44,7 @@ export async function getHouseholdDbCapabilities(): Promise<HouseholdDbCapabilit
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND (
-          (table_name = 'Transaction' AND column_name IN ('odometerKm', 'vehicleId'))
+          (table_name = 'Transaction' AND column_name IN ('odometerKm', 'fuelLiters', 'vehicleId'))
           OR (table_name = 'Household' AND column_name IN ('vehicleGarageMode', 'vehicleMemberPrefs'))
           OR (table_name = 'Vehicle' AND column_name = 'id')
         )
@@ -58,6 +60,7 @@ export async function getHouseholdDbCapabilities(): Promise<HouseholdDbCapabilit
 
     cached = {
       txOdometerKm: txCols.has("odometerKm"),
+      txFuelLiters: txCols.has("fuelLiters"),
       txVehicleId: txCols.has("vehicleId"),
       vehicleGarage:
         hasVehicleTable &&
@@ -74,5 +77,5 @@ export async function getHouseholdDbCapabilities(): Promise<HouseholdDbCapabilit
 
 /** Prisma SELECT по Transaction безопасен только если все опциональные колонки на месте. */
 export function canUsePrismaTransactionModel(caps: HouseholdDbCapabilities): boolean {
-  return caps.txOdometerKm && caps.txVehicleId;
+  return caps.txOdometerKm && caps.txFuelLiters && caps.txVehicleId;
 }

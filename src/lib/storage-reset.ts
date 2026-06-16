@@ -7,6 +7,7 @@ const RECOMMENDATIONS_KEY = "voicebudget-recommendations";
 const RECOMMENDATIONS_TS_KEY = "voicebudget-recommendations-ts";
 const WEEKLY_KEY = "voicebudget-weekly-analysis-v3";
 const WEEKLY_TS_KEY = "voicebudget-weekly-analysis-ts-v3";
+const WEEKLY_CHAT_KEY = "voicebudget-weekly-chat-v1";
 const MONTHLY_KEY = "voicebudget-monthly-analysis-v2";
 const MONTHLY_TS_KEY = "voicebudget-monthly-analysis-ts-v2";
 const MONTHLY_CHAT_KEY = "voicebudget-monthly-chat-v1";
@@ -55,6 +56,7 @@ export function clearAppStorage(): void {
     localStorage.removeItem(RECOMMENDATIONS_TS_KEY);
     localStorage.removeItem(WEEKLY_KEY);
     localStorage.removeItem(WEEKLY_TS_KEY);
+    localStorage.removeItem(WEEKLY_CHAT_KEY);
     localStorage.removeItem(MONTHLY_KEY);
     localStorage.removeItem(MONTHLY_TS_KEY);
     localStorage.removeItem(MONTHLY_CHAT_KEY);

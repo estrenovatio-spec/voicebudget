@@ -20,6 +20,7 @@ const txSchema = z.object({
   recurringId: z.string().nullable().optional(),
   createdBy: z.string().nullable().optional(),
   odometerKm: z.number().nullable().optional(),
+  fuelLiters: z.number().nullable().optional(),
   vehicleId: z.string().nullable().optional(),
   transferPairId: z.string().nullable().optional(),
   businessTxId: z.string().nullable().optional(),

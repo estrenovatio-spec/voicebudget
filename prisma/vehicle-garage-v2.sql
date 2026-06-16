@@ -3,6 +3,7 @@
 -- См. prisma/MIGRATIONS.md
 
 ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "vehicleId" TEXT;
+ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "fuelLiters" DOUBLE PRECISION;
 
 CREATE TYPE "VehicleGarageMode" AS ENUM ('both', 'split');
 

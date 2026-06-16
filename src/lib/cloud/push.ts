@@ -101,6 +101,7 @@ export async function cloudPushTransactionUpdate(
       | "goalId"
       | "goalAmount"
       | "odometerKm"
+      | "fuelLiters"
       | "vehicleId"
       | "note"
     >

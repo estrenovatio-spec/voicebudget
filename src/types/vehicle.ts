@@ -21,6 +21,7 @@ export interface VehicleMemberPref {
 export interface VehicleGaragePrefs {
   mode: VehicleGarageMode;
   members: Record<string, VehicleMemberPref>;
+  fuelTrackingEnabled: boolean;
 }
 
 export type OdometerPromptKind = "fuel" | "service";

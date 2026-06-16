@@ -208,11 +208,42 @@ export async function backupUserBusinessPayload(
   if (!(await ensureBusinessCloudTables())) return false;
   const data = normalizePayload(payload);
   if (!hasMeaningfulBusinessPayload(data)) return false;
+  const json = JSON.stringify(data);
   try {
+    const recentWindow =
+      reason === "manual"
+        ? "30 minutes"
+        : reason.startsWith("daily_")
+          ? "23 hours"
+          : reason === "first_save"
+            ? "365 days"
+            : "23 hours";
+
+    const recentSameReason = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT "id"
+      FROM "UserBusinessBackup"
+      WHERE "userId" = ${userId}
+        AND "reason" = ${reason}
+        AND "createdAt" > NOW() - (${recentWindow})::interval
+      LIMIT 1
+    `;
+    if (recentSameReason.length > 0 && reason !== "manual") return false;
+
+    const duplicate = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT "id"
+      FROM "UserBusinessBackup"
+      WHERE "userId" = ${userId}
+        AND "reason" = ${reason}
+        AND "payload" = CAST(${json} AS jsonb)
+        AND "createdAt" > NOW() - INTERVAL '30 minutes'
+      LIMIT 1
+    `;
+    if (duplicate.length > 0) return false;
+
     const id = randomUUID();
     await prisma.$executeRaw`
       INSERT INTO "UserBusinessBackup" ("id", "userId", "payload", "reason")
-      VALUES (${id}, ${userId}, CAST(${JSON.stringify(data)} AS jsonb), ${reason})
+      VALUES (${id}, ${userId}, CAST(${json} AS jsonb), ${reason})
     `;
     await prisma.$executeRaw`
       DELETE FROM "UserBusinessBackup"

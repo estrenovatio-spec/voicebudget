@@ -68,6 +68,7 @@ export function TransactionEditDialog({
 
   const [amount, setAmount] = useState("");
   const [odometerKm, setOdometerKm] = useState("");
+  const [fuelLiters, setFuelLiters] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [txType, setTxType] = useState<TxType>("expense");
   const [categoryId, setCategoryId] = useState("");
@@ -103,6 +104,7 @@ export function TransactionEditDialog({
       raw.goalAmount && raw.goalAmount > 0 ? String(raw.goalAmount) : "",
     );
     setOdometerKm(raw.odometerKm != null ? String(raw.odometerKm) : "");
+    setFuelLiters(raw.fuelLiters != null ? String(raw.fuelLiters) : "");
     const partnerIds = partnerDefaultVehicleIds(vehiclePrefs, viewerUserId);
     const defaultVid =
       raw.vehicleId ??
@@ -130,8 +132,14 @@ export function TransactionEditDialog({
     categoryId === "transport" &&
     (isFuelExpense({ type: txType, categoryId, note: transaction.note }) ||
       isVehicleServiceExpense({ type: txType, categoryId, note: transaction.note }));
-  const showVehicleFields = garageHasVehicles(vehicles) && isTransportFuelOrService;
+  const isFuelTx = isFuelExpense({ type: txType, categoryId, note: transaction.note });
+  const isServiceTx = isVehicleServiceExpense({ type: txType, categoryId, note: transaction.note });
+  const showVehicleFields =
+    garageHasVehicles(vehicles) &&
+    isTransportFuelOrService &&
+    (isServiceTx || (isFuelTx && vehiclePrefs.fuelTrackingEnabled !== false));
   const showOdometer = showVehicleFields;
+  const showFuelLiters = showVehicleFields && isFuelTx;
 
   const handleTypeChange = (next: TxType) => {
     setTxType(next);
@@ -173,6 +181,11 @@ export function TransactionEditDialog({
         ? Math.max(0, Math.round(Number(odometerRaw) || 0))
         : null;
     const vid = showVehicleFields && vehicleId ? vehicleId : null;
+    const fuelLitersRaw = fuelLiters.trim().replace(",", ".").replace(/\s/g, "");
+    const liters =
+      showFuelLiters && fuelLitersRaw.length > 0
+        ? Math.max(0, Math.round((Number(fuelLitersRaw) || 0) * 100) / 100)
+        : null;
 
     updateTransaction(transaction.id, {
       amount: roundMoneyUp(parsed),
@@ -187,6 +200,7 @@ export function TransactionEditDialog({
           ? normalizeGoalAmount(parsedGoal)
           : null,
       ...(showVehicleFields ? { odometerKm: odometer, vehicleId: vid } : {}),
+      ...(showFuelLiters ? { fuelLiters: liters } : {}),
     });
     if (odometer != null) {
       syncVehicleFromTransaction(transaction.id);
@@ -315,6 +329,20 @@ export function TransactionEditDialog({
                 onChange={(e) => setOdometerKm(e.target.value)}
                 placeholder="125000"
               />
+              {showFuelLiters ? (
+                <>
+                  <label className="text-sm font-medium" htmlFor="tx-fuel-liters">
+                    {t(locale, "vehicleFuelLitersLabel")}
+                  </label>
+                  <Input
+                    id="tx-fuel-liters"
+                    inputMode="decimal"
+                    value={fuelLiters}
+                    onChange={(e) => setFuelLiters(e.target.value)}
+                    placeholder="45"
+                  />
+                </>
+              ) : null}
             </div>
           ) : null}
           {txType === "income" && savingsGoals.length > 0 ? (

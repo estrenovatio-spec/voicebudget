@@ -26,6 +26,7 @@ type TxRow = {
   confirmed: boolean;
   recurringId: string | null;
   odometerKm: number | null;
+  fuelLiters: number | null;
   vehicleId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +37,7 @@ function mapRawRow(row: TxRow, caps: HouseholdDbCapabilities): Transaction {
     ...row,
     type: row.type as Transaction["type"],
     odometerKm: caps.txOdometerKm ? row.odometerKm : null,
+    fuelLiters: caps.txFuelLiters ? row.fuelLiters : null,
     vehicleId: caps.txVehicleId ? row.vehicleId : null,
   } as Parameters<typeof dbTransactionToApp>[0]);
 }
@@ -50,6 +52,9 @@ async function fetchTransactionsRaw(
   const vehicleSelect = caps.txVehicleId
     ? Prisma.sql`"vehicleId"`
     : Prisma.sql`NULL::text AS "vehicleId"`;
+  const fuelLitersSelect = caps.txFuelLiters
+    ? Prisma.sql`"fuelLiters"`
+    : Prisma.sql`NULL::double precision AS "fuelLiters"`;
 
   const rows = await prisma.$queryRaw<TxRow[]>`
     SELECT
@@ -68,6 +73,7 @@ async function fetchTransactionsRaw(
       confirmed,
       "recurringId",
       ${odometerSelect},
+      ${fuelLitersSelect},
       ${vehicleSelect},
       "createdAt",
       "updatedAt"
@@ -101,6 +107,7 @@ export function stripUnsupportedTransactionFields(
 ): Record<string, unknown> {
   const out = { ...data };
   if (!caps.txOdometerKm) delete out.odometerKm;
+  if (!caps.txFuelLiters) delete out.fuelLiters;
   if (!caps.txVehicleId) delete out.vehicleId;
   return out;
 }
@@ -130,6 +137,7 @@ export async function createTransactionForHousehold(
       id, "householdId", amount, type, "categoryId", currency, note, date, owner,
       "goalId", "goalAmount", "createdBy", confirmed, "recurringId", "createdAt", "updatedAt"
       ${caps.txOdometerKm ? Prisma.sql`, "odometerKm"` : Prisma.empty}
+      ${caps.txFuelLiters ? Prisma.sql`, "fuelLiters"` : Prisma.empty}
       ${caps.txVehicleId ? Prisma.sql`, "vehicleId"` : Prisma.empty}
     ) VALUES (
       ${String(data.id)}, ${householdId}, ${Number(data.amount)}, ${String(data.type)},
@@ -138,6 +146,7 @@ export async function createTransactionForHousehold(
       ${data.createdBy as string | null}, ${Boolean(data.confirmed)}, ${data.recurringId as string | null},
       NOW(), NOW()
       ${caps.txOdometerKm ? Prisma.sql`, ${data.odometerKm as number | null}` : Prisma.empty}
+      ${caps.txFuelLiters ? Prisma.sql`, ${data.fuelLiters as number | null}` : Prisma.empty}
       ${caps.txVehicleId ? Prisma.sql`, ${data.vehicleId as string | null}` : Prisma.empty}
     )
   `;
@@ -159,6 +168,7 @@ export async function updateTransactionForHousehold(
       | "recurringId"
       | "createdBy"
       | "odometerKm"
+      | "fuelLiters"
       | "vehicleId"
       | "note"
     >
@@ -186,6 +196,7 @@ export async function updateTransactionForHousehold(
       ...(patch.confirmed !== undefined ? { confirmed: patch.confirmed } : {}),
       ...(patch.recurringId !== undefined ? { recurringId: patch.recurringId } : {}),
       ...(patch.odometerKm !== undefined ? { odometerKm: patch.odometerKm } : {}),
+      ...(patch.fuelLiters !== undefined ? { fuelLiters: patch.fuelLiters } : {}),
       ...(patch.vehicleId !== undefined ? { vehicleId: patch.vehicleId } : {}),
       note: patch.note !== undefined ? patch.note : existing.note,
     },
@@ -215,6 +226,9 @@ export async function updateTransactionForHousehold(
   if (patch.recurringId !== undefined) sets.push(Prisma.sql`"recurringId" = ${patch.recurringId}`);
   if (caps.txOdometerKm && patch.odometerKm !== undefined) {
     sets.push(Prisma.sql`"odometerKm" = ${patch.odometerKm}`);
+  }
+  if (caps.txFuelLiters && patch.fuelLiters !== undefined) {
+    sets.push(Prisma.sql`"fuelLiters" = ${patch.fuelLiters}`);
   }
   if (caps.txVehicleId && patch.vehicleId !== undefined) {
     sets.push(Prisma.sql`"vehicleId" = ${patch.vehicleId}`);
@@ -309,7 +323,7 @@ export async function findTransactionInHousehold(
   if (canUsePrismaTransactionModel(caps)) {
     try {
       const row = await prisma.transaction.findFirst({ where: { id, householdId } });
-      return row;
+      return row ? ({ ...row, fuelLiters: (row as { fuelLiters?: number | null }).fuelLiters ?? null } as TxRow) : null;
     } catch (err) {
       if (!isMissingDbObject(err)) throw err;
     }
@@ -334,6 +348,7 @@ export async function findTransactionInHousehold(
     confirmed: hit.confirmed !== false,
     recurringId: hit.recurringId ?? null,
     odometerKm: hit.odometerKm ?? null,
+    fuelLiters: hit.fuelLiters ?? null,
     vehicleId: hit.vehicleId ?? null,
     createdAt: new Date(),
     updatedAt: new Date(hit.updatedAt ?? Date.now()),

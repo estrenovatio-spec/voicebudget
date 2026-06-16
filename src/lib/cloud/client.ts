@@ -260,6 +260,7 @@ export async function apiUpdateTransaction(
       | "goalId"
       | "goalAmount"
       | "odometerKm"
+      | "fuelLiters"
       | "vehicleId"
       | "note"
     >

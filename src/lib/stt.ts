@@ -132,7 +132,7 @@ export async function transcribeAudioFile(
     for (const file of providerFiles) {
       const method = `${provider.id}-${file.name || primaryFmt}`;
       try {
-        const transcript = await transcribeWhisperFetch(provider, file, locale, 26_000);
+        const transcript = await transcribeWhisperFetch(provider, file, locale, 12_000);
         const ok = accept(transcript, method);
         if (ok) return ok;
         if (transcript) lastError = "garbage_filtered";

@@ -34,11 +34,13 @@ export const FAQ_SECTIONS: FaqSection[] = [
       ru: [
         "/start — приветствие и зачем приложение.",
         "/help — шпаргалка: как записывать, копилки, облако вдвоём.",
+        "/web — открыть вход для браузера/компьютера через тот же Telegram-аккаунт.",
         'Других команд нет. Любой текст без "/" — запись операции (как голосовое).',
       ],
       en: [
         "/start — welcome and what the app does for you.",
         "/help — quick guide: logging, jars, shared cloud.",
+        "/web — open browser/desktop login for the same Telegram account.",
         "No other commands. Any text without / logs a transaction (like voice).",
       ],
     },
@@ -131,6 +133,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
         "С облаком новые операции уходят автоматически.",
         "Синхронизировать · Скачать с облака · Отправить на облако — в блоке «Облако и семья».",
         "Браузер: Войти через Telegram → Подключить этот браузер → Скачать с облака.",
+        "Команда /web в боте тоже откроет вход для браузера/компьютера.",
         "Партнёр не видит траты — не присоединился по коду или открывает не из Telegram.",
       ],
       en: [
@@ -138,6 +141,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
         "With cloud, new entries sync automatically.",
         "Sync · Download from cloud · Upload to cloud — in «Cloud & family».",
         "Browser: Log in via Telegram → Attach browser → Download from cloud.",
+        "Bot command /web also opens browser/desktop login.",
         "Partner missing expenses — not joined by code or not using Telegram.",
       ],
     },
@@ -391,11 +395,13 @@ export const FAQ_CHEATSHEET_SECTIONS: FaqCheatsheetSection[] = [
       ru: [
         "⚙ → Облако и семья → «Вдвоём» → «Создать облачный бюджет» → скопируйте код.",
         "Второй человек: ⚙ → Присоединиться → ввести код.",
+        "Для входа с компьютера или браузера отправьте боту /web — он даст ссылку на тот же Telegram-аккаунт.",
         "Операции синхронизируются; фильтры Общий / Я / Партнёр — на главной.",
       ],
       en: [
         "⚙ → Cloud & family → Shared → create cloud budget → copy invite code.",
         "Second person: ⚙ → Join → enter code.",
+        "For browser/desktop login, send /web to the bot — it returns a link for the same Telegram account.",
         "Transactions sync; filters All / Me / Partner — on home screen.",
       ],
     },
@@ -507,6 +513,7 @@ export function formatBotHelpHtml(locale: Locale, botUsername = getTelegramBotNa
       `<b>Bot</b>\n` +
       `Any text without / = log a transaction · voice works too.\n` +
       `/start — welcome\n` +
+      `/web — browser/desktop login\n` +
       `More: Mini App → Settings → Help → ask AI\n\n` +
       `@${bot}`
     );
@@ -518,6 +525,7 @@ export function formatBotHelpHtml(locale: Locale, botUsername = getTelegramBotNa
     `<b>Бот</b>\n` +
     `Любой текст без / = запись операции · можно голосом.\n` +
     `/start — приветствие\n` +
+    `/web — вход с компьютера или браузера\n` +
     `Подробнее: Mini App → Настройки → Помощь → спросите ИИ\n\n` +
     `@${bot}`
   );

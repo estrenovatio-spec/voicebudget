@@ -14,12 +14,24 @@ export const WEEKLY_ANALYSIS_DAYS = 7;
 export const WEEKLY_MIN_TRANSACTIONS = 5;
 /** Минимум дней ведения бюджета до первого разбора */
 export const WEEKLY_MIN_DAYS_TRACKED = 7;
+export const WEEKLY_CHAT_MAX_USER_MESSAGES = 3;
 
 export interface WeeklySummary extends BudgetSummary {
   periodStart: string;
   periodEnd: string;
   weekTransactionCount: number;
+  categoryChanges: CategorySpendingChange[];
 }
+
+export type CategorySpendingChange = {
+  category: string;
+  currentAmount: number;
+  previousAmount: number;
+  deltaAmount: number;
+  deltaPercent: number | null;
+  currentCount: number;
+  previousCount: number;
+};
 
 export type WeeklyGateReason =
   | "waiting_first_week"
@@ -39,6 +51,50 @@ function parseDate(date: string): Date {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 }
 
+function categorySpendingChanges(
+  transactions: Transaction[],
+  currentStart: Date,
+  currentEnd: Date,
+  previousStart: Date,
+  previousEnd: Date,
+  resolveCategoryLabel: (categoryId: string) => string,
+): CategorySpendingChange[] {
+  const current = new Map<string, { amount: number; count: number }>();
+  const previous = new Map<string, { amount: number; count: number }>();
+
+  for (const tx of transactions) {
+    if (tx.type !== "expense") continue;
+    const d = parseDate(tx.date);
+    const label = resolveCategoryLabel(tx.categoryId);
+    const bucket = d >= currentStart && d <= currentEnd ? current : d >= previousStart && d < previousEnd ? previous : null;
+    if (!bucket) continue;
+    const row = bucket.get(label) ?? { amount: 0, count: 0 };
+    row.amount += tx.amount;
+    row.count += 1;
+    bucket.set(label, row);
+  }
+
+  const categories = new Set([...current.keys(), ...previous.keys()]);
+  return Array.from(categories)
+    .map((category) => {
+      const cur = current.get(category) ?? { amount: 0, count: 0 };
+      const prev = previous.get(category) ?? { amount: 0, count: 0 };
+      const deltaAmount = cur.amount - prev.amount;
+      return {
+        category,
+        currentAmount: Math.round(cur.amount),
+        previousAmount: Math.round(prev.amount),
+        deltaAmount: Math.round(deltaAmount),
+        deltaPercent: prev.amount > 0 ? Math.round((deltaAmount / prev.amount) * 100) : null,
+        currentCount: cur.count,
+        previousCount: prev.count,
+      };
+    })
+    .filter((row) => row.currentAmount > 0 && row.deltaAmount > 0)
+    .sort((a, b) => b.deltaAmount - a.deltaAmount)
+    .slice(0, 5);
+}
+
 export function buildWeeklySummary(
   transactions: Transaction[],
   trackingStartedAt: string | null,
@@ -48,6 +104,8 @@ export function buildWeeklySummary(
   const start = new Date();
   start.setDate(start.getDate() - WEEKLY_ANALYSIS_DAYS);
   start.setHours(0, 0, 0, 0);
+  const previousStart = new Date(start);
+  previousStart.setDate(previousStart.getDate() - WEEKLY_ANALYSIS_DAYS);
 
   const weekTxs = transactions.filter((tx) => {
     const d = parseDate(tx.date);
@@ -67,6 +125,14 @@ export function buildWeeklySummary(
     balance: periodNet,
     periodStart: start.toISOString().slice(0, 10),
     periodEnd: end.toISOString().slice(0, 10),
+    categoryChanges: categorySpendingChanges(
+      transactions,
+      start,
+      end,
+      previousStart,
+      start,
+      resolveCategoryLabel,
+    ),
   };
 }
 
@@ -157,6 +223,7 @@ ${JSON.stringify(
     weekTransactionCount: summary.weekTransactionCount,
     totalExpense: summary.totalExpense,
     expenseByCategory: summary.expenseByCategory,
+    categoryChanges: summary.categoryChanges,
     monthlyExpenses: summary.monthlyExpenses,
     firstDate: summary.firstDate,
     lastDate: summary.lastDate,
@@ -175,6 +242,7 @@ Critical rules:
 - Tone: warm, zero shame, zero lecturing. User is learning to track money, not failing a test.
 - ${limited ? "Data is LIMITED — say that explicitly. Do NOT invent patterns. No dramatic warnings." : "Use real numbers from data."}
 - Weekly review must focus on expenses only: totalExpense, expenseByCategory, transactionCount, habits, and one small action for next week.
+- categoryChanges compares the latest 7 days with the previous 7 days. If a category rose meaningfully, explain the likely reason as a question/check, not a verdict.
 - Do NOT calculate or comment on income minus expenses in the weekly review. Do NOT mention "balance", "баланс", "итог периода", or negative cash flow.
 - Mention income only if it is directly useful as context, never as a verdict.
 - Never scold for one big expense — suggest one small next step.
@@ -185,19 +253,100 @@ ${coaching ? coachingPromptBlock(coaching, locale) : ""}
 `;
 };
 
+export const WEEKLY_CHAT_SYSTEM = (
+  summary: WeeklySummary,
+  reportTips: string[],
+  locale: Locale,
+  coaching?: AiCoachingContext | null,
+) => {
+  const lang = locale === "ru" ? "Russian" : "English";
+
+  return `
+You are the in-app financial advisor for a weekly budget review.
+
+Respond in ${lang}.
+Use only the user's weekly data below. If data is not enough, say that clearly and give a small next step.
+Keep answers short: 3-6 sentences or up to 4 bullets.
+Tone: calm, practical, no shame, no pressure.
+Focus on expenses, category growth, repeated habits, and one realistic action for the next 7 days.
+Do not give legal, tax, investment, medical, or debt-collection advice.
+Do not ask the user to contact anyone outside the app.
+
+Weekly data:
+${JSON.stringify(
+  {
+    daysTracked: summary.daysTracked,
+    weekTransactionCount: summary.weekTransactionCount,
+    totalExpense: summary.totalExpense,
+    expenseByCategory: summary.expenseByCategory,
+    categoryChanges: summary.categoryChanges,
+    currency: summary.currency,
+    periodStart: summary.periodStart,
+    periodEnd: summary.periodEnd,
+    reportTips,
+  },
+  null,
+  2,
+)}
+
+${coaching ? coachingPromptBlock(coaching, locale) : ""}
+`;
+};
+
 export function ruleBasedWeeklyAnalysis(
   summary: WeeklySummary,
   locale: Locale,
   advisor: AdvisorConfig,
 ): string[] {
   const isRu = locale === "ru";
+  const topGrowth = summary.categoryChanges.find((row) => row.deltaAmount >= 500);
 
-  return [
+  const tips = [
     isRu
       ? `За 7 дней записано расходов на ${summary.totalExpense.toLocaleString("ru-RU")} ₽. Это снимок привычек, не оценка — продолжайте вести учёт.`
       : `7 days: ${summary.totalExpense} in expenses logged. A snapshot of habits, not a verdict — keep logging.`,
+  ];
+
+  if (topGrowth) {
+    tips.push(
+      isRu
+        ? `«${topGrowth.category}» выросла на ${topGrowth.deltaAmount.toLocaleString("ru-RU")} ₽ к прошлой неделе. Проверьте: это разовая покупка, рост цен или категория начала повторяться чаще?`
+        : `${topGrowth.category} rose by ${topGrowth.deltaAmount} RUB versus last week. Check whether it was one-off, price growth, or repeated spending.`,
+    );
+  }
+
+  tips.push(
     isRu
       ? "На следующей неделе картина станет яснее — главное не бросать записи."
       : "Next week the picture will be clearer — keep logging.",
+  );
+
+  return tips;
+}
+
+export function weeklyAdvisorQuestions(summary: WeeklySummary, locale: Locale): string[] {
+  const top = summary.expenseByCategory[0]?.category;
+  const growth = summary.categoryChanges[0];
+
+  if (locale === "ru") {
+    return [
+      top
+        ? `Почему у меня больше всего трат в категории «${top}» и что можно сделать без жёсткой экономии?`
+        : "Какая трата за неделю сильнее всего влияет на мой бюджет?",
+      growth
+        ? `Почему выросли траты в категории «${growth.category}» по сравнению с прошлой неделей?`
+        : "Какая категория начинает расти и за чем стоит понаблюдать?",
+      "Какой один небольшой шаг на следующую неделю даст самый заметный эффект?",
+    ];
+  }
+
+  return [
+    top
+      ? `Why is ${top} my largest spending category, and what can I do without harsh cuts?`
+      : "Which weekly expense affects my budget the most?",
+    growth
+      ? `Why did ${growth.category} grow compared with last week?`
+      : "Which category is starting to grow and should I watch?",
+    "What one small step next week would have the biggest effect?",
   ];
 }
