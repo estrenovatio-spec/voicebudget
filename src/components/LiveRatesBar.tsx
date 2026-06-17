@@ -104,7 +104,7 @@ function RateCell({
   return (
     <div
       title={title}
-      className={`inline-flex shrink-0 min-w-0 items-center gap-0.5 whitespace-nowrap rounded-md px-0.5 py-0.5 transition-colors duration-700 ${
+      className={`inline-flex w-full min-w-0 items-center justify-center gap-0.5 whitespace-nowrap rounded-md px-0.5 py-0.5 transition-colors duration-700 ${
         flash ? "bg-emerald-500/15" : ""
       }`}
     >
@@ -182,7 +182,7 @@ export function LiveRatesBar() {
 
   return (
     <div
-      className="flex w-full flex-nowrap items-center gap-1 overflow-x-auto leading-none"
+      className="grid w-full grid-cols-4 gap-1.5 leading-none sm:gap-2"
       aria-live="polite"
     >
       <RateCell
