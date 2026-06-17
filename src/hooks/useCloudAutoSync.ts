@@ -38,11 +38,14 @@ export function useCloudAutoSync() {
 
       const token = useCloudStore.getState().token;
       const household = useCloudStore.getState().household;
-      if (!token || !household) {
+      if (!token) {
         if (hasCloudAuth()) {
           void runHouseholdBootstrap();
         }
         return;
+      }
+      if (!household) {
+        void runHouseholdBootstrap();
       }
 
       lastPullAt.current = now;

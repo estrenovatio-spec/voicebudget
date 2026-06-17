@@ -34,8 +34,7 @@ function noteCloudWriteError(message: string): void {
 
 function token(): string | null {
   if (isCloudPaused() || isCloudRestoreInProgress()) return null;
-  const { token: t, household } = useCloudStore.getState();
-  return t && household ? t : null;
+  return useCloudStore.getState().token;
 }
 
 async function resolveWritableToken(): Promise<string | null> {
