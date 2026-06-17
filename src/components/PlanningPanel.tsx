@@ -240,7 +240,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
 
   const open = !collapsible || (hydrated && !collapsed);
   const planningTabClass =
-    "h-auto min-h-9 rounded-md px-2 text-xs font-semibold leading-tight text-foreground/70 transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
+    "h-auto min-h-9 w-full min-w-0 rounded-md px-2 text-center text-xs font-semibold leading-tight whitespace-normal text-foreground/70 transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
 
   const toggleOpen = useCallback(() => {
     setPlanningPanelCollapsed(!useStore.getState().planningPanelCollapsed);
@@ -628,23 +628,23 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
       {open ? (
         <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
-            <TabsList className="mb-3 grid h-auto w-full grid-cols-6 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
-              <TabsTrigger value="goals" className={`${planningTabClass} col-span-2`}>
+            <TabsList className="mb-3 grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
+              <TabsTrigger value="goals" className={planningTabClass}>
                 {t(locale, "planningTabGoals")}
               </TabsTrigger>
-              <TabsTrigger value="limits" className={`${planningTabClass} col-span-2`}>
+              <TabsTrigger value="limits" className={planningTabClass}>
                 {t(locale, "planningTabLimits")}
               </TabsTrigger>
-              <TabsTrigger value="debts" className={`${planningTabClass} col-span-2`}>
+              <TabsTrigger value="debts" className={planningTabClass}>
                 {locale === "ru" ? "Долги" : "Debts"}
               </TabsTrigger>
-              <TabsTrigger value="emergency" className={`${planningTabClass} col-span-3`}>
+              <TabsTrigger value="emergency" className={planningTabClass}>
                 {t(locale, "planningTabEmergency")}
               </TabsTrigger>
-              <TabsTrigger value="recurring" className={`${planningTabClass} col-span-3`}>
+              <TabsTrigger value="recurring" className={planningTabClass}>
                 {t(locale, "planningTabRecurring")}
               </TabsTrigger>
-              <TabsTrigger value="stats" className={`${planningTabClass} col-span-3`}>
+              <TabsTrigger value="stats" className={planningTabClass}>
                 <BarChart3 className="mr-1 h-3.5 w-3.5" />
                 {locale === "ru" ? "Статистика" : "Stats"}
               </TabsTrigger>
