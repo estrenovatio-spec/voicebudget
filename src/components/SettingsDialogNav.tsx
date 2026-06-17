@@ -72,11 +72,13 @@ export function SettingsDialogNav({
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const liveRatesEnabled = useStore((s) => s.liveRatesEnabled);
   const setUserName = useStore((s) => s.setUserName);
   const setPartnerName = useStore((s) => s.setPartnerName);
   const setPartnerKeywords = useStore((s) => s.setPartnerKeywords);
   const setBusinessModeEnabled = useStore((s) => s.setBusinessModeEnabled);
   const setPassiveIncomeEnabled = useStore((s) => s.setPassiveIncomeEnabled);
+  const setLiveRatesEnabled = useStore((s) => s.setLiveRatesEnabled);
   const myChipColor = useStore((s) => s.myChipColor);
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
@@ -360,14 +362,22 @@ export function SettingsDialogNav({
       {screen === "menu" ? (
         <div className="space-y-3">
           <div className="space-y-2 rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
-            <BizModeRow
+            <ToggleQuestionRow
               locale={locale}
               title={t(locale, "settingsBizQuestionBusiness")}
-              businessActive={businessModeEnabled}
+              active={businessModeEnabled}
               onChange={(next) => {
                 const enabled = next === "yes";
                 setBusinessModeEnabled(enabled);
                 setPassiveIncomeEnabled(false);
+              }}
+            />
+            <ToggleQuestionRow
+              locale={locale}
+              title={t(locale, "settingsOnlineRatesQuestion")}
+              active={liveRatesEnabled}
+              onChange={(next) => {
+                setLiveRatesEnabled(next === "yes");
               }}
             />
           </div>
@@ -392,15 +402,15 @@ export function SettingsDialogNav({
   );
 }
 
-function BizModeRow({
+function ToggleQuestionRow({
   locale,
   title,
-  businessActive,
+  active,
   onChange,
 }: {
   locale: Locale;
   title: string;
-  businessActive: boolean;
+  active: boolean;
   onChange: (next: "yes" | "no") => void;
 }) {
   return (
@@ -409,7 +419,7 @@ function BizModeRow({
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Button
           type="button"
-          variant={businessActive ? "default" : "outline"}
+          variant={active ? "default" : "outline"}
           className="h-auto min-h-9 whitespace-normal px-2 py-2 text-xs leading-tight"
           onClick={() => onChange("yes")}
         >
@@ -417,7 +427,7 @@ function BizModeRow({
         </Button>
         <Button
           type="button"
-          variant={!businessActive ? "default" : "outline"}
+          variant={!active ? "default" : "outline"}
           className="h-auto min-h-9 whitespace-normal px-2 py-2 text-xs leading-tight"
           onClick={() => onChange("no")}
         >

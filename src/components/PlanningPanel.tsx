@@ -1,6 +1,16 @@
 "use client";
 
-import { ChevronDown, ChevronUp, CircleAlert, Landmark, Pencil, PiggyBank, Shield, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  Landmark,
+  Pencil,
+  PiggyBank,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -267,6 +277,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [editDebtDate, setEditDebtDate] = useState("");
   const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
   const [emergencyInfoOpen, setEmergencyInfoOpen] = useState(false);
+  const [showRecurringStats, setShowRecurringStats] = useState(true);
   const [recurringFilter, setRecurringFilter] = useState<"unpaid" | "paid" | "all">("unpaid");
 
   const customGoals = useMemo(
@@ -631,10 +642,28 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
               <TabsTrigger value="emergency" className={`${planningTabClass} col-span-3`}>
                 {t(locale, "planningTabEmergency")}
               </TabsTrigger>
-              <TabsTrigger value="recurring" className={`${planningTabClass} col-span-3`}>
-                {t(locale, "planningTabRecurring")}
-              </TabsTrigger>
+              <div className="col-span-3 flex gap-1">
+                <TabsTrigger value="recurring" className={`${planningTabClass} flex-1`}>
+                  {t(locale, "planningTabRecurring")}
+                </TabsTrigger>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto min-h-9 shrink-0 px-2.5 text-[11px]"
+                  onClick={() => setShowRecurringStats((value) => !value)}
+                >
+                  <BarChart3 className="mr-1 h-3.5 w-3.5" />
+                  {locale === "ru" ? "Статистика" : "Stats"}
+                </Button>
+              </div>
             </TabsList>
+
+            {showRecurringStats ? (
+              <div className="mb-3">
+                <FinancialChart collapsible={false} />
+              </div>
+            ) : null}
 
             <TabsContent value="goals" className="space-y-3">
               {customGoals.length === 0 ? (
@@ -1302,7 +1331,6 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
             </TabsContent>
 
             <TabsContent value="recurring" className="space-y-3">
-              <FinancialChart collapsible={false} />
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t(locale, "planningRecurringHint")}
               </p>

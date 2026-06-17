@@ -117,6 +117,7 @@ export function TMAHeader({
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
+  const liveRatesEnabled = useStore((s) => s.liveRatesEnabled);
   const balances = useHouseholdBalances();
   const [amountsHidden, setAmountsHidden] = useState(false);
   const [balanceEditDialogOpen, setBalanceEditDialogOpen] = useState(false);
@@ -256,9 +257,11 @@ export function TMAHeader({
               </Button>
             ) : null}
           </div>
-          <div className="mt-2.5 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
-            <LiveRatesBar />
-          </div>
+          {liveRatesEnabled ? (
+            <div className="mt-2.5 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
+              <LiveRatesBar />
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

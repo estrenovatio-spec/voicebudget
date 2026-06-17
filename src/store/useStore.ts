@@ -149,8 +149,10 @@ interface StoreState {
   setPartnerKeywords: (keywords: string[]) => void;
   businessModeEnabled: boolean;
   passiveIncomeEnabled: boolean;
+  liveRatesEnabled: boolean;
   setBusinessModeEnabled: (enabled: boolean) => void;
   setPassiveIncomeEnabled: (enabled: boolean) => void;
+  setLiveRatesEnabled: (enabled: boolean) => void;
   /** HEX цвет кружка «я» в списке операций */
   myChipColor: string;
   partnerChipColor: string;
@@ -480,8 +482,10 @@ export const useStore = create<StoreState>()(
         }),
       businessModeEnabled: false,
       passiveIncomeEnabled: false,
+      liveRatesEnabled: false,
       setBusinessModeEnabled: (enabled) => set({ businessModeEnabled: enabled }),
       setPassiveIncomeEnabled: (enabled) => set({ passiveIncomeEnabled: enabled }),
+      setLiveRatesEnabled: (enabled) => set({ liveRatesEnabled: enabled }),
       myChipColor: DEFAULT_MY_CHIP_COLOR,
       partnerChipColor: DEFAULT_PARTNER_CHIP_COLOR,
       setMyChipColor: (hex) =>
@@ -1541,6 +1545,7 @@ export const useStore = create<StoreState>()(
             : [],
           businessModeEnabled: Boolean(raw.businessModeEnabled),
           passiveIncomeEnabled: Boolean(raw.passiveIncomeEnabled),
+          liveRatesEnabled: Boolean(raw.liveRatesEnabled),
           myChipColor: sanitizeOwnerChipColor(
             typeof raw.myChipColor === "string" ? raw.myChipColor : null,
             DEFAULT_MY_CHIP_COLOR,
