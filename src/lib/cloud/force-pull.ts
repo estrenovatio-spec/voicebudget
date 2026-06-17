@@ -1,6 +1,4 @@
-import { parseBalanceOffsets } from "@/lib/balance-offsets";
 import { defaultVehicleGaragePrefs, resolveRemoteGarage } from "@/lib/vehicle";
-import { applyBalanceOffsetsFromCloud } from "@/lib/cloud/apply-balance-offsets";
 import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import { apiSync } from "@/lib/cloud/client";
 import { ensureCloudViewerUserId } from "@/lib/cloud/viewer-identity";
@@ -22,15 +20,7 @@ export async function forcePullSharedDataFromCloud(): Promise<boolean> {
   if (remote.memberUserIds?.length) {
     useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
   }
-  useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
-  useCloudStore.getState().setLastSyncedRemoteGoalIds(savingsGoals.map((g) => g.id));
-  useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
-    (remote.categoryBudgets ?? []).map((b) => b.categoryId),
-  );
   useCloudStore.getState().touchSync();
-
-  const balanceOffsets = parseBalanceOffsets(remote.balanceOffsets);
-  useCloudStore.getState().setBalanceOffsets(balanceOffsets);
 
   const local = useStore.getState();
   const deletedRecurringIds = new Set(useCloudStore.getState().deletedRecurringIds ?? []);
@@ -42,14 +32,12 @@ export async function forcePullSharedDataFromCloud(): Promise<boolean> {
     recurringTransactions:
       remote.recurringTransactions?.filter((item) => !deletedRecurringIds.has(item.id)) ??
       local.recurringTransactions,
-    ...resolveRemoteGarage(
+      ...resolveRemoteGarage(
       remote,
       local.vehicles,
       local.vehiclePrefs ?? defaultVehicleGaragePrefs(),
     ),
   });
-
-  applyBalanceOffsetsFromCloud(balanceOffsets, remote.memberUserIds ?? []);
 
   return true;
 }

@@ -53,7 +53,6 @@ import { buildGoalDepositTransaction } from "@/lib/planning/goal-transfer";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import { roundMoneyUp } from "@/lib/format-money";
 import {
-  cloudPushBalanceOffset,
   cloudPushCategory,
   cloudPushCategoryBudget,
   cloudPushCategoryBudgetDelete,
@@ -627,6 +626,7 @@ export const useStore = create<StoreState>()(
         });
         const created = get().transactions.find((t) => t.id === newId) ?? null;
         if (created && created.confirmed !== false && !opts?.skipCloudPush) {
+          useCloudStore.getState().markTransactionUpdatePending(created.id, created.updatedAt);
           void cloudPushTransaction(created);
           if (created.goalId && created.goalAmount) {
             const goal = get().savingsGoals.find((g) => g.id === created.goalId);
@@ -1022,10 +1022,8 @@ export const useStore = create<StoreState>()(
         const offset = actual - computed;
         if (owner === "me") {
           set({ cashOffsetMe: offset });
-          void cloudPushBalanceOffset("me", offset);
         } else {
           set({ cashOffsetPartner: offset });
-          void cloudPushBalanceOffset("partner", offset);
         }
       },
       addCategory: (type, labelRu, labelEn, keywords = []) => {

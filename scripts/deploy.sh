@@ -19,7 +19,8 @@ fi
 
 echo "→ Node: $(node -v)"
 echo "→ Локальная проверка сборки..."
-npm run build
+npx prisma generate
+npx next build --webpack
 echo "→ Деплой на Vercel (сборка на сервере, не prebuilt)..."
 OUT="$(npx vercel deploy --prod --yes 2>&1)"
 echo "$OUT"

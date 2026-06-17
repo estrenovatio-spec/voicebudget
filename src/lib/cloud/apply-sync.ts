@@ -1,6 +1,4 @@
-import { parseBalanceOffsets } from "@/lib/balance-offsets";
 import { defaultVehicleGaragePrefs, resolveRemoteGarage } from "@/lib/vehicle";
-import { applyBalanceOffsetsFromCloud } from "@/lib/cloud/apply-balance-offsets";
 import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import { mergeSyncPayload } from "@/lib/cloud/merge-sync";
 import {
@@ -10,7 +8,6 @@ import {
   cloudPushDebt,
   cloudPushRecurring,
   cloudPushTransaction,
-  cloudPushTransactionUpdate,
 } from "@/lib/cloud/push";
 import type { SyncPayload } from "@/lib/household/types";
 import { ensureCloudViewerUserId } from "@/lib/cloud/viewer-identity";
@@ -33,20 +30,11 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const remote = emptyPlanningDefaults(sync);
   const local = useStore.getState();
   const cloud = useCloudStore.getState();
-  const previouslySynced = new Set(cloud.lastSyncedRemoteTxIds);
-  const previouslySyncedCategories = new Set(cloud.lastSyncedRemoteCategoryIds);
-  const previouslySyncedPlanning = {
-    goalIds: new Set(cloud.lastSyncedRemoteGoalIds),
-    budgetCategoryIds: new Set(cloud.lastSyncedRemoteBudgetCategoryIds),
-    recurringIds: new Set(cloud.lastSyncedRemoteRecurringIds),
-    debtIds: new Set(cloud.lastSyncedRemoteDebtIds),
-  };
   const deletedRecurring = new Set(cloud.deletedRecurringIds ?? []);
   const deletedDebts = new Set(cloud.deletedDebtIds ?? []);
   const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
-  const pendingTransactionUpdates = new Set(
-    Object.keys(cloud.pendingTransactionUpdateIds ?? {}),
-  );
+  const pendingTransactionUpdates = new Set(Object.keys(cloud.pendingTransactionUpdateIds ?? {}));
+  const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const merged = mergeSyncPayload(
     local.transactions,
     local.categories,
@@ -57,68 +45,27 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
       debts: local.debts,
     },
     remote,
-    previouslySynced,
-    previouslySyncedCategories,
-    previouslySyncedPlanning,
+    cloud.lastSyncedAt,
+    new Set(cloud.lastSyncedRemoteCategoryIds),
     deletedRecurring,
     deletedTransactions,
     deletedDebts,
     pendingTransactionUpdates,
   );
 
-  const remoteRecurringIds = new Set((remote.recurringTransactions ?? []).map((r) => r.id));
-  const remoteDebtIds = new Set((remote.debts ?? []).map((d) => d.id));
-  const prunedDeletedRecurring = (cloud.deletedRecurringIds ?? []).filter((id) =>
-    remoteRecurringIds.has(id),
-  );
-  if (prunedDeletedRecurring.length !== (cloud.deletedRecurringIds ?? []).length) {
-    useCloudStore.getState().setDeletedRecurringIds(prunedDeletedRecurring);
-  }
-  const prunedDeletedDebt = (cloud.deletedDebtIds ?? []).filter((id) => remoteDebtIds.has(id));
-  if (prunedDeletedDebt.length !== (cloud.deletedDebtIds ?? []).length) {
-    useCloudStore.getState().setDeletedDebtIds(prunedDeletedDebt);
-  }
-
-  const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
-  for (const tx of local.transactions) {
-    if (previouslySynced.has(tx.id) && !remoteTxIds.has(tx.id)) {
-      useCloudStore.getState().markTransactionDeleted(tx.id);
-    }
-  }
-  const prunedDeletedTx = (cloud.deletedTransactionIds ?? []).filter((id) =>
-    remoteTxIds.has(id),
-  );
-  if (prunedDeletedTx.length !== (cloud.deletedTransactionIds ?? []).length) {
-    useCloudStore.getState().setDeletedTransactionIds(prunedDeletedTx);
-  }
-
   const savingsGoals = merged.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
 
   useCloudStore.getState().setSession(token, remote.household);
+  useCloudStore.getState().setLastWriteError(null);
   ensureCloudViewerUserId(remote.viewerUserId ?? undefined);
   if (remote.memberUserIds.length > 0) {
     useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
   }
-  const remoteTxIdSet = new Set(remote.transactions.map((t) => t.id));
-  useCloudStore.getState().setLastSyncedRemoteTxIds(
-    merged.transactions.filter((t) => remoteTxIdSet.has(t.id)).map((t) => t.id),
-  );
-  useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
-  // Только id из ответа сервера: иначе локальная цель без успешного push
-  // помечалась «синхронизированной» и пропадала при следующем pull.
-  useCloudStore.getState().setLastSyncedRemoteGoalIds(
-    (remote.savingsGoals ?? []).map((g) => g.id),
-  );
-  useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
-    (remote.categoryBudgets ?? []).map((b) => b.categoryId),
-  );
-  useCloudStore.getState().setLastSyncedRemoteRecurringIds(
-    (remote.recurringTransactions ?? []).map((r) => r.id),
-  );
-  useCloudStore.getState().setLastSyncedRemoteDebtIds((remote.debts ?? []).map((d) => d.id));
-
-  const balanceOffsets = parseBalanceOffsets(remote.balanceOffsets);
-  useCloudStore.getState().setBalanceOffsets(balanceOffsets);
+  for (const id of pendingTransactionUpdates) {
+    if (remoteTxIds.has(id)) {
+      useCloudStore.getState().clearTransactionUpdatePending(id);
+    }
+  }
 
   const garage = resolveRemoteGarage(
     remote,
@@ -139,32 +86,9 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
     // household.partnerLabel в БД общий для семьи и не подставляется в UI.
   });
 
-  applyBalanceOffsetsFromCloud(balanceOffsets, remote.memberUserIds);
-
   for (const id of merged.localOnlyTransactionIds) {
     const tx = merged.transactions.find((t) => t.id === id);
     if (tx) void cloudPushTransaction(tx);
-  }
-  for (const id of pendingTransactionUpdates) {
-    const tx = merged.transactions.find((t) => t.id === id);
-    if (!tx || deletedTransactions.has(id)) continue;
-    void cloudPushTransactionUpdate(
-      id,
-      {
-        amount: tx.amount,
-        categoryId: tx.categoryId,
-        owner: tx.owner,
-        createdBy: tx.createdBy,
-        type: tx.type,
-        goalId: tx.goalId,
-        goalAmount: tx.goalAmount,
-        odometerKm: tx.odometerKm,
-        fuelLiters: tx.fuelLiters,
-        vehicleId: tx.vehicleId,
-        note: tx.note,
-      },
-      { skipPull: true },
-    );
   }
   for (const cat of merged.localOnlyCategories) {
     void cloudPushCategory(cat);

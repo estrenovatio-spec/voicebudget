@@ -16,8 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { cloudPushPartnerLabel, isCloudSyncActive } from "@/lib/cloud/push";
-import { replaceBusinessCloudWithThisDevice } from "@/lib/cloud/business-sync";
-import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
 import { parsePartnerKeywordsInput } from "@/lib/detect-owner";
 import { defaultBusinessUnit } from "@/lib/business/types";
 import {
@@ -27,9 +25,11 @@ import {
 import { myDisplayName, partnerDisplayName, partnerTabLabel } from "@/lib/owner-labels";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { setCloudPaused } from "@/lib/cloud/cloud-pause";
 import { clearAppStorage } from "@/lib/storage-reset";
 import type { Locale } from "@/types";
 import { useBusinessStore } from "@/store/useBusinessStore";
+import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
 type SettingsScreen =
@@ -83,7 +83,6 @@ export function SettingsDialogNav({
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
   const setPartnerChipColor = useStore((s) => s.setPartnerChipColor);
-  const { replaceCloudWithThisDevice } = useHouseholdCloud();
   const { toast } = useToast();
   const [screen, setScreen] = useState<SettingsScreen>("menu");
   const [myNameInput, setMyNameInput] = useState(userName ?? "");
@@ -191,18 +190,12 @@ export function SettingsDialogNav({
       toast(t(locale, "cloudDeviceResetDone"), "success");
       return;
     }
+    setCloudPaused(true);
+    clearAppStorage();
+    useCloudStore.getState().clearSession();
     resetLocalData();
-    const [familyOk, businessOk] = await Promise.all([
-      replaceCloudWithThisDevice(),
-      replaceBusinessCloudWithThisDevice(),
-    ]);
     setConfirmClear(false);
-    toast(
-      familyOk && businessOk
-        ? t(locale, "cloudDeviceResetCloudDone")
-        : t(locale, "cloudSyncFailed"),
-      familyOk && businessOk ? "success" : "error",
-    );
+    toast(t(locale, "cloudDeviceResetDone"), "success");
   };
 
   const activeItem = MENU_ITEMS.find((m) => m.id === screen);

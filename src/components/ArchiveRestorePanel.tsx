@@ -5,6 +5,7 @@ import { ArchiveRestore, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import {
+  apiSync,
   apiCreateBusinessBackup,
   apiCreateHouseholdBackup,
   apiListBusinessBackups,
@@ -15,7 +16,10 @@ import {
   type HouseholdBackupSummary,
 } from "@/lib/cloud/client";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
+import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
+import { beginCloudRestore, endCloudRestore } from "@/lib/cloud/restore-lock";
 import { formatMoney } from "@/lib/format-money";
+import type { SyncPayload } from "@/lib/household/types";
 import { useCloudStore } from "@/store/useCloudStore";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useStore } from "@/store/useStore";
@@ -230,11 +234,46 @@ export function ArchiveRestorePanel() {
     }
   };
 
+  const buildLocalHouseholdSnapshot = (): SyncPayload | null => {
+    const cloud = useCloudStore.getState();
+    const household = cloud.household;
+    if (!household) return null;
+    const local = useStore.getState();
+    return {
+      household,
+      memberUserIds: cloud.householdMemberUserIds.length
+        ? cloud.householdMemberUserIds
+        : [],
+      transactions: local.transactions,
+      categories: local.categories,
+      savingsGoals: local.savingsGoals,
+      categoryBudgets: local.categoryBudgets,
+      recurringTransactions: local.recurringTransactions,
+      debts: local.debts,
+      balanceOffsets: {},
+      vehicles: local.vehicles,
+      vehiclePrefs: local.vehiclePrefs,
+      vehicleGarageAvailable: true,
+    };
+  };
+
+  const buildHouseholdSnapshot = async (): Promise<SyncPayload | null> => {
+    const localSnapshot = buildLocalHouseholdSnapshot();
+    const tokenValue = token;
+    if (!localSnapshot || !tokenValue) return localSnapshot;
+    try {
+      const res = await apiSync(tokenValue);
+      return res.sync;
+    } catch {
+      return localSnapshot;
+    }
+  };
+
   const createHouseholdBackup = async () => {
     if (!token) return;
     setCreatingHouseholdBackup(true);
     try {
-      const res = await apiCreateHouseholdBackup(token);
+      const res = await apiCreateHouseholdBackup(token, await buildHouseholdSnapshot());
       setHouseholdBackups(res.backups ?? []);
       toast(
         locale === "ru" ? "Копия семьи создана" : "Household backup created",
@@ -288,20 +327,14 @@ export function ArchiveRestorePanel() {
       return;
     }
     setRestoringId(id);
+    const wasCloudPaused = isCloudPaused();
+    beginCloudRestore();
+    setCloudPaused(true);
     try {
       const res = await apiRestoreHouseholdBackup(token, id);
       useCloudStore.getState().setDeletedTransactionIds([]);
       useCloudStore.getState().setDeletedRecurringIds([]);
       useCloudStore.getState().setDeletedDebtIds([]);
-      useStore.setState({
-        transactions: [],
-        categories: [],
-        savingsGoals: [],
-        categoryBudgets: [],
-        recurringTransactions: [],
-        debts: [],
-        vehicles: [],
-      });
       applyHouseholdSync(res.sync, token);
       toast(
         locale === "ru" ? "Семья восстановлена из резервной копии" : "Household restored from backup",
@@ -314,6 +347,8 @@ export function ArchiveRestorePanel() {
         "error",
       );
     } finally {
+      setCloudPaused(wasCloudPaused);
+      endCloudRestore();
       setRestoringId(null);
     }
   };

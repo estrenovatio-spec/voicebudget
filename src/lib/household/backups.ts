@@ -129,9 +129,10 @@ export async function backupHouseholdSnapshot(
   householdId: string,
   userId: string | null,
   reason = "manual",
+  snapshot?: SyncPayload | null,
 ): Promise<boolean> {
   if (!(await ensureHouseholdBackupTables())) return false;
-  const sync = await buildSyncPayload(householdId, userId ?? undefined);
+  const sync = snapshot ?? (await buildSyncPayload(householdId, userId ?? undefined));
   const payload = toBackupPayload(sync);
   if (!hasMeaningfulHouseholdPayload(payload)) return false;
 
@@ -209,6 +210,20 @@ async function restoreHouseholdFromPayload(
       balanceOffsets: payload.balanceOffsets ?? {},
     },
   });
+
+  const memberUserIds = [...new Set(payload.memberUserIds ?? [])].filter(
+    (id): id is string => typeof id === "string" && id.trim().length > 0,
+  );
+  if (memberUserIds.length > 0) {
+    await prisma.householdMember.createMany({
+      data: memberUserIds.map((memberUserId) => ({
+        householdId,
+        userId: memberUserId,
+        role: memberUserId === userId ? ("OWNER" as const) : ("MEMBER" as const),
+      })),
+      skipDuplicates: true,
+    });
+  }
 
   await prisma.transaction.deleteMany({ where: { householdId } });
   await prisma.categoryBudget.deleteMany({ where: { householdId } }).catch(() => null);

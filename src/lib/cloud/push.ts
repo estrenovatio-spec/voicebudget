@@ -16,15 +16,11 @@ import {
   apiUpsertRecurring,
 } from "@/lib/cloud/client";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
-import {
-  apiDeleteGarage,
-  apiPatchBalanceOffset,
-  apiPutGarage,
-  apiSync,
-} from "@/lib/cloud/client";
+import { apiDeleteGarage, apiPutGarage, apiSync } from "@/lib/cloud/client";
 import { isCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
-import { isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
+import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
 import { useCloudStore } from "@/store/useCloudStore";
 import type { BudgetOwner, CategoryDefinition, Transaction, TxType } from "@/types";
@@ -34,9 +30,22 @@ function noteCloudWriteError(message: string): void {
 }
 
 function token(): string | null {
-  if (isCloudPaused()) return null;
+  if (isCloudPaused() || isCloudRestoreInProgress()) return null;
   const { token: t, household } = useCloudStore.getState();
   return t && household ? t : null;
+}
+
+async function refreshWritableToken(): Promise<string | null> {
+  if (isCloudPaused() || isCloudRestoreInProgress()) return null;
+  const { refreshCloudSessionFromTelegram } = await import("@/lib/cloud/bootstrap");
+  const ok = await refreshCloudSessionFromTelegram();
+  if (!ok) return null;
+  return token();
+}
+
+async function retryAfterAuthError(error: unknown): Promise<string | null> {
+  if (!isAuthSyncError(error)) return null;
+  return refreshWritableToken();
 }
 
 export function isCloudSyncActive(): boolean {
@@ -61,11 +70,23 @@ export async function cloudPushTransaction(
 ): Promise<void> {
   const t = token();
   if (!t) return;
+  useCloudStore.getState().setLastWriteError(null);
   try {
     await apiCreateTransaction(t, tx);
     useCloudStore.getState().setLastWriteError(null);
     if (!opts?.skipPull) await pullCloudAfterWrite();
   } catch (e) {
+    const refreshedToken = await retryAfterAuthError(e);
+    if (refreshedToken) {
+      try {
+        await apiCreateTransaction(refreshedToken, tx);
+        useCloudStore.getState().setLastWriteError(null);
+        if (!opts?.skipPull) await pullCloudAfterWrite();
+        return;
+      } catch (retryError) {
+        e = retryError;
+      }
+    }
     const msg = e instanceof Error ? e.message : "sync_failed";
     noteCloudWriteError(isSubscriptionSyncError(e) ? "subscription_required" : msg);
     /* локальная операция остаётся; apply-sync дотолкнет localOnly */
@@ -79,12 +100,28 @@ export async function cloudPushPartnerTransferPair(
 ): Promise<void> {
   const t = token();
   if (!t) return;
+  useCloudStore.getState().setLastWriteError(null);
   try {
     await apiCreateTransaction(t, expense);
     await apiCreateTransaction(t, income);
+    useCloudStore.getState().setLastWriteError(null);
     await pullCloudAfterWrite();
-  } catch {
-    /* offline */
+  } catch (e) {
+    const refreshedToken = await retryAfterAuthError(e);
+    if (!refreshedToken) {
+      const msg = e instanceof Error ? e.message : "sync_failed";
+      noteCloudWriteError(isSubscriptionSyncError(e) ? "subscription_required" : msg);
+      return;
+    }
+    try {
+      await apiCreateTransaction(refreshedToken, expense);
+      await apiCreateTransaction(refreshedToken, income);
+      useCloudStore.getState().setLastWriteError(null);
+      await pullCloudAfterWrite();
+    } catch (retryError) {
+      const msg = retryError instanceof Error ? retryError.message : "sync_failed";
+      noteCloudWriteError(isSubscriptionSyncError(retryError) ? "subscription_required" : msg);
+    }
   }
 }
 
@@ -118,8 +155,17 @@ export async function cloudPushTransactionUpdate(
       return;
     }
     await pullCloudAfterWrite();
-  } catch {
-    /* ignore */
+  } catch (e) {
+    const refreshedToken = await retryAfterAuthError(e);
+    if (!refreshedToken) return;
+    try {
+      await apiUpdateTransaction(refreshedToken, id, patch);
+      useCloudStore.getState().setLastWriteError(null);
+      useCloudStore.getState().clearTransactionUpdatePending(id);
+      if (!opts?.skipPull) await pullCloudAfterWrite();
+    } catch {
+      /* retry on next sync */
+    }
   }
 }
 
@@ -131,8 +177,17 @@ export async function cloudPushTransactionDelete(id: string): Promise<void> {
     useCloudStore.getState().removeFromLastSyncedRemoteTxIds(id);
     useCloudStore.getState().setLastWriteError(null);
     await pullCloudAfterWrite();
-  } catch {
-    /* ignore */
+  } catch (e) {
+    const refreshedToken = await retryAfterAuthError(e);
+    if (!refreshedToken) return;
+    try {
+      await apiDeleteTransaction(refreshedToken, id);
+      useCloudStore.getState().removeFromLastSyncedRemoteTxIds(id);
+      useCloudStore.getState().setLastWriteError(null);
+      await pullCloudAfterWrite();
+    } catch {
+      /* retry on next sync */
+    }
   }
 }
 
@@ -275,25 +330,12 @@ export async function cloudDeleteGarage(): Promise<void> {
   }
 }
 
-/** Синхронизация «реально в кармане» с партнёром (по userId в облаке). */
+/** Баланс "реально в кармане" не синхронизируется. */
 export async function cloudPushBalanceOffset(
   owner: BudgetOwner,
   offset: number,
 ): Promise<void> {
-  const t = token();
-  if (!t) return;
-  const cloud = useCloudStore.getState();
-  const viewerId = decodeUserIdFromHouseholdToken(t) ?? cloud.cloudUserId;
-  if (!viewerId) return;
-  const partnerId = cloud.householdMemberUserIds.find((id) => id !== viewerId);
-  const targetUserId = owner === "me" ? viewerId : partnerId;
-  if (!targetUserId) return;
-  try {
-    await apiPatchBalanceOffset(t, targetUserId, offset);
-    await pullCloudAfterWrite();
-  } catch {
-    /* колонка balanceOffsets ещё не в БД — см. prisma/migrate-planning-and-balance.sql */
-  }
+  return;
 }
 
 export type { BudgetOwner, TxType };

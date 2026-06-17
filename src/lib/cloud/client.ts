@@ -627,14 +627,17 @@ export async function apiListHouseholdBackups(token: string) {
   return parseJson<{ ok: boolean; backups: HouseholdBackupSummary[] }>(res);
 }
 
-export async function apiCreateHouseholdBackup(token: string) {
+export async function apiCreateHouseholdBackup(
+  token: string,
+  snapshot?: SyncPayload | null,
+) {
   const res = await apiFetch("/api/household/backups", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ action: "create" }),
+    body: JSON.stringify({ action: "create", snapshot }),
     signal: AbortSignal.timeout(20_000),
   });
   return parseJson<{ ok: boolean; backups: HouseholdBackupSummary[] }>(res);

@@ -1,4 +1,4 @@
-import { mergeBusinessPayload } from "@/lib/business/db";
+import { mergeBusinessPayload } from "@/lib/business/merge";
 import type { BusinessCloudPayload } from "@/lib/business/types";
 import { apiPullBusiness, apiPushBusiness } from "@/lib/cloud/client";
 import { isCloudPaused } from "@/lib/cloud/cloud-pause";

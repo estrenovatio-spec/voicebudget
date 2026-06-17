@@ -28,35 +28,39 @@ function normalizeTx(tx: Transaction): Transaction {
 export function mergeTransactions(
   local: Transaction[],
   remote: Transaction[],
-  previouslySyncedRemoteIds?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
   deletedTransactionIds?: ReadonlySet<string>,
   pendingTransactionUpdateIds?: ReadonlySet<string>,
 ): Transaction[] {
+  const lastSyncedMs = lastSyncedAt ? Date.parse(lastSyncedAt) : NaN;
+  if (remote.length === 0) {
+    return local
+      .filter((tx) => !deletedTransactionIds?.has(tx.id))
+      .map(normalizeTx)
+      .sort((a, b) => {
+        const byDate = b.date.localeCompare(a.date);
+        if (byDate !== 0) return byDate;
+        return b.id.localeCompare(a.id);
+      });
+  }
   const map = new Map<string, Transaction>();
-  const remoteIds = new Set<string>();
-  const localIds = new Set(local.map((t) => t.id));
 
   for (const raw of remote) {
     const tx = normalizeTx(raw);
     if (deletedTransactionIds?.has(tx.id)) continue;
-    // Локально удалили, в pull ещё есть — не поднимать с облака.
-    if (!localIds.has(tx.id) && previouslySyncedRemoteIds?.has(tx.id)) continue;
     map.set(tx.id, tx);
-    remoteIds.add(tx.id);
   }
 
   for (const raw of local) {
     const tx = normalizeTx(raw);
     if (deletedTransactionIds?.has(tx.id)) continue;
-    // Партнёр удалил в облаке — не держим локальную копию и не воскрешаем push'ем.
-    if (previouslySyncedRemoteIds?.has(tx.id) && !remoteIds.has(tx.id)) continue;
     const existing = map.get(tx.id);
     if (!existing) {
-      // Локальная операция ещё не на сервере (новая запись на этом устройстве).
-      map.set(tx.id, tx);
-      continue;
-    }
-    if (pendingTransactionUpdateIds?.has(tx.id)) {
+      if (pendingTransactionUpdateIds?.has(tx.id)) {
+        map.set(tx.id, tx);
+        continue;
+      }
+      if (!Number.isNaN(lastSyncedMs) && txTime(tx) <= lastSyncedMs) continue;
       map.set(tx.id, tx);
       continue;
     }
@@ -75,8 +79,11 @@ export function mergeTransactions(
 export function mergeCategories(
   local: CategoryDefinition[],
   remote: CategoryDefinition[],
-  previouslySyncedRemoteIds?: ReadonlySet<string>,
+  _previouslySyncedRemoteIds?: ReadonlySet<string>,
 ): CategoryDefinition[] {
+  if (remote.length === 0) {
+    return sanitizeCategories(local);
+  }
   const remoteIds = new Set(remote.map((c) => c.id));
   const localById = new Map(local.map((c) => [c.id, c]));
   const merged: CategoryDefinition[] = [];
@@ -100,7 +107,6 @@ export function mergeCategories(
 
   for (const localCat of local) {
     if (remoteIds.has(localCat.id)) continue;
-    if (previouslySyncedRemoteIds?.has(localCat.id)) continue;
     merged.push(localCat);
   }
 
@@ -111,10 +117,13 @@ function mergeByKey<T extends { updatedAt?: string }>(
   local: T[],
   remote: T[],
   getKey: (item: T) => string,
-  previouslySynced?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
 ): T[] {
+  const lastSyncedMs = lastSyncedAt ? Date.parse(lastSyncedAt) : NaN;
+  if (remote.length === 0) {
+    return [...local];
+  }
   const map = new Map<string, T>();
-  const remoteKeys = new Set(remote.map(getKey));
 
   for (const item of remote) {
     map.set(getKey(item), item);
@@ -124,7 +133,7 @@ function mergeByKey<T extends { updatedAt?: string }>(
     const key = getKey(item);
     const existing = map.get(key);
     if (!existing) {
-      if (previouslySynced?.has(key) && !remoteKeys.has(key)) continue;
+      if (!Number.isNaN(lastSyncedMs) && itemTime(item) <= lastSyncedMs) continue;
       map.set(key, item);
       continue;
     }
@@ -141,7 +150,9 @@ function mergePlanningByKey<T extends { updatedAt?: string }>(
   local: T[],
   remote: T[],
   getKey: (item: T) => string,
+  lastSyncedAt?: string | null,
 ): T[] {
+  const lastSyncedMs = lastSyncedAt ? Date.parse(lastSyncedAt) : NaN;
   const map = new Map<string, T>();
 
   for (const item of remote) {
@@ -152,6 +163,7 @@ function mergePlanningByKey<T extends { updatedAt?: string }>(
     const key = getKey(item);
     const existing = map.get(key);
     if (!existing) {
+      if (!Number.isNaN(lastSyncedMs) && itemTime(item) <= lastSyncedMs) continue;
       map.set(key, item);
       continue;
     }
@@ -166,34 +178,35 @@ function mergePlanningByKey<T extends { updatedAt?: string }>(
 export function mergeSavingsGoals(
   local: SavingsGoal[],
   remote: SavingsGoal[],
-  _previouslySynced?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
 ): SavingsGoal[] {
-  return mergePlanningByKey(local, remote, (g) => g.id);
+  return mergePlanningByKey(local, remote, (g) => g.id, lastSyncedAt);
 }
 
 export function mergeCategoryBudgets(
   local: CategoryBudget[],
   remote: CategoryBudget[],
-  _previouslySynced?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
 ): CategoryBudget[] {
   return mergePlanningByKey(
     local.map((b) => ({ ...b, categoryId: migrateCategoryId(b.categoryId) })),
     remote.map((b) => ({ ...b, categoryId: migrateCategoryId(b.categoryId) })),
     (b) => b.categoryId,
+    lastSyncedAt,
   );
 }
 
 export function mergeRecurringTransactions(
   local: RecurringTransaction[],
   remote: RecurringTransaction[],
-  previouslySynced?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
   deletedIds?: ReadonlySet<string>,
 ): RecurringTransaction[] {
   const merged = mergeByKey(
     local.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     remote.map((r) => ({ ...r, categoryId: migrateCategoryId(r.categoryId) })),
     (r) => r.id,
-    previouslySynced,
+    lastSyncedAt,
   );
   if (!deletedIds?.size) return merged;
   return merged.filter((r) => !deletedIds.has(r.id));
@@ -202,10 +215,10 @@ export function mergeRecurringTransactions(
 export function mergeDebts(
   local: DebtItem[],
   remote: DebtItem[],
-  previouslySynced?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
   deletedIds?: ReadonlySet<string>,
 ): DebtItem[] {
-  const merged = mergeByKey(local, remote, (d) => d.id, previouslySynced);
+  const merged = mergeByKey(local, remote, (d) => d.id, lastSyncedAt);
   if (!deletedIds?.size) return merged;
   return merged.filter((d) => !deletedIds.has(d.id));
 }
@@ -244,14 +257,14 @@ export function mergeSyncPayload(
   localCategories: CategoryDefinition[],
   localPlanning: PlanningLocalState,
   remote: SyncPayload,
-  previouslySyncedRemoteIds?: ReadonlySet<string>,
+  lastSyncedAt?: string | null,
   previouslySyncedRemoteCategoryIds?: ReadonlySet<string>,
-  previouslySyncedPlanning?: PreviouslySyncedPlanning,
   deletedRecurringIds?: ReadonlySet<string>,
   deletedTransactionIds?: ReadonlySet<string>,
   deletedDebtIds?: ReadonlySet<string>,
   pendingTransactionUpdateIds?: ReadonlySet<string>,
 ): MergedSyncResult {
+  const lastSyncedMs = lastSyncedAt ? Date.parse(lastSyncedAt) : NaN;
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
   const remoteCategoryIds = new Set(remote.categories.map((c) => c.id));
   const remoteGoalIds = new Set((remote.savingsGoals ?? []).map((g) => g.id));
@@ -262,72 +275,68 @@ export function mergeSyncPayload(
   const transactions = mergeTransactions(
     localTransactions,
     remote.transactions,
-    previouslySyncedRemoteIds,
+    lastSyncedAt,
     deletedTransactionIds,
     pendingTransactionUpdateIds,
   );
-  const categories = mergeCategories(
-    localCategories,
-    remote.categories,
-    previouslySyncedRemoteCategoryIds,
-  );
+  const categories = mergeCategories(localCategories, remote.categories, previouslySyncedRemoteCategoryIds);
   const savingsGoals = mergeSavingsGoals(
     localPlanning.savingsGoals,
     remote.savingsGoals ?? [],
-    previouslySyncedPlanning?.goalIds,
+    lastSyncedAt,
   );
   const categoryBudgets = mergeCategoryBudgets(
     localPlanning.categoryBudgets,
     remote.categoryBudgets ?? [],
-    previouslySyncedPlanning?.budgetCategoryIds,
+    lastSyncedAt,
   );
   const recurringTransactions = mergeRecurringTransactions(
     localPlanning.recurringTransactions,
     remote.recurringTransactions ?? [],
-    previouslySyncedPlanning?.recurringIds,
+    lastSyncedAt,
     deletedRecurringIds,
   );
-  const debts = mergeDebts(
-    localPlanning.debts,
-    remote.debts ?? [],
-    previouslySyncedPlanning?.debtIds,
-    deletedDebtIds,
-  );
+  const debts = mergeDebts(localPlanning.debts, remote.debts ?? [], lastSyncedAt, deletedDebtIds);
 
   const localOnlyTransactionIds = localTransactions
     .map((t) => t.id)
     .filter((id) => {
       if (remoteTxIds.has(id)) return false;
-      // Была в облаке, в pull уже нет — удаление на другом устройстве, не создаём снова.
-      if (previouslySyncedRemoteIds?.has(id)) return false;
       if (deletedTransactionIds?.has(id)) return false;
+      if (pendingTransactionUpdateIds?.has(id)) return true;
+      const tx = localTransactions.find((item) => item.id === id);
+      if (tx && !Number.isNaN(lastSyncedMs) && txTime(tx) <= lastSyncedMs) return false;
       return true;
     });
-  const localOnlyCategories = localCategories.filter(
-    (c) => !remoteCategoryIds.has(c.id) && !previouslySyncedRemoteCategoryIds?.has(c.id),
-  );
+  const localOnlyCategories = localCategories.filter((c) => {
+    if (remoteCategoryIds.has(c.id)) return false;
+    if (previouslySyncedRemoteCategoryIds?.has(c.id)) return false;
+    return true;
+  });
   const localOnlyGoalIds = localPlanning.savingsGoals
+    .filter((g) => Number.isNaN(lastSyncedMs) || itemTime(g) > lastSyncedMs)
     .map((g) => g.id)
     .filter((id) => !remoteGoalIds.has(id));
   const localOnlyBudgetCategoryIds = localPlanning.categoryBudgets
+    .filter((b) => Number.isNaN(lastSyncedMs) || itemTime(b) > lastSyncedMs)
     .map((b) => b.categoryId)
     .filter((id) => !remoteBudgetIds.has(id));
   const localOnlyRecurringIds = localPlanning.recurringTransactions
-    .map((r) => r.id)
-    .filter((id) => {
-      if (remoteRecurringIds.has(id)) return false;
-      if (previouslySyncedPlanning?.recurringIds?.has(id)) return false;
-      if (deletedRecurringIds?.has(id)) return false;
+    .filter((item) => {
+      if (remoteRecurringIds.has(item.id)) return false;
+      if (deletedRecurringIds?.has(item.id)) return false;
+      if (!Number.isNaN(lastSyncedMs) && itemTime(item) <= lastSyncedMs) return false;
       return true;
-    });
+    })
+    .map((r) => r.id);
   const localOnlyDebtIds = localPlanning.debts
-    .map((d) => d.id)
-    .filter((id) => {
-      if (remoteDebtIds.has(id)) return false;
-      if (previouslySyncedPlanning?.debtIds?.has(id)) return false;
-      if (deletedDebtIds?.has(id)) return false;
+    .filter((item) => {
+      if (remoteDebtIds.has(item.id)) return false;
+      if (deletedDebtIds?.has(item.id)) return false;
+      if (!Number.isNaN(lastSyncedMs) && itemTime(item) <= lastSyncedMs) return false;
       return true;
-    });
+    })
+    .map((d) => d.id);
 
   return {
     transactions,

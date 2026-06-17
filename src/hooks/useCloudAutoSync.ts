@@ -5,6 +5,7 @@ import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { refreshCloudSessionFromTelegram } from "@/lib/cloud/bootstrap";
 import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import { isAuthSyncError } from "@/lib/cloud/sync-errors";
 import { isTransientHttpError } from "@/lib/fetch-retry";
 import { apiSync } from "@/lib/cloud/client";
@@ -20,6 +21,7 @@ export function useCloudAutoSync() {
 
   useEffect(() => {
     const pull = () => {
+      if (isCloudRestoreInProgress()) return;
       if (isCloudPaused()) {
         const token = useCloudStore.getState().token;
         if (!token && !hasCloudAuth()) return;

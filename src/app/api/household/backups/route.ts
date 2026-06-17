@@ -8,6 +8,7 @@ import {
   restoreHouseholdBackup,
 } from "@/lib/household/backups";
 import { assertMember } from "@/lib/household/service";
+import type { SyncPayload } from "@/lib/household/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   const session = requireSession(req);
   if (!session) return unauthorized();
 
-  let body: { backupId?: string; action?: "create" | "restore" };
+  let body: { backupId?: string; action?: "create" | "restore"; snapshot?: SyncPayload | null };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -44,7 +45,12 @@ export async function POST(req: NextRequest) {
     await assertMember(session.userId, session.householdId);
 
     if (body.action === "create") {
-      const ok = await backupHouseholdSnapshot(session.householdId, session.userId, "manual");
+      const ok = await backupHouseholdSnapshot(
+        session.householdId,
+        session.userId,
+        "manual",
+        body.snapshot ?? null,
+      );
       const backups = await listHouseholdBackups(session.householdId, 30);
       return NextResponse.json({ ok, backups });
     }

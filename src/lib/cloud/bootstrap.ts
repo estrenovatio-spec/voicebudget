@@ -3,6 +3,7 @@ import { getCloudAuthBody, hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { getTelegramInitData, hasTelegramWebApp } from "@/lib/cloud/telegram";
 import { waitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
 import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { fetchAndApplyDevSubscription } from "@/lib/billing/dev-subscription";
 import { isValidSubscriptionPublic } from "@/lib/billing/subscription-shape";
@@ -35,7 +36,7 @@ function hasPersistedSubscription(): boolean {
 }
 
 export async function runHouseholdBootstrap(): Promise<void> {
-  if (isCloudPaused()) return;
+  if (isCloudPaused() || isCloudRestoreInProgress()) return;
 
   await fetchAndApplyDevSubscription(2);
 
