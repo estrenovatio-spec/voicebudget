@@ -2,7 +2,6 @@
 
 import {
   ArrowDownToLine,
-  BriefcaseBusiness,
   ChevronDown,
   Pencil,
   Plus,
@@ -26,7 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   expenseBreakdownForPeriod,
+  assetsSummary,
   incomeSourcesForPeriod,
+  passiveIncomeMonthly,
+  weightedPortfolioYieldPct,
   unitCardMetrics,
   type UnitCardMetrics,
 } from "@/lib/business/analytics";
@@ -35,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { taxPeriodLabel } from "@/lib/business/tax";
 import type {
   BusinessTaxPeriod,
+  BusinessAsset,
   BusinessDebt,
   BusinessTransaction,
   BusinessUnit,
@@ -648,6 +651,53 @@ function BusinessTotalBalance({
             )}
           >
             {formatMoney(safeWithdraw, locale)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BusinessSourcesBalance({
+  assets,
+  locale,
+}: {
+  assets: BusinessAsset[];
+  locale: "ru" | "en";
+}) {
+  const summary = assetsSummary(assets);
+  const passiveMonthly = passiveIncomeMonthly(assets);
+  const yieldPct = weightedPortfolioYieldPct(assets);
+  const rowClass =
+    "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2";
+  const labelClass = "min-w-0 text-sm font-semibold leading-tight text-foreground";
+  const amountClass = "shrink-0 text-sm font-semibold tabular-nums";
+
+  return (
+    <div className="rounded-lg border-2 border-amber-300/40 bg-card px-3 py-2.5 shadow-sm">
+      <div className="flex w-full flex-col gap-y-0.5">
+        <div className={rowClass}>
+          <span className={labelClass}>{locale === "ru" ? "Капитал" : "Capital"}:</span>
+          <span className={cn(amountClass, "text-primary")}>
+            {formatMoney(summary.totalCapital, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{locale === "ru" ? "Пассив/мес" : "Passive/mo"}:</span>
+          <span className={cn(amountClass, "text-emerald-700 dark:text-emerald-400")}>
+            +{formatMoney(passiveMonthly, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{locale === "ru" ? "Доход/год" : "Income/yr"}:</span>
+          <span className={cn(amountClass, "text-foreground")}>
+            +{formatMoney(summary.annualIncome, locale)}
+          </span>
+        </div>
+        <div className={rowClass}>
+          <span className={labelClass}>{locale === "ru" ? "Доходность" : "Yield"}:</span>
+          <span className={cn(amountClass, "text-amber-700 dark:text-amber-300")}>
+            {yieldPct}%
           </span>
         </div>
       </div>
@@ -1688,7 +1738,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   };
 
   return (
-    <div className="space-y-3 py-1">
+    <div className="space-y-2 py-0.5">
       {process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ? (
         <span className="inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
           {t(locale, "bizPreviewBadge")}
@@ -1697,13 +1747,17 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       {headerControls ? (
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <BusinessTotalBalance
-              income={totalMetrics.income}
-              expense={totalMetrics.expense}
-              profit={totalMetrics.profit}
-              safeWithdraw={totalMetrics.safeWithdraw}
-              locale={locale}
-            />
+            {businessTopTab === "projects" ? (
+              <BusinessSourcesBalance assets={assets} locale={locale} />
+            ) : (
+              <BusinessTotalBalance
+                income={totalMetrics.income}
+                expense={totalMetrics.expense}
+                profit={totalMetrics.profit}
+                safeWithdraw={totalMetrics.safeWithdraw}
+                locale={locale}
+              />
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
             {headerControls}
@@ -1711,22 +1765,17 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         </div>
       ) : (
         <>
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-lg font-bold">
-              <BriefcaseBusiness
-                className="h-5 w-5 text-primary"
-                aria-hidden
-              />
-              {t(locale, "bizTitle")}
-            </h2>
-          </div>
-          <BusinessTotalBalance
-            income={totalMetrics.income}
-            expense={totalMetrics.expense}
-            profit={totalMetrics.profit}
-            safeWithdraw={totalMetrics.safeWithdraw}
-            locale={locale}
-          />
+          {businessTopTab === "projects" ? (
+            <BusinessSourcesBalance assets={assets} locale={locale} />
+          ) : (
+            <BusinessTotalBalance
+              income={totalMetrics.income}
+              expense={totalMetrics.expense}
+              profit={totalMetrics.profit}
+              safeWithdraw={totalMetrics.safeWithdraw}
+              locale={locale}
+            />
+          )}
         </>
       )}
 
@@ -1848,54 +1897,57 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           />
 
       <div className="space-y-3 border-t border-border/60 pt-3">
-            <div className="grid grid-cols-6 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
-              {(
-                [
-                  "operations",
-                  "reserve",
-                  "tax",
-                  "debts",
-                  "stats",
-                ] as Exclude<BusinessSection, "projects">[]
-              ).map((section) => {
-                const labelKey = {
-                  operations: "bizSectionOperations",
-                  reserve: "bizSectionReserve",
-                  tax: "bizSectionTax",
-                  debts: null,
-                  stats: null,
-                }[section] as
-                  | "bizSectionOperations"
-                  | "bizSectionReserve"
-                  | "bizSectionTax"
-                  | null;
-                return (
+            <div className="rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
+              <div className="grid grid-cols-3 gap-1">
+                {(["operations", "reserve", "tax"] as const).map((section) => (
                   <button
                     key={section}
                     type="button"
                     onClick={() => setBusinessSection(section)}
                     className={cn(
                       "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
-                      section === "operations" || section === "reserve" || section === "tax"
-                        ? "col-span-2"
-                        : "col-span-3",
+                      section === "reserve" && "text-[11px]",
                       businessSection === section
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
                     )}
                   >
-                    {labelKey
-                      ? t(locale, labelKey)
-                      : section === "debts"
-                        ? locale === "ru"
-                          ? "Регулярные"
-                          : "Recurring"
-                        : locale === "ru"
-                          ? "Статистика"
-                          : "Statistics"}
+                    {section === "reserve"
+                      ? locale === "ru"
+                        ? "Подушка"
+                        : "Cushion"
+                      : section === "operations"
+                        ? t(locale, "bizSectionOperations")
+                        : t(locale, "bizSectionTax")}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setBusinessSection("debts")}
+                  className={cn(
+                    "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
+                    businessSection === "debts"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
+                  )}
+                >
+                  {locale === "ru" ? "Регулярные" : "Recurring"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBusinessSection("stats")}
+                  className={cn(
+                    "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
+                    businessSection === "stats"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
+                  )}
+                >
+                  {locale === "ru" ? "Статистика" : "Statistics"}
+                </button>
+              </div>
             </div>
 
             {businessSection === "operations" ? (

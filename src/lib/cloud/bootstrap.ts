@@ -2,7 +2,7 @@ import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { getCloudAuthBody, hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { getTelegramInitData, hasTelegramWebApp } from "@/lib/cloud/telegram";
 import { waitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
-import { isCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { fetchAndApplyDevSubscription } from "@/lib/billing/dev-subscription";
 import { isValidSubscriptionPublic } from "@/lib/billing/subscription-shape";
@@ -118,6 +118,7 @@ export async function runHouseholdBootstrap(): Promise<void> {
   if (!token) return;
 
   try {
+    setCloudPaused(false);
     const res = await apiSync(token);
     applyHouseholdSync(res.sync, token);
     useCloudStore.getState().setServerConfigured(true);
