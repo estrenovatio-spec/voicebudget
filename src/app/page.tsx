@@ -48,7 +48,7 @@ function HomeTabContent({
       <AppVersionBanner />
       <TMAHeader hideBusinessButton={previewMode} />
       <VoiceRecorder />
-      <TransactionList collapsible={false} />
+      <TransactionList />
     </>
   );
 }

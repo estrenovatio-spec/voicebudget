@@ -161,19 +161,23 @@ function sortGoalsByPriority(goals: SavingsGoal[], transactions: Transaction[]):
     const bDone = bTarget > 0 && b.savedAmount >= bTarget;
     if (aDone !== bDone) return aDone ? 1 : -1;
 
+    const aStarted = a.savedAmount > 0;
+    const bStarted = b.savedAmount > 0;
+    if (aStarted !== bStarted) return aStarted ? -1 : 1;
+
     const aDeadline = goalDeadlineTime(a.deadline);
     const bDeadline = goalDeadlineTime(b.deadline);
+    const aRemaining = Math.max(0, aTarget - a.savedAmount);
+    const bRemaining = Math.max(0, bTarget - b.savedAmount);
     if (aDeadline !== null && bDeadline !== null) {
       const aDays = Math.floor((aDeadline - today) / (24 * 60 * 60 * 1000));
       const bDays = Math.floor((bDeadline - today) / (24 * 60 * 60 * 1000));
       if (aDays !== bDays) return aDays - bDays;
-
-      const aRemaining = Math.max(0, aTarget - a.savedAmount);
-      const bRemaining = Math.max(0, bTarget - b.savedAmount);
-      if (aRemaining !== bRemaining) return bRemaining - aRemaining;
+      if (aRemaining !== bRemaining) return aRemaining - bRemaining;
     }
     if (aDeadline !== null) return -1;
     if (bDeadline !== null) return 1;
+    if (aRemaining !== bRemaining) return aRemaining - bRemaining;
 
     const aMonthly = a.monthlyContribution ?? 0;
     const bMonthly = b.monthlyContribution ?? 0;
@@ -551,7 +555,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
         if (priorityDiff !== 0) return priorityDiff;
         return a.sortDate.localeCompare(b.sortDate);
       });
-  }, [budgetMonthStartDay, recurringFilter, recurringPeriod, recurringTransactions, transactions]);
+  }, [recurringFilter, recurringPeriod, recurringTransactions, transactions]);
 
   const recurringPaidCount = useMemo(() => {
     const currentCalendarMonth = todayIso().slice(0, 7);
