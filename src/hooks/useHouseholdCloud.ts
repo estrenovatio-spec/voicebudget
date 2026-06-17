@@ -20,8 +20,7 @@ import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
 function shouldReplaceOnPull(): boolean {
-  const cloud = useCloudStore.getState();
-  return Object.keys(cloud.pendingTransactionUpdateIds ?? {}).length === 0;
+  return false;
 }
 
 export function useHouseholdCloud() {

@@ -16,8 +16,7 @@ import {
 import { useCloudStore } from "@/store/useCloudStore";
 
 function shouldReplaceOnPull(): boolean {
-  const cloud = useCloudStore.getState();
-  return Object.keys(cloud.pendingTransactionUpdateIds ?? {}).length === 0;
+  return false;
 }
 
 function clearStaleHouseholdSession(): void {
