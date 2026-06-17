@@ -16,10 +16,8 @@ import {
 import {
   assetAnnualYieldPct,
   assetEffectiveHourlyRate,
-  assetsSummary,
   groupAssetsByType,
   typeAssetsSummary,
-  weightedPortfolioYieldPct,
 } from "@/lib/business/analytics";
 import { PassiveReceiptHistory } from "@/components/app/PassiveReceiptHistory";
 import { RentalUtilitiesHistory } from "@/components/app/RentalUtilitiesHistory";
@@ -301,21 +299,6 @@ function AssetTypeSection({
   );
 }
 
-function SourceMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="min-w-0 rounded-lg border border-emerald-500/15 bg-emerald-50 px-2.5 py-2 dark:border-emerald-400/15 dark:bg-emerald-950/20">
-      <p className="text-[10px] font-medium leading-tight text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
-
 export function BusinessProjectsSection() {
   const locale = useStore((s) => s.locale);
   const assets = useBusinessStore((s) => s.assets);
@@ -355,24 +338,6 @@ export function BusinessProjectsSection() {
   }, []);
 
   const assetsByType = useMemo(() => groupAssetsByType(assets, null), [assets]);
-  const recurringAssets = useMemo(
-    () => assets.filter((asset) => asset.type !== "freelance"),
-    [assets],
-  );
-  const portfolio = useMemo(() => assetsSummary(recurringAssets, null), [recurringAssets]);
-  const portfolioMonthly = useMemo(
-    () => Math.round(portfolio.annualIncome / 12),
-    [portfolio.annualIncome],
-  );
-  const freelanceExpected = useMemo(
-    () => assetsByType.freelance.reduce((sum, asset) => sum + asset.monthlyNet, 0),
-    [assetsByType.freelance],
-  );
-  const weightedYield = useMemo(() => weightedPortfolioYieldPct(recurringAssets), [recurringAssets]);
-  const totalReceivedAll = useMemo(
-    () => receipts.reduce((s, r) => s + r.amount, 0),
-    [receipts],
-  );
   const hasAssets =
     assetsByType.investment.length +
       assetsByType.rental.length +
@@ -513,40 +478,6 @@ export function BusinessProjectsSection() {
             <p className="text-xs text-muted-foreground">{t(locale, "bizAssetsEmpty")}</p>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2">
-                <SourceMetric
-                  label={t(
-                    locale,
-                    recurringAssets.length > 0 ? "bizSourcesMonthly" : "bizSourcesExpected",
-                  )}
-                  value={formatMoney(
-                    recurringAssets.length > 0 ? portfolioMonthly : freelanceExpected,
-                    locale,
-                  )}
-                />
-                <SourceMetric
-                  label={t(locale, "bizSourcesCapital")}
-                  value={formatMoney(portfolio.totalCapital, locale)}
-                />
-                <SourceMetric
-                  label={t(locale, "bizSourcesFamily")}
-                  value={formatMoney(totalReceivedAll, locale)}
-                />
-              </div>
-              {portfolio.totalCapital > 0 ? (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-50 px-3 py-2 text-xs dark:border-emerald-400/15 dark:bg-emerald-950/25">
-                  <p className="font-medium">{t(locale, "bizPortfolioSummary")}</p>
-                  <p className="mt-0.5 tabular-nums text-muted-foreground">
-                    {t(locale, "bizAssetsTotal", {
-                      capital: formatMoney(portfolio.totalCapital, locale),
-                      income: formatMoney(portfolio.annualIncome, locale),
-                    })}
-                    {weightedYield > 0
-                      ? ` · ${t(locale, "bizWeightedYield", { pct: String(weightedYield) })}`
-                      : ""}
-                  </p>
-                </div>
-              ) : null}
               <AssetTypeSection
                 type="freelance"
                 assets={assetsByType.freelance}

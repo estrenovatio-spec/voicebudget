@@ -63,13 +63,55 @@ async function userHasPaidSubscription(userId: string): Promise<boolean> {
   }
 }
 
+async function householdHasActiveSubscription(householdId: string): Promise<boolean> {
+  const now = new Date();
+  const members = await prisma.householdMember.findMany({
+    where: { householdId },
+    select: {
+      user: {
+        select: {
+          subscription: {
+            select: { status: true, currentPeriodEnd: true },
+          },
+        },
+      },
+    },
+  });
+  return members.some((member) => {
+    const sub = member.user.subscription;
+    return sub?.status === "active" && Boolean(sub.currentPeriodEnd && sub.currentPeriodEnd > now);
+  });
+}
+
+export async function assertHouseholdSubscription(householdId: string): Promise<void> {
+  if (!subscriptionEnforced()) return;
+  if (await householdHasActiveSubscription(householdId)) return;
+  throw new Error("subscription_required");
+}
+
 export async function getSubscriptionForUser(userId: string): Promise<SubscriptionPublic> {
   try {
-    const [row, hasPaid] = await Promise.all([
+    const [row, hasPaid, membership] = await Promise.all([
       prisma.subscription.findUnique({ where: { userId } }),
       userHasPaidSubscription(userId),
+      prisma.householdMember.findFirst({
+        where: { userId },
+        select: { householdId: true },
+      }),
     ]);
-    return toPublic(row?.status ?? null, row?.currentPeriodEnd ?? null, !hasPaid);
+    const ownActive =
+      row?.status === "active" && row.currentPeriodEnd !== null && row.currentPeriodEnd > new Date();
+    const householdActive = membership?.householdId
+      ? await householdHasActiveSubscription(membership.householdId)
+      : false;
+    const active = subscriptionEnforced() ? ownActive || householdActive : true;
+    const base = toPublic(row?.status ?? null, row?.currentPeriodEnd ?? null, !hasPaid && ownActive);
+    return {
+      ...base,
+      active,
+      onFreeAccess: !hasPaid && ownActive,
+      showTrialBanner: active && !hasPaid && ownActive && base.daysRemaining !== null,
+    };
   } catch {
     return toPublic(null, null, true);
   }

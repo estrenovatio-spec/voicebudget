@@ -2,7 +2,7 @@ import type { HouseholdMode } from "@prisma/client";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import { getDefaultCategories, getFallbackCategoryId } from "@/lib/categories";
 import { prisma } from "@/lib/db";
-import { assertActiveSubscription } from "@/lib/payments/subscription";
+import { assertActiveSubscription, assertHouseholdSubscription } from "@/lib/payments/subscription";
 import { applyGoalMonthlyToGoal } from "@/lib/planning/analytics";
 import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
@@ -340,8 +340,6 @@ export async function joinHousehold(
   userId: string,
   rawCode: string,
 ): Promise<{ household: HouseholdPublic; sync: SyncPayload; isNew: boolean }> {
-  await assertActiveSubscription(userId);
-
   const inviteCode = rawCode.trim().toUpperCase().replace(/^VB-?/i, "");
   if (inviteCode.length < 4) throw new Error("invalid_code");
 
@@ -358,6 +356,8 @@ export async function joinHousehold(
     include: { members: true },
   });
   if (!household) throw new Error("household_not_found");
+
+  await assertHouseholdSubscription(household.id);
 
   await prisma.householdMember.create({
     data: { householdId: household.id, userId, role: "MEMBER" },
@@ -437,7 +437,7 @@ export async function assertMember(userId: string, householdId: string) {
     where: { householdId_userId: { householdId, userId } },
   });
   if (!member) throw new Error("forbidden");
-  await assertActiveSubscription(userId);
+  await assertHouseholdSubscription(householdId);
   return member;
 }
 
