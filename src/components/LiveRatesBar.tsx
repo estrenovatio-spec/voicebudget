@@ -193,18 +193,18 @@ export function LiveRatesBar() {
         title="USD/RUB"
       />
       <RateCell
-        badge={<MoexBadge />}
-        badgeClassName={MOEX_BADGE_SLOT}
-        value={formatMoexIndex(rates.moexIndex, locale)}
-        flash={flash.moex}
-        title="IMOEX"
-      />
-      <RateCell
         badge={<span className="text-[12px] font-bold leading-none text-blue-500">€</span>}
         badgeClassName={FIAT_BADGE_SLOT}
         value={formatFiatRate(rates.eurRub, locale)}
         flash={flash.eur}
         title="EUR/RUB"
+      />
+      <RateCell
+        badge={<MoexBadge />}
+        badgeClassName={MOEX_BADGE_SLOT}
+        value={formatMoexIndex(rates.moexIndex, locale)}
+        flash={flash.moex}
+        title="IMOEX"
       />
       <RateCell
         badge={<BtcCoinBadge />}
