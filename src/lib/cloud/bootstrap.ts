@@ -15,6 +15,16 @@ import {
 } from "@/lib/cloud/client";
 import { useCloudStore } from "@/store/useCloudStore";
 
+function shouldReplaceOnPull(): boolean {
+  const cloud = useCloudStore.getState();
+  return (
+    Object.keys(cloud.pendingTransactionUpdateIds ?? {}).length === 0 &&
+    (cloud.deletedTransactionIds?.length ?? 0) === 0 &&
+    (cloud.deletedRecurringIds?.length ?? 0) === 0 &&
+    (cloud.deletedDebtIds?.length ?? 0) === 0
+  );
+}
+
 function clearStaleHouseholdSession(): void {
   const { token, household } = useCloudStore.getState();
   if (token || household) {
@@ -121,7 +131,7 @@ export async function runHouseholdBootstrap(): Promise<void> {
   try {
     setCloudPaused(false);
     const res = await apiSync(token);
-    applyHouseholdSync(res.sync, token);
+    applyHouseholdSync(res.sync, token, { replace: shouldReplaceOnPull() });
     useCloudStore.getState().setServerConfigured(true);
     useCloudStore.getState().touchSync();
   } catch (e) {

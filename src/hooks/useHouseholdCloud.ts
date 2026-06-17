@@ -19,6 +19,16 @@ import { looksLikeReferralInviteInput } from "@/lib/referrals/looks-like-referra
 import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
+function shouldReplaceOnPull(): boolean {
+  const cloud = useCloudStore.getState();
+  return (
+    Object.keys(cloud.pendingTransactionUpdateIds ?? {}).length === 0 &&
+    (cloud.deletedTransactionIds?.length ?? 0) === 0 &&
+    (cloud.deletedRecurringIds?.length ?? 0) === 0 &&
+    (cloud.deletedDebtIds?.length ?? 0) === 0
+  );
+}
+
 export function useHouseholdCloud() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +113,7 @@ export function useHouseholdCloud() {
     setError(null);
     try {
       const res = await apiSync(t);
-      applyHouseholdSync(res.sync, t);
+      applyHouseholdSync(res.sync, t, { replace: shouldReplaceOnPull() });
       useCloudStore.getState().touchSync();
       return true;
     } catch (e) {
@@ -124,7 +134,7 @@ export function useHouseholdCloud() {
     setError(null);
     try {
       const res = await apiImportLocal(sessionToken, { transactions, categories });
-      applyHouseholdSync(res.sync, sessionToken);
+      applyHouseholdSync(res.sync, sessionToken, { replace: shouldReplaceOnPull() });
       useCloudStore.getState().touchSync();
       return true;
     } catch (e) {

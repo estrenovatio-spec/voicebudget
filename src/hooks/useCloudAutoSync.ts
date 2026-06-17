@@ -15,6 +15,16 @@ const MIN_PULL_MS = 5_000;
 /** Browser tab may stay open while phone records — poll occasionally */
 const POLL_MS = 5_000;
 
+function shouldReplaceOnPull(): boolean {
+  const cloud = useCloudStore.getState();
+  return (
+    Object.keys(cloud.pendingTransactionUpdateIds ?? {}).length === 0 &&
+    (cloud.deletedTransactionIds?.length ?? 0) === 0 &&
+    (cloud.deletedRecurringIds?.length ?? 0) === 0 &&
+    (cloud.deletedDebtIds?.length ?? 0) === 0
+  );
+}
+
 /** Pull cloud on load, when tab becomes visible, and on a timer while visible. */
 export function useCloudAutoSync() {
   const lastPullAt = useRef(0);
@@ -44,7 +54,7 @@ export function useCloudAutoSync() {
       lastPullAt.current = now;
       void apiSync(token)
         .then((res) => {
-          applyHouseholdSync(res.sync, token);
+          applyHouseholdSync(res.sync, token, { replace: shouldReplaceOnPull() });
           useCloudStore.getState().touchSync();
         })
         .catch((e) => {
