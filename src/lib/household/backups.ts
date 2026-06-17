@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { parseBalanceOffsets } from "@/lib/balance-offsets";
 import { prisma } from "@/lib/db";
+import { isMissingDbObject } from "@/lib/household/db-capabilities";
 import { defaultVehicleGaragePrefs } from "@/lib/vehicle";
 import type { CategoryDefinition, Transaction } from "@/types";
 import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
@@ -202,22 +203,42 @@ async function restoreHouseholdFromPayload(
   userId: string,
   payload: HouseholdBackupPayload,
 ): Promise<void> {
-  await prisma.household.update({
-    where: { id: householdId },
-    data: {
-      name: payload.household.name,
-      partnerLabel: payload.household.partnerLabel,
-      mode: payload.household.mode === "shared" ? "SHARED" : "SOLO",
-      balanceOffsets: payload.balanceOffsets ?? {},
-    },
-  });
+  try {
+    await prisma.household.update({
+      where: { id: householdId },
+      data: {
+        name: payload.household.name,
+        partnerLabel: payload.household.partnerLabel,
+        mode: payload.household.mode === "shared" ? "SHARED" : "SOLO",
+        balanceOffsets: payload.balanceOffsets ?? {},
+      },
+    });
+  } catch (e) {
+    if (!isMissingDbObject(e)) throw e;
+    await prisma.household.update({
+      where: { id: householdId },
+      data: {
+        name: payload.household.name,
+        partnerLabel: payload.household.partnerLabel,
+        mode: payload.household.mode === "shared" ? "SHARED" : "SOLO",
+      },
+    });
+  }
 
   const memberUserIds = [...new Set(payload.memberUserIds ?? [])].filter(
     (id): id is string => typeof id === "string" && id.trim().length > 0,
   );
-  if (memberUserIds.length > 0) {
+  const existingUsers = memberUserIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: memberUserIds } },
+        select: { id: true },
+      })
+    : [];
+  const existingUserIds = new Set(existingUsers.map((u) => u.id));
+  const safeMemberIds = memberUserIds.filter((id) => existingUserIds.has(id));
+  if (safeMemberIds.length > 0) {
     await prisma.householdMember.createMany({
-      data: memberUserIds.map((memberUserId) => ({
+      data: safeMemberIds.map((memberUserId) => ({
         householdId,
         userId: memberUserId,
         role: memberUserId === userId ? ("OWNER" as const) : ("MEMBER" as const),
@@ -303,34 +324,38 @@ async function restoreHouseholdFromPayload(
   for (const tx of payload.transactions) {
     const createdBy =
       tx.createdBy && memberUserIds.includes(tx.createdBy) ? tx.createdBy : userId;
-    const createPayload = stripUnsupportedTransactionFields(
-      { ...appTransactionToDb(householdId, tx, createdBy), createdAt: new Date() },
-      caps,
-    );
-    const updatePayload = stripUnsupportedTransactionFields(
-      {
-        amount: tx.amount,
-        type: tx.type,
-        categoryId: tx.categoryId,
-        currency: tx.currency,
-        note: tx.note,
-        date: tx.date,
-        owner: tx.owner ?? "me",
-        goalId: tx.goalId ?? null,
-        goalAmount: tx.goalAmount ?? null,
-        confirmed: tx.confirmed !== false,
-        recurringId: tx.recurringId ?? null,
-        ...(tx.createdBy && memberUserIds.includes(tx.createdBy)
-          ? { createdBy: tx.createdBy }
-          : {}),
-      },
-      caps,
-    );
-    await prisma.transaction.upsert({
-      where: { id: tx.id },
-      create: createPayload as never,
-      update: updatePayload as never,
-    });
+    try {
+      const createPayload = stripUnsupportedTransactionFields(
+        { ...appTransactionToDb(householdId, tx, createdBy), createdAt: new Date() },
+        caps,
+      );
+      const updatePayload = stripUnsupportedTransactionFields(
+        {
+          amount: tx.amount,
+          type: tx.type,
+          categoryId: tx.categoryId,
+          currency: tx.currency,
+          note: tx.note,
+          date: tx.date,
+          owner: tx.owner ?? "me",
+          goalId: tx.goalId ?? null,
+          goalAmount: tx.goalAmount ?? null,
+          confirmed: tx.confirmed !== false,
+          recurringId: tx.recurringId ?? null,
+          ...(tx.createdBy && memberUserIds.includes(tx.createdBy)
+            ? { createdBy: tx.createdBy }
+            : {}),
+        },
+        caps,
+      );
+      await prisma.transaction.upsert({
+        where: { id: tx.id },
+        create: createPayload as never,
+        update: updatePayload as never,
+      });
+    } catch (e) {
+      console.warn("[household/restore transaction skipped]", tx.id, e);
+    }
   }
 
   if (payload.vehicleGarageAvailable) {
