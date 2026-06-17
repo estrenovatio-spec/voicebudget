@@ -3,10 +3,8 @@
 import {
   BriefcaseBusiness,
   Ellipsis,
-  FolderKanban,
   House,
-  ListChecks,
-  MessagesSquare,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppTabId } from "@/lib/app-bottom-nav";
@@ -22,11 +20,7 @@ export function PreviewHeaderNav({
 }) {
   const locale = useStore((s) => s.locale);
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
-  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
-  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
-  const businessLabelKey = (
-    passiveIncomeEnabled && !businessModeEnabled ? "appTabProjects" : "appTabBusiness"
-  ) as Parameters<typeof t>[1];
+  const showBusinessTab = businessModeEnabled;
 
   return (
     <div className="flex items-center gap-1">
@@ -45,13 +39,13 @@ export function PreviewHeaderNav({
       <Button
         type="button"
         variant={active === "operations" ? "default" : "outline"}
-        size="icon"
-        className="h-8 w-8 shrink-0"
+        size="sm"
+        className="h-8 min-w-[5.75rem] px-2 font-semibold"
         aria-label={t(locale, "appTabOperations")}
         aria-current={active === "operations" ? "page" : undefined}
         onClick={() => onChange("operations")}
       >
-        <ListChecks className="h-4 w-4" aria-hidden />
+        {t(locale, "appTabOperations")}
       </Button>
       <Button
         type="button"
@@ -62,7 +56,7 @@ export function PreviewHeaderNav({
         aria-current={active === "advisor" ? "page" : undefined}
         onClick={() => onChange("advisor")}
       >
-        <MessagesSquare className="h-4 w-4" aria-hidden />
+        <Bot className="h-4 w-4" aria-hidden />
       </Button>
       {showBusinessTab ? (
         <Button
@@ -70,15 +64,11 @@ export function PreviewHeaderNav({
           variant={active === "business" ? "default" : "outline"}
           size="icon"
           className="h-8 w-8 shrink-0"
-          aria-label={t(locale, businessLabelKey)}
+          aria-label={t(locale, "appTabBusiness")}
           aria-current={active === "business" ? "page" : undefined}
           onClick={() => onChange("business")}
         >
-          {passiveIncomeEnabled && !businessModeEnabled ? (
-            <FolderKanban className="h-4 w-4" aria-hidden />
-          ) : (
-            <BriefcaseBusiness className="h-4 w-4" aria-hidden />
-          )}
+          <BriefcaseBusiness className="h-4 w-4" aria-hidden />
         </Button>
       ) : null}
       <Button

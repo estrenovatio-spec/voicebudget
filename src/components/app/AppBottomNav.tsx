@@ -3,10 +3,8 @@
 import {
   BriefcaseBusiness,
   Ellipsis,
-  FolderKanban,
   House,
-  ListChecks,
-  MessagesSquare,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 import type { AppTabId } from "@/lib/app-bottom-nav";
@@ -15,18 +13,17 @@ import { useStore } from "@/store/useStore";
 
 const TABS: {
   id: AppTabId;
-  icon: LucideIcon;
+  icon: LucideIcon | null;
   labelKey:
     | "appTabHome"
     | "appTabOperations"
     | "appTabAdvisor"
     | "appTabBusiness"
-    | "appTabProjects"
     | "appTabMore";
 }[] = [
   { id: "home", icon: House, labelKey: "appTabHome" },
-  { id: "operations", icon: ListChecks, labelKey: "appTabOperations" },
-  { id: "advisor", icon: MessagesSquare, labelKey: "appTabAdvisor" },
+  { id: "operations", icon: null, labelKey: "appTabOperations" },
+  { id: "advisor", icon: Bot, labelKey: "appTabAdvisor" },
   { id: "business", icon: BriefcaseBusiness, labelKey: "appTabBusiness" },
   { id: "more", icon: Ellipsis, labelKey: "appTabMore" },
 ];
@@ -40,22 +37,8 @@ export function AppBottomNav({
 }) {
   const locale = useStore((s) => s.locale);
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
-  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
-  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
+  const showBusinessTab = businessModeEnabled;
   const tabs = showBusinessTab ? TABS : TABS.filter((tab) => tab.id !== "business");
-  const businessLabelKey = (
-    passiveIncomeEnabled && !businessModeEnabled ? "appTabProjects" : "appTabBusiness"
-  ) as Parameters<typeof t>[1];
-  const tabsWithLabel = tabs.map((tab) =>
-    tab.id === "business"
-      ? {
-          ...tab,
-          labelKey: businessLabelKey,
-          icon:
-            passiveIncomeEnabled && !businessModeEnabled ? FolderKanban : BriefcaseBusiness,
-        }
-      : tab,
-  );
 
   return (
     <nav
@@ -64,7 +47,7 @@ export function AppBottomNav({
       aria-label={t(locale, "appBottomNavAria")}
     >
       <div className={`mx-auto grid max-w-lg ${showBusinessTab ? "grid-cols-5" : "grid-cols-4"}`}>
-        {tabsWithLabel.map(({ id, icon: Icon, labelKey }) => {
+        {tabs.map(({ id, icon: Icon, labelKey }) => {
           const selected = active === id;
           return (
             <button
@@ -79,7 +62,7 @@ export function AppBottomNav({
               ].join(" ")}
               aria-current={selected ? "page" : undefined}
             >
-              <Icon className="h-5 w-5 shrink-0" aria-hidden />
+              {Icon ? <Icon className="h-5 w-5 shrink-0" aria-hidden /> : null}
               <span className="max-w-full truncate">{t(locale, labelKey)}</span>
             </button>
           );

@@ -27,14 +27,14 @@ import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { TipsPanel } from "@/components/TipsPanel";
 
 function HomeTabContent({
-  previewNav,
+  previewMode,
 }: {
-  previewNav?: { active: AppTabId; onChange: (tab: AppTabId) => void };
+  previewMode: boolean;
 }) {
   return (
     <>
       <AppVersionBanner />
-      <TMAHeader previewNav={previewNav} />
+      <TMAHeader hideBusinessButton={previewMode} />
       <VoiceRecorder />
       <HomeSections />
     </>
@@ -53,8 +53,7 @@ export default function HomePage() {
   const setLocale = useStore((s) => s.setLocale);
   const locale = useStore((s) => s.locale);
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
-  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
-  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
+  const showBusinessTab = businessModeEnabled;
   const previewMode = bottomNavEnabled();
   const [appView, setAppView] = useState<AppTabId>("home");
 
@@ -84,10 +83,6 @@ export default function HomePage() {
 
   useRecurringProcessor();
 
-  const previewNav = previewMode
-    ? { active: appView, onChange: onAppViewChange }
-    : undefined;
-
   const handlePreviewTelegramBack = useCallback(() => {
     if (!previewMode || appView === "home") return false;
     onAppViewChange("home");
@@ -96,7 +91,7 @@ export default function HomePage() {
 
   useTelegramBackHandler(handlePreviewTelegramBack, previewMode && appView !== "home");
 
-  const home = <HomeTabContent previewNav={previewNav} />;
+  const home = <HomeTabContent previewMode={previewMode} />;
   const operations = <OperationsTabContent />;
   const advisor = <AdvisorTabContent />;
 

@@ -14,8 +14,7 @@ import { useStore } from "@/store/useStore";
 export function AppTabShell({ familyContent }: { familyContent: ReactNode }) {
   const [tab, setTab] = useState<AppTabId>("home");
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
-  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
-  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
+  const showBusinessTab = businessModeEnabled;
 
   useEffect(() => {
     setTab(readStoredAppTab());

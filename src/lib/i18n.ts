@@ -225,15 +225,12 @@ export const DICT = {
     moreServiceFormFail: "Не удалось отправить — попробуйте позже",
     moreServiceFormTelegramOnly:
       "Откройте приложение из Telegram, чтобы отправить заявку",
-    settingsBizContextTitle: "Показать вкладку Биз",
+    settingsBizContextTitle: "Есть бизнес или фриланс?",
     settingsBizContextHint:
-      "Ответьте на вопросы ниже. Если хотя бы один пункт включён, вкладка Биз появится внизу.",
+      "Нажмите «Да» — вкладка Биз появится внизу. Нажмите «Нет» — вкладки не будет.",
     settingsBizQuestionBusiness: "Есть бизнес или фриланс?",
     settingsBizQuestionBusinessHint:
       "Выберите: бизнес, проекты/фриланс или ничего из этого.",
-    settingsBizChoiceBusiness: "Бизнес",
-    settingsBizChoiceProjects: "Проекты / фриланс",
-    settingsBizChoiceNone: "Ничего",
     projectsHistoryYear: "{year}",
     projectsHistoryMonthSummary: "{count} × {total}",
     moreOsago: "Оформить ОСАГО",
@@ -1382,15 +1379,12 @@ export const DICT = {
     moreServiceFormSending: "Sending…",
     moreServiceFormFail: "Could not send — try again later",
     moreServiceFormTelegramOnly: "Open the app from Telegram to submit",
-    settingsBizContextTitle: "Show the Biz tab",
+    settingsBizContextTitle: "Do you have a business or freelance work?",
     settingsBizContextHint:
-      "Answer the questions below. If at least one is on, Biz appears in the bottom bar.",
+      "Tap Yes and the Biz tab appears in the bottom bar. Tap No and it stays hidden.",
     settingsBizQuestionBusiness: "Do you have a business or freelance work?",
     settingsBizQuestionBusinessHint:
       "Choose: business, projects/freelance, or none of these.",
-    settingsBizChoiceBusiness: "Business",
-    settingsBizChoiceProjects: "Projects / freelance",
-    settingsBizChoiceNone: "None",
     projectsHistoryYear: "{year}",
     projectsHistoryMonthSummary: "{count} × {total}",
     moreOsago: "Get OSAGO",

@@ -72,11 +72,11 @@ export function SettingsDialogNav({
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
-  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
   const setUserName = useStore((s) => s.setUserName);
   const setPartnerName = useStore((s) => s.setPartnerName);
   const setPartnerKeywords = useStore((s) => s.setPartnerKeywords);
   const setBusinessModeEnabled = useStore((s) => s.setBusinessModeEnabled);
+  const setPassiveIncomeEnabled = useStore((s) => s.setPassiveIncomeEnabled);
   const myChipColor = useStore((s) => s.myChipColor);
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
@@ -371,10 +371,10 @@ export function SettingsDialogNav({
               title={t(locale, "settingsBizQuestionBusiness")}
               description={t(locale, "settingsBizQuestionBusinessHint")}
               businessActive={businessModeEnabled}
-              projectsActive={passiveIncomeEnabled}
               onChange={(next) => {
-                setBusinessModeEnabled(next === "business");
-                useStore.getState().setPassiveIncomeEnabled(next === "projects");
+                const enabled = next === "yes";
+                setBusinessModeEnabled(enabled);
+                setPassiveIncomeEnabled(false);
               }}
             />
           </div>
@@ -404,44 +404,34 @@ function BizModeRow({
   title,
   description,
   businessActive,
-  projectsActive,
   onChange,
 }: {
   locale: Locale;
   title: string;
   description: string;
   businessActive: boolean;
-  projectsActive: boolean;
-  onChange: (next: "business" | "projects" | "none") => void;
+  onChange: (next: "yes" | "no") => void;
 }) {
   return (
     <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <Button
           type="button"
           variant={businessActive ? "default" : "outline"}
           className="h-auto min-h-9 whitespace-normal px-2 py-2 text-xs leading-tight"
-          onClick={() => onChange("business")}
+          onClick={() => onChange("yes")}
         >
-          {t(locale, "settingsBizChoiceBusiness")}
+          {t(locale, "yes")}
         </Button>
         <Button
           type="button"
-          variant={projectsActive ? "default" : "outline"}
+          variant={!businessActive ? "default" : "outline"}
           className="h-auto min-h-9 whitespace-normal px-2 py-2 text-xs leading-tight"
-          onClick={() => onChange("projects")}
+          onClick={() => onChange("no")}
         >
-          {t(locale, "settingsBizChoiceProjects")}
-        </Button>
-        <Button
-          type="button"
-          variant={!businessActive && !projectsActive ? "default" : "outline"}
-          className="h-auto min-h-9 whitespace-normal px-2 py-2 text-xs leading-tight"
-          onClick={() => onChange("none")}
-        >
-          {t(locale, "settingsBizChoiceNone")}
+          {t(locale, "no")}
         </Button>
       </div>
     </div>
