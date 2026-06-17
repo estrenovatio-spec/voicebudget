@@ -11,11 +11,12 @@ import {
   appRecurringToDb,
 } from "@/lib/household/planning-mapper";
 import { saveVehicleGarage, VehicleGarageDbNotConfiguredError } from "@/lib/household/vehicle-garage-db";
-import { appCategoryToDb } from "@/lib/household/sync-mapper";
+import { appCategoryToDb, appTransactionToDb } from "@/lib/household/sync-mapper";
+import { getHouseholdDbCapabilities } from "@/lib/household/db-capabilities";
+import { stripUnsupportedTransactionFields } from "@/lib/household/safe-transactions";
 import type { SyncPayload } from "@/lib/household/types";
 import {
   buildSyncPayload,
-  createCloudTransaction,
 } from "@/lib/household/service";
 
 let householdBackupTablesReady: { value: boolean; checkedAt: number } | null = null;
@@ -298,8 +299,38 @@ async function restoreHouseholdFromPayload(
     await upsertDebtForHousehold(householdId, debt);
   }
 
+  const caps = await getHouseholdDbCapabilities();
   for (const tx of payload.transactions) {
-    await createCloudTransaction(userId, householdId, tx);
+    const createdBy =
+      tx.createdBy && memberUserIds.includes(tx.createdBy) ? tx.createdBy : userId;
+    const createPayload = stripUnsupportedTransactionFields(
+      { ...appTransactionToDb(householdId, tx, createdBy), createdAt: new Date() },
+      caps,
+    );
+    const updatePayload = stripUnsupportedTransactionFields(
+      {
+        amount: tx.amount,
+        type: tx.type,
+        categoryId: tx.categoryId,
+        currency: tx.currency,
+        note: tx.note,
+        date: tx.date,
+        owner: tx.owner ?? "me",
+        goalId: tx.goalId ?? null,
+        goalAmount: tx.goalAmount ?? null,
+        confirmed: tx.confirmed !== false,
+        recurringId: tx.recurringId ?? null,
+        ...(tx.createdBy && memberUserIds.includes(tx.createdBy)
+          ? { createdBy: tx.createdBy }
+          : {}),
+      },
+      caps,
+    );
+    await prisma.transaction.upsert({
+      where: { id: tx.id },
+      create: createPayload as never,
+      update: updatePayload as never,
+    });
   }
 
   if (payload.vehicleGarageAvailable) {
