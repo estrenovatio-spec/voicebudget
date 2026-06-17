@@ -1057,6 +1057,7 @@ function BusinessAdvisor({
     cashGap,
     locale,
     margin,
+    visibleSignals,
     metrics.debtMinPayment,
     metrics.expense,
     metrics.income,
@@ -1307,6 +1308,8 @@ function businessQuickToastMessage(
 
 export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) {
   const locale = useStore((s) => s.locale);
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
   const period = useStatsPeriod();
   const periodLabel = formatBudgetPeriodLabel(period, locale);
 
@@ -1344,7 +1347,9 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [editTaxPeriod, setEditTaxPeriod] =
     useState<BusinessTaxPeriod>("quarter");
   const [businessSection, setBusinessSection] =
-    useState<BusinessSection>("operations");
+    useState<BusinessSection>(
+      passiveIncomeEnabled && !businessModeEnabled ? "projects" : "operations",
+    );
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(true);
   const [businessSectionReady, setBusinessSectionReady] = useState(false);
@@ -1393,9 +1398,11 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       storedSection === "projects"
     ) {
       setBusinessSection(storedSection);
+    } else if (passiveIncomeEnabled && !businessModeEnabled) {
+      setBusinessSection("projects");
     }
     setBusinessSectionReady(true);
-  }, []);
+  }, [businessModeEnabled, passiveIncomeEnabled]);
 
   useEffect(() => {
     localStorage.setItem(BUSINESS_DEBT_STRATEGY_KEY, businessDebtStrategy);

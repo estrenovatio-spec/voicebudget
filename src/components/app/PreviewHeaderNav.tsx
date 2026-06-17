@@ -1,11 +1,12 @@
 "use client";
 
 import {
-  BrainCircuit,
   BriefcaseBusiness,
   Ellipsis,
+  FolderKanban,
   House,
   ListChecks,
+  MessagesSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppTabId } from "@/lib/app-bottom-nav";
@@ -23,6 +24,9 @@ export function PreviewHeaderNav({
   const businessModeEnabled = useStore((s) => s.businessModeEnabled);
   const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
   const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
+  const businessLabelKey = (
+    passiveIncomeEnabled && !businessModeEnabled ? "appTabProjects" : "appTabBusiness"
+  ) as Parameters<typeof t>[1];
 
   return (
     <div className="flex items-center gap-1">
@@ -58,7 +62,7 @@ export function PreviewHeaderNav({
         aria-current={active === "advisor" ? "page" : undefined}
         onClick={() => onChange("advisor")}
       >
-        <BrainCircuit className="h-4 w-4" aria-hidden />
+        <MessagesSquare className="h-4 w-4" aria-hidden />
       </Button>
       {showBusinessTab ? (
         <Button
@@ -66,11 +70,15 @@ export function PreviewHeaderNav({
           variant={active === "business" ? "default" : "outline"}
           size="icon"
           className="h-8 w-8 shrink-0"
-          aria-label={t(locale, "appTabBusiness")}
+          aria-label={t(locale, businessLabelKey)}
           aria-current={active === "business" ? "page" : undefined}
           onClick={() => onChange("business")}
         >
-          <BriefcaseBusiness className="h-4 w-4" aria-hidden />
+          {passiveIncomeEnabled && !businessModeEnabled ? (
+            <FolderKanban className="h-4 w-4" aria-hidden />
+          ) : (
+            <BriefcaseBusiness className="h-4 w-4" aria-hidden />
+          )}
         </Button>
       ) : null}
       <Button

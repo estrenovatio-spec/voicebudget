@@ -1,18 +1,32 @@
 "use client";
 
-import { BrainCircuit, BriefcaseBusiness, Ellipsis, House, ListChecks } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Ellipsis,
+  FolderKanban,
+  House,
+  ListChecks,
+  MessagesSquare,
+  type LucideIcon,
+} from "lucide-react";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
 const TABS: {
   id: AppTabId;
-  icon: typeof House;
-  labelKey: "appTabHome" | "appTabOperations" | "appTabAdvisor" | "appTabBusiness" | "appTabMore";
+  icon: LucideIcon;
+  labelKey:
+    | "appTabHome"
+    | "appTabOperations"
+    | "appTabAdvisor"
+    | "appTabBusiness"
+    | "appTabProjects"
+    | "appTabMore";
 }[] = [
   { id: "home", icon: House, labelKey: "appTabHome" },
   { id: "operations", icon: ListChecks, labelKey: "appTabOperations" },
-  { id: "advisor", icon: BrainCircuit, labelKey: "appTabAdvisor" },
+  { id: "advisor", icon: MessagesSquare, labelKey: "appTabAdvisor" },
   { id: "business", icon: BriefcaseBusiness, labelKey: "appTabBusiness" },
   { id: "more", icon: Ellipsis, labelKey: "appTabMore" },
 ];
@@ -29,6 +43,19 @@ export function AppBottomNav({
   const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
   const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
   const tabs = showBusinessTab ? TABS : TABS.filter((tab) => tab.id !== "business");
+  const businessLabelKey = (
+    passiveIncomeEnabled && !businessModeEnabled ? "appTabProjects" : "appTabBusiness"
+  ) as Parameters<typeof t>[1];
+  const tabsWithLabel = tabs.map((tab) =>
+    tab.id === "business"
+      ? {
+          ...tab,
+          labelKey: businessLabelKey,
+          icon:
+            passiveIncomeEnabled && !businessModeEnabled ? FolderKanban : BriefcaseBusiness,
+        }
+      : tab,
+  );
 
   return (
     <nav
@@ -37,7 +64,7 @@ export function AppBottomNav({
       aria-label={t(locale, "appBottomNavAria")}
     >
       <div className={`mx-auto grid max-w-lg ${showBusinessTab ? "grid-cols-5" : "grid-cols-4"}`}>
-        {tabs.map(({ id, icon: Icon, labelKey }) => {
+        {tabsWithLabel.map(({ id, icon: Icon, labelKey }) => {
           const selected = active === id;
           return (
             <button

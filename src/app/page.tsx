@@ -36,6 +36,7 @@ function HomeTabContent({
       <AppVersionBanner />
       <TMAHeader previewNav={previewNav} />
       <VoiceRecorder />
+      <HomeSections />
     </>
   );
 }
