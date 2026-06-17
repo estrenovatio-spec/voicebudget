@@ -117,6 +117,8 @@ export function MoreTab() {
         />
       </div>
 
+      <div className="h-px w-full bg-border/70" aria-hidden />
+
       <div className="space-y-2">
         <SettingsMenuRow
           title={t(locale, "moreSettings")}

@@ -5,7 +5,7 @@ import {
   Ellipsis,
   House,
   Bot,
-  List,
+  ChartColumn,
   type LucideIcon,
 } from "lucide-react";
 import type { AppTabId } from "@/lib/app-bottom-nav";
@@ -17,13 +17,13 @@ const TABS: {
   icon: LucideIcon | null;
   labelKey:
     | "appTabHome"
-    | "appTabOperations"
+    | "appTabSummary"
     | "appTabAdvisor"
     | "appTabBusiness"
     | "appTabMore";
 }[] = [
   { id: "home", icon: House, labelKey: "appTabHome" },
-  { id: "operations", icon: List, labelKey: "appTabOperations" },
+  { id: "operations", icon: ChartColumn, labelKey: "appTabSummary" },
   { id: "advisor", icon: Bot, labelKey: "appTabAdvisor" },
   { id: "business", icon: BriefcaseBusiness, labelKey: "appTabBusiness" },
   { id: "more", icon: Ellipsis, labelKey: "appTabMore" },

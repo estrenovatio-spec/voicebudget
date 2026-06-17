@@ -5,6 +5,7 @@ import {
   Ellipsis,
   House,
   Bot,
+  ChartColumn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppTabId } from "@/lib/app-bottom-nav";
@@ -41,11 +42,12 @@ export function PreviewHeaderNav({
         variant={active === "operations" ? "default" : "outline"}
         size="sm"
         className="h-8 min-w-[5.75rem] px-2 font-semibold"
-        aria-label={t(locale, "appTabOperations")}
+        aria-label={t(locale, "appTabSummary")}
         aria-current={active === "operations" ? "page" : undefined}
         onClick={() => onChange("operations")}
       >
-        {t(locale, "appTabOperations")}
+        <ChartColumn className="mr-1 h-4 w-4" aria-hidden />
+        {t(locale, "appTabSummary")}
       </Button>
       <Button
         type="button"

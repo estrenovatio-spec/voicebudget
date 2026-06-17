@@ -2,7 +2,6 @@
 
 import { AppVersionBanner } from "@/components/AppVersionBanner";
 import { PreviewAppShell } from "@/components/app/PreviewAppShell";
-import { HomeSections } from "@/components/HomeSections";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
 import { SettingsDialogHost } from "@/components/SettingsDialogHost";
@@ -25,6 +24,19 @@ import { useStore } from "@/store/useStore";
 import { useCallback, useEffect, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { TipsPanel } from "@/components/TipsPanel";
+import { TransactionList } from "@/components/TransactionList";
+import dynamic from "next/dynamic";
+import { PlanningPanel } from "@/components/PlanningPanel";
+
+const FinancialChart = dynamic(
+  () => import("@/components/FinancialChart").then((m) => m.FinancialChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[260px] w-full animate-pulse rounded-lg border bg-muted" />
+    ),
+  },
+);
 
 function HomeTabContent({
   previewMode,
@@ -36,13 +48,18 @@ function HomeTabContent({
       <AppVersionBanner />
       <TMAHeader hideBusinessButton={previewMode} />
       <VoiceRecorder />
-      <HomeSections />
+      <TransactionList collapsible={false} />
     </>
   );
 }
 
 function OperationsTabContent() {
-  return <HomeSections />;
+  return (
+    <div className="space-y-2">
+      <PlanningPanel collapsible={false} />
+      <FinancialChart collapsible={false} />
+    </div>
+  );
 }
 
 function AdvisorTabContent() {
@@ -99,7 +116,7 @@ export default function HomePage() {
     <main
       className={[
         "mx-auto flex min-h-[var(--tg-viewport-height,100vh)] max-w-lg flex-col gap-2 px-4",
-        previewMode ? "pb-[calc(1rem+env(safe-area-inset-bottom))]" : "pb-8",
+        previewMode ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : "pb-24",
       ].join(" ")}
       lang={locale}
     >

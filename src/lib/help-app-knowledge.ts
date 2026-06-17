@@ -6,9 +6,9 @@ const BOT = getTelegramBotMention();
 /** Карта экранов и кнопок — точные названия как в приложении */
 export function buildAppScreenMap(locale: Locale): string {
   if (locale === "en") {
-    return `APP UI MAP (exact labels):
-- Home tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), quick expense entry, microphone
-- Operations tab: transaction list, Summary, Plans
+      return `APP UI MAP (exact labels):
+- Home tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), quick expense entry, microphone, transaction list
+- Summary tab: Summary, Plans
 - Advisor tab: weekly/monthly review, AI chats, memory
 - Biz tab: business balance, currencies, quick input, selected business metrics, advisor notes, Operations, Reserve, Tax, Debts, Projects & sources
 - More tab: Services, Cloud, Help, Settings
@@ -16,8 +16,8 @@ export function buildAppScreenMap(locale: Locale): string {
 - Cloud & family: Solo / Shared, create cloud budget, invite code, Join, sync controls, archive restore`;
   }
   return `КАРТА ПРИЛОЖЕНИЯ (точные названия кнопок):
-- Вкладка «Дом»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), быстрая запись траты, микрофон
-- Вкладка «Операции»: список операций, «Сводка», «Планы»
+- Вкладка «Дом»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), быстрая запись траты, микрофон, список операций
+- Вкладка «Сводка»: «Сводка», «Планы»
 - Вкладка «Финсоветник»: недельный и месячный разбор, AI-чаты, память
 - Вкладка «Биз»: баланс бизнеса, валюты, быстрый ввод, показатели выбранного бизнеса, «Финсоветник заметил», Операции, Резерв, Налог, Долги, «Проекты и источники»
 - Вкладка «Ещё»: Услуги, Облако, Помощь, Настройки
@@ -43,7 +43,7 @@ const PLAYBOOKS: Playbook[] = [
       ru: [
         "Откройте Mini App (бот → «Открыть приложение»).",
         "На главной внизу поле ввода — напишите, например: «потратил 500 на обед».",
-        "Нажмите «Добавить» — операция появится в разделе «Операции».",
+        "Нажмите «Добавить» — операция появится в списке на вкладке «Дом».",
         "Можно нажать микрофон рядом с полем ввода и сказать фразу голосом.",
         `Или отправьте текст/голосовое боту ${BOT}.`,
       ],
