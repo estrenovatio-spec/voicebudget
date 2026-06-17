@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
-import { refreshCloudSessionFromTelegram } from "@/lib/cloud/bootstrap";
+import { refreshCloudSessionFromTelegram, runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import { isAuthSyncError } from "@/lib/cloud/sync-errors";
@@ -11,9 +11,9 @@ import { isTransientHttpError } from "@/lib/fetch-retry";
 import { apiSync } from "@/lib/cloud/client";
 import { useCloudStore } from "@/store/useCloudStore";
 
-const MIN_PULL_MS = 10_000;
+const MIN_PULL_MS = 5_000;
 /** Browser tab may stay open while phone records — poll occasionally */
-const POLL_MS = 15_000;
+const POLL_MS = 5_000;
 
 /** Pull cloud on load, when tab becomes visible, and on a timer while visible. */
 export function useCloudAutoSync() {
@@ -34,7 +34,12 @@ export function useCloudAutoSync() {
 
       const token = useCloudStore.getState().token;
       const household = useCloudStore.getState().household;
-      if (!token || !household) return;
+      if (!token || !household) {
+        if (hasCloudAuth()) {
+          void runHouseholdBootstrap();
+        }
+        return;
+      }
 
       lastPullAt.current = now;
       void apiSync(token)

@@ -71,7 +71,7 @@ export function HouseholdCloudBootstrap() {
     }
 
     const onVisible = () => {
-      if (document.visibilityState === "visible" && hasTelegramWebApp()) {
+      if (document.visibilityState === "visible") {
         void boot();
       }
     };
