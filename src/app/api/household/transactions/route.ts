@@ -3,7 +3,7 @@ import { z } from "zod";
 import { dbUnavailable, forbidden, mapCloudGuardError, unauthorized } from "@/lib/api/household-response";
 import { requireSession } from "@/lib/api/household-auth";
 import { isDatabaseConfigured } from "@/lib/db";
-import { createCloudTransaction } from "@/lib/household/service";
+import { buildSyncPayload, createCloudTransaction } from "@/lib/household/service";
 
 const bodySchema = z.object({
   id: z.string(),
@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
 
   try {
     await createCloudTransaction(session.userId, session.householdId, body);
-    return NextResponse.json({ ok: true });
+    const sync = await buildSyncPayload(session.householdId, session.userId);
+    return NextResponse.json({ ok: true, sync });
   } catch (e) {
     const guard = mapCloudGuardError(e);
     if (guard) return guard;

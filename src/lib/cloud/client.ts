@@ -248,6 +248,7 @@ export async function apiCreateTransaction(token: string, tx: Transaction) {
     const data = (await res.json()) as { error?: string };
     throw new Error(data.error ?? `http_${res.status}`);
   }
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }
 
 export async function apiUpdateTransaction(
@@ -282,6 +283,7 @@ export async function apiUpdateTransaction(
     const data = (await res.json()) as { error?: string };
     throw new Error(data.error ?? `http_${res.status}`);
   }
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }
 
 export async function apiDeleteTransaction(token: string, id: string) {
@@ -293,6 +295,7 @@ export async function apiDeleteTransaction(token: string, id: string) {
     const data = (await res.json()) as { error?: string };
     throw new Error(data.error ?? `http_${res.status}`);
   }
+  return parseJson<{ ok: boolean; sync: SyncPayload }>(res);
 }
 
 export async function apiUpsertCategory(token: string, cat: CategoryDefinition) {

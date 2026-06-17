@@ -3,7 +3,7 @@ import { z } from "zod";
 import { dbUnavailable, forbidden, mapCloudGuardError, notFound, unauthorized } from "@/lib/api/household-response";
 import { requireSession } from "@/lib/api/household-auth";
 import { isDatabaseConfigured } from "@/lib/db";
-import { deleteCloudTransaction, updateCloudTransaction } from "@/lib/household/service";
+import { buildSyncPayload, deleteCloudTransaction, updateCloudTransaction } from "@/lib/household/service";
 
 const patchSchema = z.object({
   amount: z.number().positive().optional(),
@@ -37,7 +37,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     await updateCloudTransaction(session.userId, session.householdId, id, body);
-    return NextResponse.json({ ok: true });
+    const sync = await buildSyncPayload(session.householdId, session.userId);
+    return NextResponse.json({ ok: true, sync });
   } catch (e) {
     if (!(e instanceof Error)) throw e;
     const guard = mapCloudGuardError(e);
@@ -56,7 +57,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   try {
     await deleteCloudTransaction(session.userId, session.householdId, id);
-    return NextResponse.json({ ok: true });
+    const sync = await buildSyncPayload(session.householdId, session.userId);
+    return NextResponse.json({ ok: true, sync });
   } catch (e) {
     if (!(e instanceof Error)) throw e;
     const guard = mapCloudGuardError(e);
