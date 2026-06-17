@@ -341,28 +341,6 @@ export function ReferralPanel() {
         <ReferralWalletCard
           locale={locale}
           wallet={profile.wallet}
-          onDismissPending={async (referralId) => {
-            const auth = getCloudAuthBody();
-            if (!auth.initData && !auth.telegramLogin) return false;
-            try {
-              const res = await fetch("/api/referral/dismiss", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...auth, referralId }),
-              });
-              if (!res.ok) {
-                const data = (await res.json().catch(() => ({}))) as { error?: string };
-                if (data.error === "too_early") {
-                  toast(t(locale, "referralWalletDismissEarly"), "error");
-                }
-                return false;
-              }
-              await load();
-              return true;
-            } catch {
-              return false;
-            }
-          }}
         />
       ) : null}
       {displayLink ? (
