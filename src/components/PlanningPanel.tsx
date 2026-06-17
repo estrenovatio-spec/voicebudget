@@ -277,7 +277,6 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [editDebtDate, setEditDebtDate] = useState("");
   const [editDebtOwner, setEditDebtOwner] = useState<DebtItem["owner"]>("all");
   const [emergencyInfoOpen, setEmergencyInfoOpen] = useState(false);
-  const [showRecurringStats, setShowRecurringStats] = useState(true);
   const [recurringFilter, setRecurringFilter] = useState<"unpaid" | "paid" | "all">("unpaid");
 
   const customGoals = useMemo(
@@ -642,28 +641,14 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
               <TabsTrigger value="emergency" className={`${planningTabClass} col-span-3`}>
                 {t(locale, "planningTabEmergency")}
               </TabsTrigger>
-              <div className="col-span-3 flex gap-1">
-                <TabsTrigger value="recurring" className={`${planningTabClass} flex-1`}>
-                  {t(locale, "planningTabRecurring")}
-                </TabsTrigger>
-                <Button
-                  type="button"
-                  variant={showRecurringStats ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-auto min-h-9 w-auto shrink-0 whitespace-normal px-2 text-xs leading-tight"
-                  onClick={() => setShowRecurringStats((value) => !value)}
-                >
-                  <BarChart3 className="mr-1 h-3.5 w-3.5" />
-                  {locale === "ru" ? "Статистика" : "Stats"}
-                </Button>
-              </div>
+              <TabsTrigger value="recurring" className={`${planningTabClass} col-span-3`}>
+                {t(locale, "planningTabRecurring")}
+              </TabsTrigger>
+              <TabsTrigger value="stats" className={`${planningTabClass} col-span-3`}>
+                <BarChart3 className="mr-1 h-3.5 w-3.5" />
+                {locale === "ru" ? "Статистика" : "Stats"}
+              </TabsTrigger>
             </TabsList>
-
-            {showRecurringStats ? (
-              <div className="mb-3">
-                <FinancialChart collapsible={false} />
-              </div>
-            ) : null}
 
             <TabsContent value="goals" className="space-y-3">
               {customGoals.length === 0 ? (
@@ -1570,6 +1555,10 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                   <Button onClick={handleAddRecurring}>{t(locale, "planningRecurringAdd")}</Button>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="stats" className="space-y-3">
+              <FinancialChart collapsible={false} />
             </TabsContent>
           </Tabs>
         </CardContent>
