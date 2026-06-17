@@ -50,6 +50,9 @@ export function applyHouseholdSync(
   if (remote.memberUserIds.length > 0) {
     useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
   }
+  if (remote.memberUserIds.length > 1) {
+    useStore.getState().setHouseholdFilter("all");
+  }
 
   const garage = resolveRemoteGarage(
     remote,
@@ -84,6 +87,9 @@ export function applyHouseholdSync(
       vehicles: garage.vehicles,
       vehiclePrefs: garage.vehiclePrefs,
     });
+    if (remote.memberUserIds.length > 1) {
+      useStore.getState().setHouseholdFilter("all");
+    }
     return;
   }
 
