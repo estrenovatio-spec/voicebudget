@@ -26,3 +26,7 @@ export function setCloudPaused(paused: boolean): void {
     /* ignore */
   }
 }
+
+export function clearCloudPause(): void {
+  setCloudPaused(false);
+}

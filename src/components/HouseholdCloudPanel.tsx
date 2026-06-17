@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
+import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { useHouseholdCloud } from "@/hooks/useHouseholdCloud";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
@@ -110,6 +111,8 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
     );
   }
 
+  const cloudPaused = isCloudPaused();
+
   if (!isTelegram && !isActive && !hasCloudAuth()) {
     return (
       <div
@@ -163,6 +166,19 @@ export function HouseholdCloudPanel({ embedded = false }: HouseholdCloudPanelPro
             <p className="text-xs text-muted-foreground">{t(locale, "cloudInviteHint")}</p>
             <p className="max-w-full break-all font-mono text-lg font-semibold tracking-widest">
               {household.inviteCode}
+            </p>
+          </div>
+        ) : null}
+
+        {cloudPaused ? (
+          <div className="space-y-1 rounded-lg border border-amber-400/30 bg-amber-50 p-3 dark:bg-amber-950/20">
+            <p className="text-sm font-medium text-amber-950 dark:text-amber-50">
+              {t(locale, "cloudPausedTitle")}
+            </p>
+            <p className="text-xs leading-snug text-amber-900/80 dark:text-amber-100/80">
+              {locale === "ru"
+                ? "Синхронизация была остановлена локально. Приложение снимет блокировку автоматически и подтянет данные."
+                : "Cloud sync was paused locally. The app will clear it automatically and pull fresh data."}
             </p>
           </div>
         ) : null}
