@@ -648,9 +648,9 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                 </TabsTrigger>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={showRecurringStats ? "secondary" : "ghost"}
                   size="sm"
-                  className="h-auto min-h-9 shrink-0 px-2.5 text-[11px]"
+                  className="h-auto min-h-9 w-auto shrink-0 whitespace-normal px-2 text-xs leading-tight"
                   onClick={() => setShowRecurringStats((value) => !value)}
                 >
                   <BarChart3 className="mr-1 h-3.5 w-3.5" />
