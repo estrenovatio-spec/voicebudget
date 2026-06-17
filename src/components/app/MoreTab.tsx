@@ -118,12 +118,12 @@ export function MoreTab() {
       </div>
 
       <div className="space-y-2">
-        <HelpFaqDialog locale={locale} variant="settings" />
         <SettingsMenuRow
           title={t(locale, "moreSettings")}
           description={t(locale, "moreSettingsHint")}
           onClick={() => requestOpenSettings()}
         />
+        <HelpFaqDialog locale={locale} variant="settings" />
       </div>
     </div>
   );

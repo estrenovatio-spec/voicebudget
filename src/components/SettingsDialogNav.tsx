@@ -360,16 +360,9 @@ export function SettingsDialogNav({
       {screen === "menu" ? (
         <div className="space-y-3">
           <div className="space-y-2 rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
-          <div className="space-y-1">
-              <p className="text-sm font-semibold">{t(locale, "settingsBizContextTitle")}</p>
-              <p className="text-xs text-muted-foreground">
-                {t(locale, "settingsBizContextHint")}
-              </p>
-            </div>
             <BizModeRow
               locale={locale}
               title={t(locale, "settingsBizQuestionBusiness")}
-              description={t(locale, "settingsBizQuestionBusinessHint")}
               businessActive={businessModeEnabled}
               onChange={(next) => {
                 const enabled = next === "yes";
@@ -402,20 +395,17 @@ export function SettingsDialogNav({
 function BizModeRow({
   locale,
   title,
-  description,
   businessActive,
   onChange,
 }: {
   locale: Locale;
   title: string;
-  description: string;
   businessActive: boolean;
   onChange: (next: "yes" | "no") => void;
 }) {
   return (
     <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
       <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Button
           type="button"

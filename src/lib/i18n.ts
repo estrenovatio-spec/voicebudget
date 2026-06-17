@@ -225,12 +225,7 @@ export const DICT = {
     moreServiceFormFail: "Не удалось отправить — попробуйте позже",
     moreServiceFormTelegramOnly:
       "Откройте приложение из Telegram, чтобы отправить заявку",
-    settingsBizContextTitle: "Есть бизнес или фриланс?",
-    settingsBizContextHint:
-      "Нажмите «Да» — вкладка Биз появится внизу. Нажмите «Нет» — вкладки не будет.",
     settingsBizQuestionBusiness: "Есть бизнес или фриланс?",
-    settingsBizQuestionBusinessHint:
-      "Выберите: бизнес, проекты/фриланс или ничего из этого.",
     projectsHistoryYear: "{year}",
     projectsHistoryMonthSummary: "{count} × {total}",
     moreOsago: "Оформить ОСАГО",
@@ -1379,12 +1374,7 @@ export const DICT = {
     moreServiceFormSending: "Sending…",
     moreServiceFormFail: "Could not send — try again later",
     moreServiceFormTelegramOnly: "Open the app from Telegram to submit",
-    settingsBizContextTitle: "Do you have a business or freelance work?",
-    settingsBizContextHint:
-      "Tap Yes and the Biz tab appears in the bottom bar. Tap No and it stays hidden.",
     settingsBizQuestionBusiness: "Do you have a business or freelance work?",
-    settingsBizQuestionBusinessHint:
-      "Choose: business, projects/freelance, or none of these.",
     projectsHistoryYear: "{year}",
     projectsHistoryMonthSummary: "{count} × {total}",
     moreOsago: "Get OSAGO",
