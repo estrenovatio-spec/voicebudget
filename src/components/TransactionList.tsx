@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, ChevronUp, List, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, List, Pencil, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { HouseholdFilterTabs } from "@/components/HouseholdControls";
 import { TransactionEditDialog } from "@/components/TransactionEditDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   HomeSectionCardHeader,
   HomeSectionCollapsedBar,
@@ -304,14 +305,31 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
   const categories = useCategories();
   const householdFilter = useStore((s) => s.householdFilter);
   const [filter, setFilter] = useState<"all" | TxType>("all");
+  const [query, setQuery] = useState("");
   const transactions = useFilteredTransactions(filter);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [hidden, setHidden] = useState(false);
 
   const compactAllTab = householdFilter === "all";
-  const dayGroups = useMemo(
-    () => groupTransactionsByDay(transactions, locale),
-    [transactions, locale],
+  const normalizedQuery = query.trim().toLowerCase();
+  const searchedTransactions = useMemo(() => {
+    if (!normalizedQuery) return transactions;
+    return transactions.filter((tx) => {
+      const category = getCategoryLabel(tx.categoryId, categories, locale).toLowerCase();
+      const note = (displayTransactionNote(tx.note, tx.amount) ?? "").toLowerCase();
+      const amount = String(tx.amount);
+      const date = tx.date?.slice(0, 10) ?? "";
+      return (
+        category.includes(normalizedQuery) ||
+        note.includes(normalizedQuery) ||
+        amount.includes(normalizedQuery) ||
+        date.includes(normalizedQuery)
+      );
+    });
+  }, [categories, locale, normalizedQuery, transactions]);
+  const searchedDayGroups = useMemo(
+    () => groupTransactionsByDay(searchedTransactions, locale),
+    [locale, searchedTransactions],
   );
 
   useEffect(() => {
@@ -360,7 +378,7 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
 
   const groupedList = (
     <div className="max-h-72 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
-      {dayGroups.map((group) => (
+      {searchedDayGroups.map((group) => (
         <section key={group.dateKey} className="space-y-1">
           <div className="sticky top-0 z-[1] flex items-center justify-between gap-2 bg-card/95 py-0.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
             <span>{group.label}</span>
@@ -453,9 +471,36 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
             </p>
             <HouseholdFilterTabs />
           </div>
-          {transactions.length === 0 ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={locale === "ru" ? "Поиск по операциям" : "Search transactions"}
+                  className="h-10 pl-9 pr-9"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    aria-label={locale === "ru" ? "Очистить поиск" : "Clear search"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          {searchedTransactions.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              {t(locale, "noTransactions")}
+              {query
+                ? locale === "ru"
+                  ? "Ничего не найдено"
+                  : "Nothing found"
+                : t(locale, "noTransactions")}
             </p>
           ) : (
             groupedList

@@ -24,27 +24,24 @@ export function HomeSections() {
 
   return (
     <Tabs defaultValue="operations" className="space-y-2">
-      <TabsList className="grid h-auto w-full grid-cols-4 gap-1 rounded-lg border border-primary/25 bg-primary/10 p-1 shadow-sm">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-primary/25 bg-primary/10 p-1 shadow-sm">
         <TabsTrigger value="operations" className={familyTabClass}>
           {locale === "ru" ? "Операции" : "Entries"}
         </TabsTrigger>
-        <TabsTrigger value="planning" className={familyTabClass}>
+        <TabsTrigger value="summary" className={familyTabClass}>
           {locale === "ru" ? (
             <span className="text-center">
-              Цели
+              Сводка
               <br />
               и планы
             </span>
           ) : (
             <span className="text-center">
-              Goals
+              Summary
               <br />
               plans
             </span>
           )}
-        </TabsTrigger>
-        <TabsTrigger value="stats" className={familyTabClass}>
-          {locale === "ru" ? "Статистика" : "Stats"}
         </TabsTrigger>
         <TabsTrigger value="advisor" className={familyTabClass}>
           {locale === "ru" ? (
@@ -64,10 +61,8 @@ export function HomeSections() {
       <TabsContent value="operations" className="mt-0">
         <TransactionList collapsible={false} />
       </TabsContent>
-      <TabsContent value="planning" className="mt-0">
+      <TabsContent value="summary" className="mt-0 space-y-2">
         <PlanningPanel collapsible={false} />
-      </TabsContent>
-      <TabsContent value="stats" className="mt-0">
         <FinancialChart collapsible={false} />
       </TabsContent>
       <TabsContent value="advisor" className="mt-0">
