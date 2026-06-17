@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRef } from "react";
 import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
 import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
@@ -59,7 +60,8 @@ const BUSINESS_ADVISOR_OPEN_KEY = "voicebudget-business-advisor-open";
 const BUSINESS_ADVISOR_AI_CACHE_KEY = "voicebudget-business-advisor-ai-v2";
 const BUSINESS_DEBT_STRATEGY_KEY = "voicebudget-business-debt-strategy";
 const BUSINESS_SECTION_KEY = "voicebudget-business-section";
-type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "projects";
+type BusinessSection = "operations" | "reserve" | "tax" | "debts" | "stats";
+type BusinessTopTab = "business" | "projects";
 type DebtRepaymentStrategy = "avalanche" | "snowball";
 type BusinessAdvisorTone = "ok" | "warn" | "risk";
 type BusinessAdvisorSignal = {
@@ -374,21 +376,17 @@ function UnitCard({
 function BusinessUnitTabs({
   units,
   activeUnitId,
-  projectsActive,
   metricsMap,
   locale,
   onSelect,
-  onSelectProjects,
   onEdit,
   onAdd,
 }: {
   units: BusinessUnit[];
   activeUnitId: string | null;
-  projectsActive: boolean;
   metricsMap: Map<string, UnitCardMetrics>;
   locale: "ru" | "en";
   onSelect: (unitId: string) => void;
-  onSelectProjects: () => void;
   onEdit: (unitId: string) => void;
   onAdd: () => void;
 }) {
@@ -399,34 +397,8 @@ function BusinessUnitTabs({
         role="tablist"
         aria-label={t(locale, "bizUnitsTitle")}
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={projectsActive}
-          onClick={onSelectProjects}
-          className={cn(
-            "min-w-[7.25rem] flex-1 rounded-md px-2.5 py-2 text-left text-sm font-semibold transition-colors",
-            projectsActive
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
-          )}
-        >
-          <span className="block break-words leading-tight">
-            {t(locale, "bizSectionProjects")}
-          </span>
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[10px] font-semibold",
-              projectsActive
-                ? "text-primary-foreground/85"
-                : "text-muted-foreground",
-            )}
-          >
-            {t(locale, "bizProjectsTopHint")}
-          </span>
-        </button>
         {units.map((unit) => {
-          const active = !projectsActive && unit.id === activeUnitId;
+          const active = unit.id === activeUnitId;
           const metrics = metricsMap.get(unit.id);
           const profit = metrics?.profit ?? 0;
           return (
@@ -481,7 +453,7 @@ function BusinessUnitTabs({
         >
           <Plus className="h-4 w-4" aria-hidden />
         </button>
-        {activeUnitId && !projectsActive ? (
+        {activeUnitId ? (
           <button
             type="button"
             onClick={() => onEdit(activeUnitId)}
@@ -1345,6 +1317,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
     useState<BusinessTaxPeriod>("quarter");
   const [businessSection, setBusinessSection] =
     useState<BusinessSection>("operations");
+  const [businessTopTab, setBusinessTopTab] = useState<BusinessTopTab>("business");
   const [businessAdvisorOpen, setBusinessAdvisorOpen] = useState(true);
   const [businessPeriodOpen, setBusinessPeriodOpen] = useState(true);
   const [businessSectionReady, setBusinessSectionReady] = useState(false);
@@ -1369,6 +1342,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const [editTx, setEditTx] = useState<BusinessTransaction | null>(null);
   const [showBusinessHow, setShowBusinessHow] = useState(true);
   const { toast } = useToast();
+  const lastBusinessSectionRef = useRef<BusinessSection>("operations");
 
   useEffect(() => {
     if (useBusinessStore.persist.hasHydrated()) setReady(true);
@@ -1389,8 +1363,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       storedSection === "operations" ||
       storedSection === "reserve" ||
       storedSection === "tax" ||
-      storedSection === "debts" ||
-      storedSection === "projects"
+      storedSection === "debts"
     ) {
       setBusinessSection(storedSection);
     }
@@ -1404,6 +1377,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   useEffect(() => {
     if (!businessSectionReady) return;
     localStorage.setItem(BUSINESS_SECTION_KEY, businessSection);
+    lastBusinessSectionRef.current = businessSection;
   }, [businessSection, businessSectionReady]);
 
   useEffect(() => {
@@ -1757,20 +1731,62 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       )}
 
       <div className="space-y-2">
-        <BusinessUnitTabs
-          units={visibleUnits}
-          activeUnitId={activeUnitId}
-          projectsActive={businessSection === "projects"}
-          metricsMap={unitMetricsMap}
-          locale={locale}
-          onSelect={(unitId) => {
-            setSelectedUnitId(unitId);
-            if (businessSection === "projects") setBusinessSection("operations");
-          }}
-          onSelectProjects={() => setBusinessSection("projects")}
-          onEdit={openEditUnit}
-          onAdd={() => setUnitDialogOpen(true)}
-        />
+        <div className="grid grid-cols-2 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
+          <button
+            type="button"
+            className={cn(
+              "min-h-10 rounded-md px-2 py-1.5 text-sm font-semibold leading-tight transition-colors",
+              businessTopTab === "business"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
+            )}
+            onClick={() => {
+              setBusinessTopTab("business");
+              setBusinessSection(lastBusinessSectionRef.current);
+            }}
+          >
+            {t(locale, "bizTitle")}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "min-h-10 rounded-md border px-2 py-1.5 text-sm font-semibold leading-tight transition-colors",
+              businessTopTab === "projects"
+                ? "border-amber-300/80 bg-amber-50 text-amber-950 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-50"
+                : "border-amber-200/50 bg-background/70 text-amber-800 hover:bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/10 dark:text-amber-200 dark:hover:bg-amber-950/20",
+            )}
+            onClick={() => setBusinessTopTab("projects")}
+          >
+            <span className="block break-words leading-tight">
+              {t(locale, "bizSectionProjects")}
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 block text-[10px] font-semibold leading-tight",
+                businessTopTab === "projects"
+                  ? "text-amber-800/80 dark:text-amber-100/80"
+                  : "text-amber-700/70 dark:text-amber-200/70",
+              )}
+            >
+              {t(locale, "bizProjectsTopHint")}
+            </span>
+          </button>
+        </div>
+
+        {businessTopTab === "business" ? (
+          <BusinessUnitTabs
+            units={visibleUnits}
+            activeUnitId={activeUnitId}
+            metricsMap={unitMetricsMap}
+            locale={locale}
+            onSelect={(unitId) => {
+              setSelectedUnitId(unitId);
+              setBusinessTopTab("business");
+            }}
+            onEdit={openEditUnit}
+            onAdd={() => setUnitDialogOpen(true)}
+          />
+        ) : null}
         {showBusinessHow ? (
           <div className="relative rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 pr-9 text-[11px] leading-relaxed text-muted-foreground">
             <p className="font-medium text-foreground">
@@ -1789,7 +1805,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
         ) : null}
       </div>
 
-      {businessSection === "projects" ? (
+      {businessTopTab === "projects" ? (
         <BusinessProjectsSection />
       ) : activeUnit && activeMetrics && safeWithdrawPlan ? (
         <>
@@ -1831,7 +1847,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
             onToggle={toggleBusinessAdvisor}
           />
 
-          <div className="space-y-3 border-t border-border/60 pt-3">
+      <div className="space-y-3 border-t border-border/60 pt-3">
             <div className="grid grid-cols-6 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
               {(
                 [
@@ -1839,6 +1855,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   "reserve",
                   "tax",
                   "debts",
+                  "stats",
                 ] as Exclude<BusinessSection, "projects">[]
               ).map((section) => {
                 const labelKey = {
@@ -1846,6 +1863,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                   reserve: "bizSectionReserve",
                   tax: "bizSectionTax",
                   debts: null,
+                  stats: null,
                 }[section] as
                   | "bizSectionOperations"
                   | "bizSectionReserve"
@@ -1860,13 +1878,21 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       "min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold leading-tight transition-colors",
                       section === "operations" || section === "reserve" || section === "tax"
                         ? "col-span-2"
-                        : "col-span-6",
+                        : "col-span-3",
                       businessSection === section
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-foreground/70 hover:bg-background/70 hover:text-foreground",
                     )}
                   >
-                    {labelKey ? t(locale, labelKey) : locale === "ru" ? "Долги" : "Debts"}
+                    {labelKey
+                      ? t(locale, labelKey)
+                      : section === "debts"
+                        ? locale === "ru"
+                          ? "Регулярные"
+                          : "Recurring"
+                        : locale === "ru"
+                          ? "Статистика"
+                          : "Statistics"}
                   </button>
                 );
               })}
@@ -2185,14 +2211,14 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">
-                    {locale === "ru" ? "Долги и обязательства" : "Debts and obligations"}
+                    {locale === "ru" ? "Регулярные и обязательства" : "Recurring and obligations"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <p className="text-muted-foreground">
                     {locale === "ru"
-                      ? "Эти платежи уменьшают сумму «можно вывести». Сначала обязательства, налог и резерв — потом вывод собственнику."
-                      : "These payments reduce safe withdrawal. Obligations, tax, and reserve come before owner withdrawal."}
+                      ? "Регулярные платежи уменьшают сумму «можно вывести». Сначала обязательства, налог и резерв — потом вывод собственнику."
+                      : "Recurring payments reduce safe withdrawal. Obligations, tax, and reserve come before owner withdrawal."}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-muted px-3 py-2">
@@ -2455,6 +2481,58 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
                       {locale === "ru" ? "Добавить обязательство" : "Add obligation"}
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {businessSection === "stats" ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    {locale === "ru" ? "Статистика" : "Statistics"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    {t(locale, "bizPeriodHint", { period: periodLabel })}
+                  </p>
+                  <StatisticsPeriodControls />
+                  {incomeSources.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium">{t(locale, "bizIncomeSources")}</p>
+                      <div className="space-y-1.5">
+                        {incomeSources.slice(0, 6).map((row) => (
+                          <div
+                            key={row.label}
+                            className="flex items-center justify-between gap-2 rounded-md bg-muted/60 px-2 py-1.5 text-sm"
+                          >
+                            <span className="min-w-0 truncate">{row.label}</span>
+                            <span className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                              +{formatMoney(row.amount, locale)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {expenseBreakdown.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium">{t(locale, "bizExpenseBreakdown")}</p>
+                      <div className="space-y-1.5">
+                        {expenseBreakdown.slice(0, 6).map((row) => (
+                          <div
+                            key={row.label}
+                            className="flex items-center justify-between gap-2 rounded-md bg-muted/60 px-2 py-1.5 text-sm"
+                          >
+                            <span className="min-w-0 truncate">{row.label}</span>
+                            <span className="shrink-0 font-semibold tabular-nums text-red-700 dark:text-red-400">
+                              −{formatMoney(row.amount, locale)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             ) : null}
