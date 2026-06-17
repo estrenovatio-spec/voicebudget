@@ -136,7 +136,10 @@ export async function runHouseholdBootstrap(): Promise<void> {
     }
     if (isAuthSyncError(e)) {
       const refreshed = await refreshCloudSessionFromTelegram();
-      if (!refreshed) clearStaleHouseholdSession();
+      if (!refreshed) {
+        /* Keep the previous session alive; a temporary auth miss should not
+           kick the device out of household sync. */
+      }
     }
   }
 }
