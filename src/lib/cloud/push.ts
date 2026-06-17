@@ -22,6 +22,7 @@ import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import type { Vehicle, VehicleGaragePrefs } from "@/types/vehicle";
 import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-errors";
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
+import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { useCloudStore } from "@/store/useCloudStore";
 import type { BudgetOwner, CategoryDefinition, Transaction, TxType } from "@/types";
 
@@ -33,6 +34,15 @@ function token(): string | null {
   if (isCloudPaused() || isCloudRestoreInProgress()) return null;
   const { token: t, household } = useCloudStore.getState();
   return t && household ? t : null;
+}
+
+async function resolveWritableToken(): Promise<string | null> {
+  const current = token();
+  if (current) return current;
+  if (isCloudPaused() || isCloudRestoreInProgress()) return null;
+  if (!hasCloudAuth() && !useCloudStore.getState().token) return null;
+  const refreshed = await refreshWritableToken();
+  return refreshed ?? token();
 }
 
 async function refreshWritableToken(): Promise<string | null> {
@@ -68,7 +78,7 @@ export async function cloudPushTransaction(
   tx: Transaction,
   opts?: { skipPull?: boolean },
 ): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
@@ -98,7 +108,7 @@ export async function cloudPushPartnerTransferPair(
   expense: Transaction,
   income: Transaction,
 ): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
@@ -145,7 +155,7 @@ export async function cloudPushTransactionUpdate(
   >,
   opts?: { skipPull?: boolean },
 ): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpdateTransaction(t, id, patch);
@@ -170,7 +180,7 @@ export async function cloudPushTransactionUpdate(
 }
 
 export async function cloudPushTransactionDelete(id: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteTransaction(t, id);
@@ -192,7 +202,7 @@ export async function cloudPushTransactionDelete(id: string): Promise<void> {
 }
 
 export async function cloudPushPartnerLabel(name: string | null): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiPatchPartnerLabel(t, name);
@@ -202,7 +212,7 @@ export async function cloudPushPartnerLabel(name: string | null): Promise<void> 
 }
 
 export async function cloudPushCategory(cat: CategoryDefinition): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpsertCategory(t, cat);
@@ -212,7 +222,7 @@ export async function cloudPushCategory(cat: CategoryDefinition): Promise<void> 
 }
 
 export async function cloudPushCategoryDelete(id: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteCategory(t, id);
@@ -222,7 +232,7 @@ export async function cloudPushCategoryDelete(id: string): Promise<void> {
 }
 
 export async function cloudPushGoal(goal: SavingsGoal): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpsertGoal(t, goal);
@@ -233,7 +243,7 @@ export async function cloudPushGoal(goal: SavingsGoal): Promise<void> {
 }
 
 export async function cloudPushGoalDelete(id: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteGoal(t, id);
@@ -243,7 +253,7 @@ export async function cloudPushGoalDelete(id: string): Promise<void> {
 }
 
 export async function cloudPushCategoryBudget(budget: CategoryBudget): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpsertCategoryBudget(t, budget);
@@ -254,7 +264,7 @@ export async function cloudPushCategoryBudget(budget: CategoryBudget): Promise<v
 }
 
 export async function cloudPushCategoryBudgetDelete(categoryId: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteCategoryBudget(t, categoryId);
@@ -264,7 +274,7 @@ export async function cloudPushCategoryBudgetDelete(categoryId: string): Promise
 }
 
 export async function cloudPushRecurring(item: RecurringTransaction): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpsertRecurring(t, item);
@@ -274,7 +284,7 @@ export async function cloudPushRecurring(item: RecurringTransaction): Promise<vo
 }
 
 export async function cloudPushRecurringDelete(id: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteRecurring(t, id);
@@ -284,7 +294,7 @@ export async function cloudPushRecurringDelete(id: string): Promise<void> {
 }
 
 export async function cloudPushDebt(item: DebtItem): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiUpsertDebt(t, item);
@@ -294,7 +304,7 @@ export async function cloudPushDebt(item: DebtItem): Promise<void> {
 }
 
 export async function cloudPushDebtDelete(id: string): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     await apiDeleteDebt(t, id);
@@ -307,7 +317,7 @@ export async function cloudPushGarage(
   vehicles: Vehicle[],
   vehiclePrefs: VehicleGaragePrefs,
 ): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     const res = await apiPutGarage(t, vehicles, vehiclePrefs);
@@ -319,7 +329,7 @@ export async function cloudPushGarage(
 }
 
 export async function cloudDeleteGarage(): Promise<void> {
-  const t = token();
+  const t = await resolveWritableToken();
   if (!t) return;
   try {
     const res = await apiDeleteGarage(t);
