@@ -36,7 +36,11 @@ export interface HouseholdActionResponse {
 }
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
-  return fetchWithRetry(url, init);
+  return fetchWithRetry(url, {
+    ...init,
+    cache: "no-store",
+    headers: init?.headers,
+  });
 }
 
 async function parseJson<T>(res: Response): Promise<T> {

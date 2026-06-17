@@ -4,6 +4,8 @@ import { requireSession } from "@/lib/api/household-auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { assertMember, buildSyncPayload } from "@/lib/household/service";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   if (!isDatabaseConfigured()) return dbUnavailable();
 
