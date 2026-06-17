@@ -1,12 +1,15 @@
 import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
   apiImportLocal,
+  apiCreateTransaction,
   apiDeleteCategory,
   apiDeleteCategoryBudget,
   apiDeleteDebt,
   apiDeleteGoal,
   apiDeleteRecurring,
+  apiDeleteTransaction,
   apiPatchPartnerLabel,
+  apiUpdateTransaction,
   apiUpsertCategory,
   apiUpsertCategoryBudget,
   apiUpsertDebt,
@@ -106,15 +109,13 @@ export async function cloudPushTransaction(
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
-    await pushCurrentTransactionsSnapshot(t);
-    useCloudStore.getState().clearTransactionUpdatePending(tx.id);
+    await apiCreateTransaction(t, tx);
     if (!opts?.skipPull) await pullCloudAfterWrite();
   } catch (e) {
     const refreshedToken = await retryAfterAuthError(e);
     if (refreshedToken) {
       try {
-        await pushCurrentTransactionsSnapshot(refreshedToken);
-        useCloudStore.getState().clearTransactionUpdatePending(tx.id);
+        await apiCreateTransaction(refreshedToken, tx);
         if (!opts?.skipPull) await pullCloudAfterWrite();
         return;
       } catch (retryError) {
@@ -136,9 +137,8 @@ export async function cloudPushPartnerTransferPair(
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
-    await pushCurrentTransactionsSnapshot(t);
-    useCloudStore.getState().clearTransactionUpdatePending(expense.id);
-    useCloudStore.getState().clearTransactionUpdatePending(income.id);
+    await apiCreateTransaction(t, expense);
+    await apiCreateTransaction(t, income);
     await pullCloudAfterWrite();
   } catch (e) {
     const refreshedToken = await retryAfterAuthError(e);
@@ -148,9 +148,8 @@ export async function cloudPushPartnerTransferPair(
       return;
     }
     try {
-      await pushCurrentTransactionsSnapshot(refreshedToken);
-      useCloudStore.getState().clearTransactionUpdatePending(expense.id);
-      useCloudStore.getState().clearTransactionUpdatePending(income.id);
+      await apiCreateTransaction(refreshedToken, expense);
+      await apiCreateTransaction(refreshedToken, income);
       await pullCloudAfterWrite();
     } catch (retryError) {
       const msg = retryError instanceof Error ? retryError.message : "sync_failed";
@@ -182,7 +181,7 @@ export async function cloudPushTransactionUpdate(
   const t = await resolveWritableToken();
   if (!t) return;
   try {
-    await pushCurrentTransactionsSnapshot(t);
+    await apiUpdateTransaction(t, id, patch);
     useCloudStore.getState().clearTransactionUpdatePending(id);
     if (opts?.skipPull) {
       return;
@@ -192,7 +191,7 @@ export async function cloudPushTransactionUpdate(
     const refreshedToken = await retryAfterAuthError(e);
     if (!refreshedToken) return;
     try {
-      await pushCurrentTransactionsSnapshot(refreshedToken);
+      await apiUpdateTransaction(refreshedToken, id, patch);
       useCloudStore.getState().clearTransactionUpdatePending(id);
       if (!opts?.skipPull) await pullCloudAfterWrite();
     } catch {
@@ -205,17 +204,15 @@ export async function cloudPushTransactionDelete(id: string): Promise<void> {
   const t = await resolveWritableToken();
   if (!t) return;
   try {
-    await pushCurrentTransactionsSnapshot(t, { replaceTransactions: true });
+    await apiDeleteTransaction(t, id);
     useCloudStore.getState().clearTransactionUpdatePending(id);
-    useCloudStore.getState().markTransactionDeleted(id);
     await pullCloudAfterWrite();
   } catch (e) {
     const refreshedToken = await retryAfterAuthError(e);
     if (!refreshedToken) return;
     try {
-      await pushCurrentTransactionsSnapshot(refreshedToken, { replaceTransactions: true });
+      await apiDeleteTransaction(refreshedToken, id);
       useCloudStore.getState().clearTransactionUpdatePending(id);
-      useCloudStore.getState().markTransactionDeleted(id);
       await pullCloudAfterWrite();
     } catch {
       /* retry on next sync */
