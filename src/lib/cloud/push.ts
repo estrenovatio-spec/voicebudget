@@ -1,5 +1,6 @@
 import type { CategoryBudget, DebtItem, RecurringTransaction, SavingsGoal } from "@/types/planning";
 import {
+  apiImportLocal,
   apiCreateTransaction,
   apiDeleteCategory,
   apiDeleteCategoryBudget,
@@ -24,6 +25,7 @@ import { isAuthSyncError, isSubscriptionSyncError } from "@/lib/cloud/sync-error
 import { decodeUserIdFromHouseholdToken } from "@/lib/cloud/viewer-identity";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { useCloudStore } from "@/store/useCloudStore";
+import { useStore } from "@/store/useStore";
 import type { BudgetOwner, CategoryDefinition, Transaction, TxType } from "@/types";
 
 function noteCloudWriteError(message: string): void {
@@ -74,6 +76,27 @@ async function pullCloudAfterWrite(): Promise<void> {
   }
 }
 
+async function pushCurrentTransactionsSnapshot(
+  t: string,
+  opts?: { includePlanning?: boolean },
+): Promise<void> {
+  const local = useStore.getState();
+  const res = await apiImportLocal(t, {
+    transactions: local.transactions,
+    categories: local.categories,
+    ...(opts?.includePlanning
+      ? {
+          savingsGoals: local.savingsGoals,
+          categoryBudgets: local.categoryBudgets,
+          recurringTransactions: local.recurringTransactions,
+          debts: local.debts,
+        }
+      : {}),
+  });
+  applyHouseholdSync(res.sync, t, { replace: true });
+  useCloudStore.getState().touchSync();
+}
+
 export async function cloudPushTransaction(
   tx: Transaction,
   opts?: { skipPull?: boolean },
@@ -82,15 +105,13 @@ export async function cloudPushTransaction(
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
-    await apiCreateTransaction(t, tx);
-    useCloudStore.getState().setLastWriteError(null);
+    await pushCurrentTransactionsSnapshot(t);
     if (!opts?.skipPull) await pullCloudAfterWrite();
   } catch (e) {
     const refreshedToken = await retryAfterAuthError(e);
     if (refreshedToken) {
       try {
-        await apiCreateTransaction(refreshedToken, tx);
-        useCloudStore.getState().setLastWriteError(null);
+        await pushCurrentTransactionsSnapshot(refreshedToken);
         if (!opts?.skipPull) await pullCloudAfterWrite();
         return;
       } catch (retryError) {
@@ -112,9 +133,7 @@ export async function cloudPushPartnerTransferPair(
   if (!t) return;
   useCloudStore.getState().setLastWriteError(null);
   try {
-    await apiCreateTransaction(t, expense);
-    await apiCreateTransaction(t, income);
-    useCloudStore.getState().setLastWriteError(null);
+    await pushCurrentTransactionsSnapshot(t);
     await pullCloudAfterWrite();
   } catch (e) {
     const refreshedToken = await retryAfterAuthError(e);
@@ -124,9 +143,7 @@ export async function cloudPushPartnerTransferPair(
       return;
     }
     try {
-      await apiCreateTransaction(refreshedToken, expense);
-      await apiCreateTransaction(refreshedToken, income);
-      useCloudStore.getState().setLastWriteError(null);
+      await pushCurrentTransactionsSnapshot(refreshedToken);
       await pullCloudAfterWrite();
     } catch (retryError) {
       const msg = retryError instanceof Error ? retryError.message : "sync_failed";
@@ -158,8 +175,7 @@ export async function cloudPushTransactionUpdate(
   const t = await resolveWritableToken();
   if (!t) return;
   try {
-    await apiUpdateTransaction(t, id, patch);
-    useCloudStore.getState().setLastWriteError(null);
+    await pushCurrentTransactionsSnapshot(t);
     useCloudStore.getState().clearTransactionUpdatePending(id);
     if (opts?.skipPull) {
       return;
@@ -169,8 +185,7 @@ export async function cloudPushTransactionUpdate(
     const refreshedToken = await retryAfterAuthError(e);
     if (!refreshedToken) return;
     try {
-      await apiUpdateTransaction(refreshedToken, id, patch);
-      useCloudStore.getState().setLastWriteError(null);
+      await pushCurrentTransactionsSnapshot(refreshedToken);
       useCloudStore.getState().clearTransactionUpdatePending(id);
       if (!opts?.skipPull) await pullCloudAfterWrite();
     } catch {
