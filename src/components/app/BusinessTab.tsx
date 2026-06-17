@@ -12,7 +12,6 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BusinessProjectsSection } from "@/components/app/BusinessProjectsSection";
 import { BusinessTxEditDialog } from "@/components/app/BusinessTxEditDialog";
-import { LiveRatesBar } from "@/components/LiveRatesBar";
 import { StatisticsPeriodControls } from "@/components/StatisticsPeriodControls";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -1734,9 +1733,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
             {headerControls}
-            <div className="rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
-              <LiveRatesBar />
-            </div>
           </div>
         </div>
       ) : (
@@ -1749,9 +1745,6 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
               />
               {t(locale, "bizTitle")}
             </h2>
-            <div className="shrink-0 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
-              <LiveRatesBar />
-            </div>
           </div>
           <BusinessTotalBalance
             income={totalMetrics.income}

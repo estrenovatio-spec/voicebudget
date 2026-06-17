@@ -8,7 +8,7 @@ export function buildAppScreenMap(locale: Locale): string {
   if (locale === "en") {
       return `APP UI MAP (exact labels):
 - Home tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), quick expense entry, microphone, transaction list
-- Summary tab: Summary, Plans
+- Summary tab: Goals & plans
 - Advisor tab: weekly/monthly review, AI chats, memory
 - Biz tab: business balance, currencies, quick input, selected business metrics, advisor notes, Operations, Reserve, Tax, Debts, Projects & sources
 - More tab: Services, Cloud, Help, Settings
@@ -17,7 +17,7 @@ export function buildAppScreenMap(locale: Locale): string {
   }
   return `КАРТА ПРИЛОЖЕНИЯ (точные названия кнопок):
 - Вкладка «Дом»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), быстрая запись траты, микрофон, список операций
-- Вкладка «Сводка»: «Сводка», «Планы»
+- Вкладка «Цели и планы»: цели, планы
 - Вкладка «Финсоветник»: недельный и месячный разбор, AI-чаты, память
 - Вкладка «Биз»: баланс бизнеса, валюты, быстрый ввод, показатели выбранного бизнеса, «Финсоветник заметил», Операции, Резерв, Налог, Долги, «Проекты и источники»
 - Вкладка «Ещё»: Услуги, Облако, Помощь, Настройки

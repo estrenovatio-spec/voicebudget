@@ -3,12 +3,12 @@
 import {
   ChevronLeft,
   ChevronRight,
-  Cloud,
   ShieldCheck,
+  UsersRound,
 } from "lucide-react";
 import { useState } from "react";
 import { HelpFaqDialog } from "@/components/HelpFaqDialog";
-import { HouseholdCloudPanel } from "@/components/HouseholdCloudPanel";
+import { ReferralPanel } from "@/components/ReferralPanel";
 import { MoreServiceForm } from "@/components/app/MoreServiceForm";
 import { Button } from "@/components/ui/button";
 import { SettingsMenuRow } from "@/components/SettingsMenuRow";
@@ -17,7 +17,13 @@ import { t } from "@/lib/i18n";
 import type { ServiceInquiryId } from "@/lib/services/inquiry-types";
 import { useStore } from "@/store/useStore";
 
-type MoreScreen = "main" | "services" | "cloud" | "osago" | "iszh_nszh" | "insurance_other";
+type MoreScreen =
+  | "main"
+  | "services"
+  | "referral"
+  | "osago"
+  | "iszh_nszh"
+  | "insurance_other";
 
 export function MoreTab() {
   const locale = useStore((s) => s.locale);
@@ -59,15 +65,6 @@ export function MoreTab() {
     );
   }
 
-  if (screen === "cloud") {
-    return (
-      <div className="space-y-4 py-1">
-        <MoreSubheader locale={locale} title={t(locale, "cloudTitle")} onBack={() => setScreen("main")} />
-        <HouseholdCloudPanel embedded />
-      </div>
-    );
-  }
-
   if (screen === "osago") {
     return (
       <div className="space-y-4 py-1">
@@ -95,6 +92,15 @@ export function MoreTab() {
     );
   }
 
+  if (screen === "referral") {
+    return (
+      <div className="space-y-4 py-1">
+        <MoreSubheader locale={locale} title={t(locale, "moreReferralTitle")} onBack={() => setScreen("main")} />
+        <ReferralPanel />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 py-1">
       <div>
@@ -110,10 +116,10 @@ export function MoreTab() {
           onClick={() => setScreen("services")}
         />
         <MoreHubPlaque
-          title={t(locale, "cloudTitle")}
-          hint={t(locale, "cloudHint")}
-          icon={<Cloud className="h-4 w-4 text-primary" aria-hidden />}
-          onClick={() => setScreen("cloud")}
+          title={t(locale, "moreReferralTitle")}
+          hint={t(locale, "moreReferralHint")}
+          icon={<UsersRound className="h-4 w-4 text-primary" aria-hidden />}
+          onClick={() => setScreen("referral")}
         />
       </div>
 
