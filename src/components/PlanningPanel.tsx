@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FinancialChart } from "@/components/FinancialChart";
 import {
   getCategoryLabel,
   getFallbackCategoryId,
@@ -1301,6 +1302,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
             </TabsContent>
 
             <TabsContent value="recurring" className="space-y-3">
+              <FinancialChart collapsible={false} />
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t(locale, "planningRecurringHint")}
               </p>

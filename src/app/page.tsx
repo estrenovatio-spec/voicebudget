@@ -25,18 +25,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { TipsPanel } from "@/components/TipsPanel";
 import { TransactionList } from "@/components/TransactionList";
-import dynamic from "next/dynamic";
 import { PlanningPanel } from "@/components/PlanningPanel";
-
-const FinancialChart = dynamic(
-  () => import("@/components/FinancialChart").then((m) => m.FinancialChart),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[260px] w-full animate-pulse rounded-lg border bg-muted" />
-    ),
-  },
-);
 
 function HomeTabContent({
   previewMode,
@@ -57,7 +46,6 @@ function OperationsTabContent() {
   return (
     <div className="space-y-2">
       <PlanningPanel collapsible={false} />
-      <FinancialChart collapsible={false} />
     </div>
   );
 }

@@ -58,7 +58,8 @@ export function FamilyOnboarding() {
 
   useEffect(() => {
     if (bottomNavEnabled()) return;
-    if (isFamilyOnboardingDone()) return;
+    const forceFresh = new URLSearchParams(window.location.search).get("fresh") === "1";
+    if (!forceFresh && isFamilyOnboardingDone()) return;
 
     const boot = () => {
       applyFirstVisitCollapsedState();

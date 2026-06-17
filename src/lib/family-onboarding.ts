@@ -2,6 +2,7 @@ import {
   AI_RECOMMENDATIONS_HIDDEN_KEY,
   CHART_HIDDEN_KEY,
   FAMILY_ONBOARDING_DONE_KEY,
+  TRANSACTIONS_HIDDEN_KEY,
   TIPS_PANEL_HIDDEN_KEY,
   WEEKLY_ANALYSIS_HIDDEN_KEY,
 } from "@/lib/storage-reset";
@@ -38,6 +39,7 @@ export function markFamilyOnboardingDone(): void {
 export function applyFirstVisitCollapsedState(): void {
   if (isFamilyOnboardingDone()) return;
   try {
+    localStorage.setItem(TRANSACTIONS_HIDDEN_KEY, "1");
     useStore.getState().setPlanningPanelCollapsed(true);
     localStorage.setItem(CHART_HIDDEN_KEY, "1");
     localStorage.setItem(TIPS_PANEL_HIDDEN_KEY, "1");
