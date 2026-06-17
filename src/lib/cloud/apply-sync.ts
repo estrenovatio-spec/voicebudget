@@ -25,8 +25,16 @@ function emptyPlanningDefaults(sync: SyncPayload): SyncPayload {
   };
 }
 
+type ApplyHouseholdSyncOptions = {
+  replace?: boolean;
+};
+
 /** Слияние с локальными данными — обновление приложения не затирает операции */
-export function applyHouseholdSync(sync: SyncPayload, token: string) {
+export function applyHouseholdSync(
+  sync: SyncPayload,
+  token: string,
+  opts?: ApplyHouseholdSyncOptions,
+) {
   const remote = emptyPlanningDefaults(sync);
   const local = useStore.getState();
   const cloud = useCloudStore.getState();
@@ -35,6 +43,50 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   const deletedTransactions = new Set(cloud.deletedTransactionIds ?? []);
   const pendingTransactionUpdates = new Set(Object.keys(cloud.pendingTransactionUpdateIds ?? {}));
   const remoteTxIds = new Set(remote.transactions.map((t) => t.id));
+
+  useCloudStore.getState().setSession(token, remote.household);
+  useCloudStore.getState().setLastWriteError(null);
+  ensureCloudViewerUserId(remote.viewerUserId ?? undefined);
+  if (remote.memberUserIds.length > 0) {
+    useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
+  }
+
+  const garage = resolveRemoteGarage(
+    remote,
+    local.vehicles,
+    local.vehiclePrefs ?? defaultVehicleGaragePrefs(),
+  );
+
+  if (opts?.replace) {
+    const savingsGoals = remote.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
+    useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
+    useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
+    useCloudStore.getState().setLastSyncedRemoteGoalIds((remote.savingsGoals ?? []).map((g) => g.id));
+    useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
+      (remote.categoryBudgets ?? []).map((b) => b.categoryId),
+    );
+    useCloudStore.getState().setLastSyncedRemoteRecurringIds(
+      (remote.recurringTransactions ?? []).map((r) => r.id),
+    );
+    useCloudStore.getState().setLastSyncedRemoteDebtIds((remote.debts ?? []).map((d) => d.id));
+    useCloudStore.getState().setDeletedRecurringIds([]);
+    useCloudStore.getState().setDeletedDebtIds([]);
+    useCloudStore.getState().setDeletedTransactionIds([]);
+    useCloudStore.getState().setPendingTransactionUpdateIds({});
+    useCloudStore.getState().touchSync();
+    useStore.setState({
+      transactions: remote.transactions,
+      categories: remote.categories,
+      savingsGoals,
+      categoryBudgets: remote.categoryBudgets ?? [],
+      recurringTransactions: remote.recurringTransactions ?? [],
+      debts: remote.debts ?? [],
+      vehicles: garage.vehicles,
+      vehiclePrefs: garage.vehiclePrefs,
+    });
+    return;
+  }
+
   const merged = mergeSyncPayload(
     local.transactions,
     local.categories,
@@ -54,24 +106,11 @@ export function applyHouseholdSync(sync: SyncPayload, token: string) {
   );
 
   const savingsGoals = merged.savingsGoals.map((g) => applyGoalMonthlyToGoal(g));
-
-  useCloudStore.getState().setSession(token, remote.household);
-  useCloudStore.getState().setLastWriteError(null);
-  ensureCloudViewerUserId(remote.viewerUserId ?? undefined);
-  if (remote.memberUserIds.length > 0) {
-    useCloudStore.getState().setHouseholdMemberUserIds(remote.memberUserIds);
-  }
   for (const id of pendingTransactionUpdates) {
     if (remoteTxIds.has(id)) {
       useCloudStore.getState().clearTransactionUpdatePending(id);
     }
   }
-
-  const garage = resolveRemoteGarage(
-    remote,
-    local.vehicles,
-    local.vehiclePrefs ?? defaultVehicleGaragePrefs(),
-  );
 
   useStore.setState({
     transactions: merged.transactions,

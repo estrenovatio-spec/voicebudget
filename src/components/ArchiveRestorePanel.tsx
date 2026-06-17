@@ -335,7 +335,7 @@ export function ArchiveRestorePanel() {
       useCloudStore.getState().setDeletedTransactionIds([]);
       useCloudStore.getState().setDeletedRecurringIds([]);
       useCloudStore.getState().setDeletedDebtIds([]);
-      applyHouseholdSync(res.sync, token);
+      applyHouseholdSync(res.sync, token, { replace: true });
       toast(
         locale === "ru" ? "Семья восстановлена из резервной копии" : "Household restored from backup",
         "success",

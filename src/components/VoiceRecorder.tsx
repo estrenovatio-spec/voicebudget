@@ -13,7 +13,6 @@ import {
 import { formatMoney } from "@/lib/format-money";
 import { t, ruPlural, enPlural } from "@/lib/i18n";
 import { inferParseLocale } from "@/lib/locale-infer";
-import { isCloudSyncActive } from "@/lib/cloud/push";
 import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import { mergeTransactionComment } from "@/lib/transaction-note";
 import {
@@ -24,7 +23,6 @@ import {
   startVoiceRecording,
 } from "@/lib/voice";
 import { enrichCategoriesWithAiMemory } from "@/lib/ai-memory";
-import { useCloudStore } from "@/store/useCloudStore";
 import { useStore } from "@/store/useStore";
 
 const VOICE_FLOW_TIMEOUT_MS = 32_000;
@@ -177,13 +175,6 @@ export function VoiceRecorder() {
             }),
         "success",
       );
-      if (isCloudSyncActive()) {
-        window.setTimeout(() => {
-          if (useCloudStore.getState().lastWriteError) {
-            toast(t(locale, "cloudWriteLocalOnly"), "error");
-          }
-        }, 700);
-      }
     } finally {
       setBusy(false);
     }
