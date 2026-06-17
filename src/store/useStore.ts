@@ -147,6 +147,10 @@ interface StoreState {
   /** Слова для распознавания партнёра в фразе (на этом телефоне) */
   partnerKeywords: string[];
   setPartnerKeywords: (keywords: string[]) => void;
+  businessModeEnabled: boolean;
+  passiveIncomeEnabled: boolean;
+  setBusinessModeEnabled: (enabled: boolean) => void;
+  setPassiveIncomeEnabled: (enabled: boolean) => void;
   /** HEX цвет кружка «я» в списке операций */
   myChipColor: string;
   partnerChipColor: string;
@@ -474,6 +478,10 @@ export const useStore = create<StoreState>()(
             .map((k) => k.trim().toLowerCase())
             .filter((k) => k.length >= 2),
         }),
+      businessModeEnabled: false,
+      passiveIncomeEnabled: false,
+      setBusinessModeEnabled: (enabled) => set({ businessModeEnabled: enabled }),
+      setPassiveIncomeEnabled: (enabled) => set({ passiveIncomeEnabled: enabled }),
       myChipColor: DEFAULT_MY_CHIP_COLOR,
       partnerChipColor: DEFAULT_PARTNER_CHIP_COLOR,
       setMyChipColor: (hex) =>
@@ -1531,6 +1539,8 @@ export const useStore = create<StoreState>()(
                 .map((k) => k.trim().toLowerCase())
                 .filter((k) => k.length >= 2)
             : [],
+          businessModeEnabled: Boolean(raw.businessModeEnabled),
+          passiveIncomeEnabled: Boolean(raw.passiveIncomeEnabled),
           myChipColor: sanitizeOwnerChipColor(
             typeof raw.myChipColor === "string" ? raw.myChipColor : null,
             DEFAULT_MY_CHIP_COLOR,

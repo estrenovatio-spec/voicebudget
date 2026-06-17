@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import { BusinessTab } from "@/components/app/BusinessTab";
 import { MoreTab } from "@/components/app/MoreTab";
 import {
@@ -8,32 +8,48 @@ import {
   PreviewViewControls,
 } from "@/components/app/PreviewViewChrome";
 import { useBusinessCloudSync } from "@/hooks/useBusinessCloudSync";
-import {
-  writeStoredAppTab,
-  type AppTabId,
-} from "@/lib/app-bottom-nav";
+import { type AppTabId, writeStoredAppTab } from "@/lib/app-bottom-nav";
+import { useStore } from "@/store/useStore";
 
-/** Preview: семья как на проде + переключение Biz / Ещё через шапку. */
+/** Preview: семья как на проде + переключение вкладок через шапку/нижний nav. */
 export function PreviewAppShell({
-  familyContent,
+  homeContent,
+  operationsContent,
+  advisorContent,
   previewNav,
 }: {
-  familyContent: ReactNode;
+  homeContent: ReactNode;
+  operationsContent: ReactNode;
+  advisorContent: ReactNode;
   previewNav: { active: AppTabId; onChange: (tab: AppTabId) => void };
 }) {
   const { active, onChange } = previewNav;
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
+  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
 
   useBusinessCloudSync();
 
-  const changeTab = (next: AppTabId) => {
-    writeStoredAppTab(next);
-    onChange(next);
-  };
+  const changeTab = useCallback(
+    (next: AppTabId) => {
+      writeStoredAppTab(next);
+      onChange(next);
+    },
+    [onChange],
+  );
+
+  useEffect(() => {
+    if (showBusinessTab) return;
+    if (active !== "business") return;
+    changeTab("home");
+  }, [active, changeTab, showBusinessTab]);
 
   return (
     <div className="min-h-0 flex-1">
-      {active === "family" ? <div className="space-y-2">{familyContent}</div> : null}
-      {active === "business" ? (
+      {active === "home" ? <div className="space-y-2">{homeContent}</div> : null}
+      {active === "operations" ? <div className="space-y-2">{operationsContent}</div> : null}
+      {active === "advisor" ? <div className="space-y-2">{advisorContent}</div> : null}
+      {active === "business" && showBusinessTab ? (
         <BusinessTab
           headerControls={
             <PreviewViewControls active={active} onChange={changeTab} />

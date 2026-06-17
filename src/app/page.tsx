@@ -11,10 +11,7 @@ import { PaymentReturnRefresh } from "@/components/PaymentReturnRefresh";
 import { SubscriptionExpiredReminder } from "@/components/SubscriptionExpiredReminder";
 import { SubscriptionAccessBanner } from "@/components/SubscriptionAccessBanner";
 import { TrialBanner } from "@/components/TrialBanner";
-import { PendingRecurringCard } from "@/components/PendingRecurringCard";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
-import { VehicleMaintenanceBanner } from "@/components/VehicleMaintenanceBanner";
-import { VehicleOdometerDialog } from "@/components/VehicleOdometerDialog";
 import {
   bottomNavEnabled,
   readStoredAppTab,
@@ -27,33 +24,38 @@ import { clearDismissibleHintKeys } from "@/lib/storage-reset";
 import { useStore } from "@/store/useStore";
 import { useCallback, useEffect, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
+import { TipsPanel } from "@/components/TipsPanel";
 
-function FamilyHomeContent({
+function HomeTabContent({
   previewNav,
 }: {
   previewNav?: { active: AppTabId; onChange: (tab: AppTabId) => void };
 }) {
   return (
     <>
-      <SubscriptionAccessBanner />
-      <TrialBanner />
-      <SubscriptionExpiredReminder />
       <AppVersionBanner />
-      <VehicleMaintenanceBanner />
       <TMAHeader previewNav={previewNav} />
       <VoiceRecorder />
-      <VehicleOdometerDialog />
-      <PendingRecurringCard />
-      <HomeSections />
     </>
   );
+}
+
+function OperationsTabContent() {
+  return <HomeSections />;
+}
+
+function AdvisorTabContent() {
+  return <TipsPanel collapsible={false} />;
 }
 
 export default function HomePage() {
   const setLocale = useStore((s) => s.setLocale);
   const locale = useStore((s) => s.locale);
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
+  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
   const previewMode = bottomNavEnabled();
-  const [appView, setAppView] = useState<AppTabId>("family");
+  const [appView, setAppView] = useState<AppTabId>("home");
 
   useEffect(() => {
     clearDismissibleHintKeys();
@@ -69,6 +71,12 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (showBusinessTab) return;
+    if (appView !== "business") return;
+    onAppViewChange("home");
+  }, [appView, onAppViewChange, showBusinessTab]);
+
+  useEffect(() => {
     if (window.Telegram?.WebApp) return;
     setLocale(detectLocale(navigator.language));
   }, [setLocale]);
@@ -80,24 +88,22 @@ export default function HomePage() {
     : undefined;
 
   const handlePreviewTelegramBack = useCallback(() => {
-    if (!previewMode || appView === "family") return false;
-    onAppViewChange("family");
+    if (!previewMode || appView === "home") return false;
+    onAppViewChange("home");
     return true;
   }, [previewMode, appView, onAppViewChange]);
 
-  useTelegramBackHandler(handlePreviewTelegramBack, previewMode && appView !== "family");
+  useTelegramBackHandler(handlePreviewTelegramBack, previewMode && appView !== "home");
 
-  const family = <FamilyHomeContent previewNav={previewNav} />;
+  const home = <HomeTabContent previewNav={previewNav} />;
+  const operations = <OperationsTabContent />;
+  const advisor = <AdvisorTabContent />;
 
   return (
     <main
       className={[
         "mx-auto flex min-h-[var(--tg-viewport-height,100vh)] max-w-lg flex-col gap-2 px-4",
-        previewMode && appView !== "family"
-          ? "pb-[calc(1rem+env(safe-area-inset-bottom))]"
-          : previewMode
-            ? "pb-[calc(1rem+env(safe-area-inset-bottom))]"
-            : "pb-8",
+        previewMode ? "pb-[calc(1rem+env(safe-area-inset-bottom))]" : "pb-8",
       ].join(" ")}
       lang={locale}
     >
@@ -105,10 +111,18 @@ export default function HomePage() {
       <PaymentReturnRefresh />
       <SettingsDialogHost />
       {!previewMode ? <FamilyOnboarding /> : null}
+      <SubscriptionAccessBanner />
+      <TrialBanner />
+      <SubscriptionExpiredReminder />
       {previewMode ? (
-        <PreviewAppShell familyContent={family} previewNav={{ active: appView, onChange: onAppViewChange }} />
+        <PreviewAppShell
+          homeContent={home}
+          operationsContent={operations}
+          advisorContent={advisor}
+          previewNav={{ active: appView, onChange: onAppViewChange }}
+        />
       ) : (
-        family
+        home
       )}
     </main>
   );

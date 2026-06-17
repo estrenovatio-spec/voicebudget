@@ -1,6 +1,12 @@
 "use client";
 
-import { Briefcase, Home, MoreHorizontal } from "lucide-react";
+import {
+  BrainCircuit,
+  BriefcaseBusiness,
+  Ellipsis,
+  House,
+  ListChecks,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 import { t } from "@/lib/i18n";
@@ -14,44 +20,69 @@ export function PreviewHeaderNav({
   onChange: (tab: AppTabId) => void;
 }) {
   const locale = useStore((s) => s.locale);
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
+  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
 
   return (
     <div className="flex items-center gap-1">
-      {active !== "family" ? (
+      {active !== "home" ? (
         <Button
           type="button"
           variant="outline"
           size="icon"
           className="h-8 w-8 shrink-0"
-          aria-label={t(locale, "appTabFamily")}
-          onClick={() => onChange("family")}
+          aria-label={t(locale, "appTabHome")}
+          onClick={() => onChange("home")}
         >
-          <Home className="h-4 w-4" aria-hidden />
+          <House className="h-4 w-4" aria-hidden />
         </Button>
       ) : null}
       <Button
         type="button"
-        variant={active === "business" ? "default" : "outline"}
-        size="sm"
-        className="min-w-[2.5rem] gap-1 px-2 font-semibold"
-        aria-label={t(locale, "businessModeAria")}
-        aria-current={active === "business" ? "page" : undefined}
-        onClick={() => onChange("business")}
+        variant={active === "operations" ? "default" : "outline"}
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        aria-label={t(locale, "appTabOperations")}
+        aria-current={active === "operations" ? "page" : undefined}
+        onClick={() => onChange("operations")}
       >
-        <Briefcase className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        {t(locale, "businessModeButton")}
+        <ListChecks className="h-4 w-4" aria-hidden />
       </Button>
       <Button
         type="button"
+        variant={active === "advisor" ? "default" : "outline"}
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        aria-label={t(locale, "appTabAdvisor")}
+        aria-current={active === "advisor" ? "page" : undefined}
+        onClick={() => onChange("advisor")}
+      >
+        <BrainCircuit className="h-4 w-4" aria-hidden />
+      </Button>
+      {showBusinessTab ? (
+        <Button
+          type="button"
+          variant={active === "business" ? "default" : "outline"}
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          aria-label={t(locale, "appTabBusiness")}
+          aria-current={active === "business" ? "page" : undefined}
+          onClick={() => onChange("business")}
+        >
+          <BriefcaseBusiness className="h-4 w-4" aria-hidden />
+        </Button>
+      ) : null}
+      <Button
+        type="button"
         variant={active === "more" ? "default" : "outline"}
-        size="sm"
-        className="gap-1 px-2 font-semibold"
+        size="icon"
+        className="h-8 w-8 shrink-0"
         aria-label={t(locale, "appTabMore")}
         aria-current={active === "more" ? "page" : undefined}
         onClick={() => onChange("more")}
       >
-        <MoreHorizontal className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        {t(locale, "appTabMore")}
+        <Ellipsis className="h-4 w-4" aria-hidden />
       </Button>
     </div>
   );

@@ -214,7 +214,7 @@ export function TipsPanel({ collapsible = true }: { collapsible?: boolean } = {}
         {spotlight ? (
           <div className={cn("mb-3 rounded-lg border p-3", toneClass(spotlight.tone))}>
             <p className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
-              {locale === "ru" ? "Мой финансовый пульс" : "My financial pulse"}
+              {locale === "ru" ? "Финсоветник" : "Advisor"}
             </p>
             <p className="mt-1 text-sm font-medium leading-snug text-foreground">
               {spotlight.title}

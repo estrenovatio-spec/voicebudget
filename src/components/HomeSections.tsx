@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { PlanningPanel } from "@/components/PlanningPanel";
-import { TipsPanel } from "@/components/TipsPanel";
 import { TransactionList } from "@/components/TransactionList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/store/useStore";
@@ -24,9 +23,9 @@ export function HomeSections() {
 
   return (
     <Tabs defaultValue="operations" className="space-y-2">
-      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-primary/25 bg-primary/10 p-1 shadow-sm">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-lg border border-primary/25 bg-primary/10 p-1 shadow-sm">
         <TabsTrigger value="operations" className={familyTabClass}>
-          {locale === "ru" ? "Операции" : "Entries"}
+          {locale === "ru" ? "Операции" : "Operations"}
         </TabsTrigger>
         <TabsTrigger value="summary" className={familyTabClass}>
           {locale === "ru" ? (
@@ -43,19 +42,6 @@ export function HomeSections() {
             </span>
           )}
         </TabsTrigger>
-        <TabsTrigger value="advisor" className={familyTabClass}>
-          {locale === "ru" ? (
-            <span className="text-center">
-              Фин
-              <br />
-              советник
-            </span>
-          ) : (
-            <span className="text-center">
-              Advisor
-            </span>
-          )}
-        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="operations" className="mt-0">
@@ -64,9 +50,6 @@ export function HomeSections() {
       <TabsContent value="summary" className="mt-0 space-y-2">
         <PlanningPanel collapsible={false} />
         <FinancialChart collapsible={false} />
-      </TabsContent>
-      <TabsContent value="advisor" className="mt-0">
-        <TipsPanel collapsible={false} />
       </TabsContent>
     </Tabs>
   );

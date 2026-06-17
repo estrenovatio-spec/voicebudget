@@ -9,13 +9,24 @@ import {
   writeStoredAppTab,
   type AppTabId,
 } from "@/lib/app-bottom-nav";
+import { useStore } from "@/store/useStore";
 
 export function AppTabShell({ familyContent }: { familyContent: ReactNode }) {
-  const [tab, setTab] = useState<AppTabId>("family");
+  const [tab, setTab] = useState<AppTabId>("home");
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
+  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
 
   useEffect(() => {
     setTab(readStoredAppTab());
   }, []);
+
+  useEffect(() => {
+    if (showBusinessTab) return;
+    if (tab !== "business") return;
+    setTab("home");
+    writeStoredAppTab("home");
+  }, [showBusinessTab, tab]);
 
   const changeTab = (next: AppTabId) => {
     setTab(next);
@@ -25,8 +36,10 @@ export function AppTabShell({ familyContent }: { familyContent: ReactNode }) {
   return (
     <>
       <div className="min-h-0 flex-1">
-        {tab === "family" ? familyContent : null}
-        {tab === "business" ? <BusinessTab /> : null}
+        {tab === "home" ? familyContent : null}
+        {tab === "operations" ? familyContent : null}
+        {tab === "advisor" ? familyContent : null}
+        {tab === "business" && showBusinessTab ? <BusinessTab /> : null}
         {tab === "more" ? <MoreTab /> : null}
       </div>
       <AppBottomNav active={tab} onChange={changeTab} />

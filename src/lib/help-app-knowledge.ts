@@ -7,24 +7,20 @@ const BOT = getTelegramBotMention();
 export function buildAppScreenMap(locale: Locale): string {
   if (locale === "en") {
     return `APP UI MAP (exact labels):
-- Family tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), filters All / Me / Partner, text field + "Add", microphone, transaction list (tap to edit/delete)
-- Family sections: Operations, Goals & plans, Statistics, Growth
-- Goals & plans: Jars, Limits, Emergency fund, Recurring, Debts
-- Growth: weekly mission, advisor notes, 7-day/30-day reviews
-- Settings: Financial memory, categories, cloud & family, help, language
-- Business tab: business balance, currencies, quick input, selected business metrics, advisor notes, Operations, Reserve, Tax, Debts, Projects & sources
-- More: Reports, Insurance, Services, Referral, Settings
+- Home tab: balance (tap block to hide amounts; tap a figure for «Cash on hand»), quick expense entry, microphone
+- Operations tab: transaction list, Summary, Plans
+- Advisor tab: weekly/monthly review, AI chats, memory
+- Biz tab: business balance, currencies, quick input, selected business metrics, advisor notes, Operations, Reserve, Tax, Debts, Projects & sources
+- More tab: Services, Cloud, Help, Settings
 - Settings (gear): Help, Categories, Cloud & family, partner name/keywords, app update, clear data
 - Cloud & family: Solo / Shared, create cloud budget, invite code, Join, sync controls, archive restore`;
   }
   return `КАРТА ПРИЛОЖЕНИЯ (точные названия кнопок):
-- Вкладка «Семья»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), фильтры Общий / Я / Партнёр, поле ввода + «Добавить», микрофон, список операций (нажать — изменить/удалить)
-- Разделы семьи: «Операции», «Цели и планы», «Статистика», «Рост»
-- «Цели и планы»: Копилки · Лимиты · Подушка · Регулярные · Долги
-- «Рост»: миссия недели, «Финсоветник заметил», разборы 7/30 дней
-- «Настройки»: «Финансовая память», категории, сохранение и семья, помощь, язык
-- Вкладка «Бизнес»: баланс бизнеса, валюты, быстрый ввод, показатели выбранного бизнеса, «Финсоветник заметил», Операции, Резерв, Налог, Долги, «Проекты и источники»
-- «Ещё»: Фин отчёты, Страхование, Услуги, Пригласить друга, Настройки
+- Вкладка «Дом»: баланс (нажать на блок — скрыть суммы; нажать на цифру — «Реально в кармане»), быстрая запись траты, микрофон
+- Вкладка «Операции»: список операций, «Сводка», «Планы»
+- Вкладка «Финсоветник»: недельный и месячный разбор, AI-чаты, память
+- Вкладка «Биз»: баланс бизнеса, валюты, быстрый ввод, показатели выбранного бизнеса, «Финсоветник заметил», Операции, Резерв, Налог, Долги, «Проекты и источники»
+- Вкладка «Ещё»: Услуги, Облако, Помощь, Настройки
 - Настройки (шестерёнка): «Помощь и вопросы», «Категории», «Облако и семья», имена/ключевые слова партнёра, обновление приложения, «Очистить данные»
 - «Облако и семья»: «Веду один» / «Вдвоём», создание облачного бюджета, код приглашения, «Присоединиться», синхронизация, восстановление из архива
 - Бот ${BOT}: голосовое или текст = запись; /start — приветствие, /help — шпаргалка, /web — вход с компьютера/браузера`;

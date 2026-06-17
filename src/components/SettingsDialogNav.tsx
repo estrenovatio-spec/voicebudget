@@ -71,9 +71,13 @@ export function SettingsDialogNav({
   const userName = useStore((s) => s.userName);
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
   const setUserName = useStore((s) => s.setUserName);
   const setPartnerName = useStore((s) => s.setPartnerName);
   const setPartnerKeywords = useStore((s) => s.setPartnerKeywords);
+  const setBusinessModeEnabled = useStore((s) => s.setBusinessModeEnabled);
+  const setPassiveIncomeEnabled = useStore((s) => s.setPassiveIncomeEnabled);
   const myChipColor = useStore((s) => s.myChipColor);
   const partnerChipColor = useStore((s) => s.partnerChipColor);
   const setMyChipColor = useStore((s) => s.setMyChipColor);
@@ -155,6 +159,8 @@ export function SettingsDialogNav({
       cashOffsetMe: 0,
       cashOffsetPartner: 0,
       statsPeriodOverride: null,
+      businessModeEnabled: false,
+      passiveIncomeEnabled: false,
     });
     useBusinessStore.setState({
       units: [defaultBusinessUnit()],
@@ -353,7 +359,29 @@ export function SettingsDialogNav({
       </div>
 
       {screen === "menu" ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="space-y-2 rounded-xl border-2 border-primary/20 bg-primary/5 p-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{t(locale, "settingsBizContextTitle")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t(locale, "settingsBizContextHint")}
+              </p>
+            </div>
+            <ModeQuestionRow
+              locale={locale}
+              title={t(locale, "settingsBizQuestionBusiness")}
+              description={t(locale, "settingsBizQuestionBusinessHint")}
+              value={businessModeEnabled}
+              onChange={setBusinessModeEnabled}
+            />
+            <ModeQuestionRow
+              locale={locale}
+              title={t(locale, "settingsBizQuestionPassive")}
+              description={t(locale, "settingsBizQuestionPassiveHint")}
+              value={passiveIncomeEnabled}
+              onChange={setPassiveIncomeEnabled}
+            />
+          </div>
           {MENU_ITEMS.map((item) => (
             <SettingsMenuRow
               key={item.id}
@@ -372,5 +400,44 @@ export function SettingsDialogNav({
         </div>
       )}
     </>
+  );
+}
+
+function ModeQuestionRow({
+  locale,
+  title,
+  description,
+  value,
+  onChange,
+}: {
+  locale: Locale;
+  title: string;
+  description: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant={value ? "default" : "outline"}
+          className="h-9"
+          onClick={() => onChange(true)}
+        >
+          {t(locale, "yes")}
+        </Button>
+        <Button
+          type="button"
+          variant={!value ? "default" : "outline"}
+          className="h-9"
+          onClick={() => onChange(false)}
+        >
+          {t(locale, "no")}
+        </Button>
+      </div>
+    </div>
   );
 }

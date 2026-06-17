@@ -1,18 +1,20 @@
 "use client";
 
-import { BriefcaseBusiness, Home, MoreHorizontal } from "lucide-react";
+import { BrainCircuit, BriefcaseBusiness, Ellipsis, House, ListChecks } from "lucide-react";
 import type { AppTabId } from "@/lib/app-bottom-nav";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/store/useStore";
 
 const TABS: {
   id: AppTabId;
-  icon: typeof Home;
-  labelKey: "appTabFamily" | "appTabBusiness" | "appTabMore";
+  icon: typeof House;
+  labelKey: "appTabHome" | "appTabOperations" | "appTabAdvisor" | "appTabBusiness" | "appTabMore";
 }[] = [
-  { id: "family", icon: Home, labelKey: "appTabFamily" },
+  { id: "home", icon: House, labelKey: "appTabHome" },
+  { id: "operations", icon: ListChecks, labelKey: "appTabOperations" },
+  { id: "advisor", icon: BrainCircuit, labelKey: "appTabAdvisor" },
   { id: "business", icon: BriefcaseBusiness, labelKey: "appTabBusiness" },
-  { id: "more", icon: MoreHorizontal, labelKey: "appTabMore" },
+  { id: "more", icon: Ellipsis, labelKey: "appTabMore" },
 ];
 
 export function AppBottomNav({
@@ -23,6 +25,10 @@ export function AppBottomNav({
   onChange: (tab: AppTabId) => void;
 }) {
   const locale = useStore((s) => s.locale);
+  const businessModeEnabled = useStore((s) => s.businessModeEnabled);
+  const passiveIncomeEnabled = useStore((s) => s.passiveIncomeEnabled);
+  const showBusinessTab = businessModeEnabled || passiveIncomeEnabled;
+  const tabs = showBusinessTab ? TABS : TABS.filter((tab) => tab.id !== "business");
 
   return (
     <nav
@@ -30,8 +36,8 @@ export function AppBottomNav({
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
       aria-label={t(locale, "appBottomNavAria")}
     >
-      <div className="mx-auto grid max-w-lg grid-cols-3">
-        {TABS.map(({ id, icon: Icon, labelKey }) => {
+      <div className={`mx-auto grid max-w-lg ${showBusinessTab ? "grid-cols-5" : "grid-cols-4"}`}>
+        {tabs.map(({ id, icon: Icon, labelKey }) => {
           const selected = active === id;
           return (
             <button

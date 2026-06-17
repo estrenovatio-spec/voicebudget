@@ -1,34 +1,50 @@
-export type AppTabId = "family" | "business" | "more";
+export type AppTabId = "home" | "operations" | "advisor" | "business" | "more";
 
 const TAB_STORAGE_KEY = "vb_app_tab_v1";
 
-/** Семья + Бизнес + Ещё. Отключить: NEXT_PUBLIC_APP_BOTTOM_NAV=false на Vercel. */
+/** Дом + Операции + Финсоветник + Биз + Ещё. Отключить: NEXT_PUBLIC_APP_BOTTOM_NAV=false на Vercel. */
 export function bottomNavEnabled(): boolean {
   return process.env.NEXT_PUBLIC_APP_BOTTOM_NAV !== "false";
 }
 
 export function readStoredAppTab(): AppTabId {
-  if (typeof window === "undefined") return "family";
+  if (typeof window === "undefined") return "home";
   const requested = readRequestedAppTab();
   if (requested) return requested;
   try {
     const raw = sessionStorage.getItem(TAB_STORAGE_KEY);
-    if (raw === "family" || raw === "business" || raw === "more") {
+    if (
+      raw === "home" ||
+      raw === "operations" ||
+      raw === "advisor" ||
+      raw === "business" ||
+      raw === "more"
+    ) {
       return raw;
     }
-    if (raw === "learn") return "more";
+    if (raw === "family") return "home";
+    if (raw === "learn") return "advisor";
   } catch {
     /* ignore */
   }
-  return "family";
+  return "home";
 }
 
 export function readRequestedAppTab(): AppTabId | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = new URLSearchParams(window.location.search).get("tab");
-    if (raw === "family" || raw === "business" || raw === "more") return raw;
-    if (raw === "learn") return "more";
+    if (
+      raw === "home" ||
+      raw === "operations" ||
+      raw === "advisor" ||
+      raw === "business" ||
+      raw === "more"
+    ) {
+      return raw;
+    }
+    if (raw === "family") return "home";
+    if (raw === "learn") return "advisor";
   } catch {
     /* ignore */
   }
