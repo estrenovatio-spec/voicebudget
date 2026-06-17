@@ -235,6 +235,13 @@ export function TMAHeader({
                 />
               </div>
             ) : null}
+            {liveRatesEnabled ? (
+              <div className="mt-2 border-t border-primary/10 pt-2">
+                <div className="overflow-x-auto rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
+                  <LiveRatesBar />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -257,11 +264,6 @@ export function TMAHeader({
               </Button>
             ) : null}
           </div>
-          {liveRatesEnabled ? (
-            <div className="mt-2.5 rounded-lg border-2 border-primary/20 bg-card px-2 py-1.5 shadow-sm">
-              <LiveRatesBar />
-            </div>
-          ) : null}
         </div>
       </div>
     </header>
