@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { canRunCloudBootstrap, runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
 import { apiConsumeWebLoginToken } from "@/lib/cloud/client";
-import { setCloudPaused } from "@/lib/cloud/cloud-pause";
+import { hasCloudAuth } from "@/lib/cloud/auth-payload";
+import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { waitForTelegramInitData, shouldWaitForTelegramInitData } from "@/lib/cloud/wait-telegram-init";
 import { hasTelegramWebApp } from "@/lib/cloud/telegram";
@@ -42,6 +43,10 @@ export function HouseholdCloudBootstrap() {
       if (shouldWaitForTelegramInitData()) {
         await waitForTelegramInitData(6000);
         if (cancelled) return;
+      }
+
+      if (isCloudPaused() && (hasCloudAuth() || useCloudStore.getState().token)) {
+        setCloudPaused(false);
       }
 
       if (!canRunCloudBootstrap()) return;
