@@ -13,7 +13,6 @@ import { SubscriptionAccessBanner } from "@/components/SubscriptionAccessBanner"
 import { TrialBanner } from "@/components/TrialBanner";
 import { PendingRecurringCard } from "@/components/PendingRecurringCard";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
-import { HomeMoneyPulseCard } from "@/components/HomeMoneyPulseCard";
 import { VehicleMaintenanceBanner } from "@/components/VehicleMaintenanceBanner";
 import { VehicleOdometerDialog } from "@/components/VehicleOdometerDialog";
 import {
@@ -43,7 +42,6 @@ function FamilyHomeContent({
       <VehicleMaintenanceBanner />
       <TMAHeader previewNav={previewNav} />
       <VoiceRecorder />
-      <HomeMoneyPulseCard />
       <VehicleOdometerDialog />
       <PendingRecurringCard />
       <HomeSections />
