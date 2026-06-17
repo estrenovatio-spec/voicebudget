@@ -104,7 +104,7 @@ function RateCell({
   return (
     <div
       title={title}
-      className={`inline-flex w-full min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-0.5 py-0.5 transition-colors duration-700 ${
+      className={`inline-flex shrink-0 min-w-0 items-center gap-0.5 whitespace-nowrap rounded-md px-0.5 py-0.5 transition-colors duration-700 ${
         flash ? "bg-emerald-500/15" : ""
       }`}
     >
@@ -113,14 +113,16 @@ function RateCell({
       >
         {badge}
       </div>
-      <span className="text-[11px] font-semibold leading-none tabular-nums">{value}</span>
+      <span className="text-[10px] font-semibold leading-none tabular-nums sm:text-[11px]">
+        {value}
+      </span>
     </div>
   );
 }
 
-const FIAT_BADGE_SLOT = "w-3.5";
-const MOEX_BADGE_SLOT = "w-[2.15rem]";
-const BTC_BADGE_SLOT = "w-[2.15rem]";
+const FIAT_BADGE_SLOT = "w-3";
+const MOEX_BADGE_SLOT = "w-[2rem]";
+const BTC_BADGE_SLOT = "w-[2rem]";
 
 /** Курсы: сверху $ и MOEX, снизу € под $ и BTC под MOEX */
 export function LiveRatesBar() {
@@ -180,11 +182,11 @@ export function LiveRatesBar() {
 
   return (
     <div
-      className="inline-grid w-max max-w-full grid-cols-[auto_auto] justify-items-start gap-x-1.5 gap-y-0.5 leading-none"
+      className="flex w-full flex-nowrap items-center gap-1 overflow-x-auto leading-none"
       aria-live="polite"
     >
       <RateCell
-        badge={<span className="text-[13px] font-bold leading-none text-emerald-500">$</span>}
+        badge={<span className="text-[12px] font-bold leading-none text-emerald-500">$</span>}
         badgeClassName={FIAT_BADGE_SLOT}
         value={formatFiatRate(rates.usdRub, locale)}
         flash={flash.usd}
@@ -198,7 +200,7 @@ export function LiveRatesBar() {
         title="IMOEX"
       />
       <RateCell
-        badge={<span className="text-[13px] font-bold leading-none text-blue-500">€</span>}
+        badge={<span className="text-[12px] font-bold leading-none text-blue-500">€</span>}
         badgeClassName={FIAT_BADGE_SLOT}
         value={formatFiatRate(rates.eurRub, locale)}
         flash={flash.eur}
