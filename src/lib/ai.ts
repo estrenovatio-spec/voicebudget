@@ -11,6 +11,7 @@ import {
   sanitizeCategories,
 } from "@/lib/categories";
 import { APP_CURRENCY } from "@/lib/app-currency";
+import { looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { parseAmountFromTranscript, resolveTransactionAmount } from "@/lib/parse-amount";
 import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
@@ -149,6 +150,8 @@ const INCOME_KEYWORDS_RU = [
   "получила",
   "получили",
   "зарплата",
+  "аванс",
+  "фриланс",
   "доход",
   "пришло",
   "пришли",
@@ -173,6 +176,10 @@ const INCOME_KEYWORDS_RU = [
   "поступило за аренду",
   "пришла арендная плата",
   "поступила арендная плата",
+  "аренда пришла",
+  "клиент оплатил",
+  "оплатил клиент",
+  "заказчик оплатил",
 ];
 const INCOME_KEYWORDS_EN = ["received", "salary", "income", "earned", "got paid"];
 const EXPENSE_KEYWORDS_RU = [
@@ -211,7 +218,7 @@ export function splitTranscriptClauses(text: string): string[] {
   if (!trimmed) return [];
 
   const splitRe =
-    /\s*[;,]\s*|\s+и\s+|\s+ещё?\s+|\s+потом\s+|\s+также\s+|\s+а\s+(?=потрат|куп|оплат|получ|заплат)|(?<=(?:на\s+[\p{L}\d-]+))\s+(?=\d[\d\s.,]*\s*(?:руб|₽|рубл(?:ей|я|ь)?))/iu;
+    /\s*(?:[\n\r]+|[;,])\s*|\s+и\s+|\s+ещё?\s+|\s+потом\s+|\s+также\s+|\s+а\s+(?=потрат|куп|оплат|получ|заплат)|(?<=(?:на\s+[\p{L}\d-]+))\s+(?=\d[\d\s.,]*\s*(?:руб|₽|рубл(?:ей|я|ь)?))/iu;
 
   const parts = trimmed
     .split(splitRe)
@@ -303,12 +310,16 @@ export function normalizeAiParsed(
   categories: CategoryDefinition[],
   locale: Locale,
 ): ParsedTransaction {
-  const categoryId = normalizeParsedCategory(
+  let categoryId = normalizeParsedCategory(
     raw.categoryId ?? raw.category,
     transcript,
     raw.type,
     categories,
   );
+  if (categoryId === "goal_jar" && !looksLikeGoalDeposit(transcript, locale)) {
+    const detected = detectCategoryId(transcript, raw.type, categories);
+    categoryId = detected !== "goal_jar" ? detected : getFallbackCategoryId(raw.type);
+  }
   const amount = resolveTransactionAmount(transcript, raw.amount, locale);
 
   const base: ParsedTransaction = {

@@ -17,7 +17,7 @@ const CREATE_GOAL_RU =
   /(?:создай|создать|новая)\s+(?:цел(?:ь|и)|копилк(?:у|а))\s+(.+)/i;
 const CREATE_GOAL_EN = /(?:create|new)\s+(?:goal|jar)\s+(.+)/i;
 
-const TARGET_RU = /(?:цел(?:ь|и)|сумм(?:а|у))\s+(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)/i;
+const TARGET_RU = /(?:цел(?:ь|и)|сумм(?:а|у))\s+(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|к|m))?)/i;
 const TARGET_EN = /(?:target|goal amount)\s+(\d[\d\s.,]*(?:\s*(?:k|m))?)/i;
 
 const GOAL_PREP_RU = /(?:на|в|для|по)/i;
@@ -27,12 +27,13 @@ const DEADLINE_RU =
   /(?:до|к|срок|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
 const DEADLINE_EN = /(?:by|until|deadline)\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?)/i;
 
-const INCOME_HINT_RU = /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс)/i;
+const INCOME_HINT_RU =
+  /(?:зарплат|получил|пришл|зачисли|доход|выручк|премия|аванс|фриланс|клиент|арендн|аренда\s+пришл|оплатил\s+клиент|клиент\s+оплатил)/i;
 const INCOME_HINT_EN = /(?:salary|received|income|earned|paid|paycheck)/i;
 
 /** Поступление денег — не путать с «перевёл в копилку». */
 const INCOME_RECEIPT_RU =
-  /(?:зарплат|получил|получила|получили|пришл|пришло|пришли|зачисли|зачислен|поступил|поступило|поступили|доход|выручк|премия|аванс|перевели(?:\s+\d|\s+мне|\s+на\s+сч)|перевёл\s+мне|перевел\s+мне|перевод\s+(?:от|с\s+работы|зарплат)|на\s+сч[её]т\s+пришл)/i;
+  /(?:зарплат|получил|получила|получили|пришл|пришло|пришли|зачисли|зачислен|поступил|поступило|поступили|доход|выручк|премия|аванс|фриланс|клиент\s+оплатил|оплатил\s+клиент|заказчик\s+оплатил|аренда\s+пришл|арендн(?:ая|ый)?\s+плат|перевели(?:\s+\d|\s+мне|\s+на\s+сч)|перевёл\s+мне|перевел\s+мне|перевод\s+(?:от|с\s+работы|зарплат)|на\s+сч[её]т\s+пришл)/i;
 const INCOME_RECEIPT_EN =
   /(?:salary|received|got paid|paycheck|deposited to (?:my )?account|credited|incoming)/i;
 
@@ -76,7 +77,7 @@ function cleanGoalName(raw: string): string {
   return raw
     .replace(/^["«]|["»]$/g, "")
     .replace(/\s*(?:руб(?:лей|ля)?|₽)\s*$/i, "")
-    .replace(/\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?\s*(?:руб(?:лей|ля)?|₽)?\s*$/i, "")
+    .replace(/\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|к|m))?\s*(?:руб(?:лей|ля)?|₽)?\s*$/i, "")
     .replace(/(?:до|к|срок|deadline|by|until)\s+\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?/gi, "")
     .replace(/(?:до|к|срок|deadline|by|until)\s+\d{4}-\d{2}-\d{2}/gi, "")
     .replace(/^(?:копилк(?:у|а|и|е)\s+)+/i, "")
@@ -201,7 +202,7 @@ function parseGoalCreateTail(
     namePart = work.replace(targetMatch[0], "").trim();
   } else {
     const amountAtEnd = namePart.match(
-      /(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|m))?)\s*(?:руб(?:лей|ля)?|₽)?\s*$/i,
+      /(\d[\d\s.,]*(?:\s*(?:тыс|тысяч|млн|k|к|m))?)\s*(?:руб(?:лей|ля)?|₽)?\s*$/i,
     );
     if (amountAtEnd) {
       targetAmount = roundMoneyUp(parseAmountFromTranscript(amountAtEnd[1], locale));

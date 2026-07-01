@@ -15,7 +15,7 @@
     "env:check": "node scripts/check-env.cjs",
     "db:setup-sql": "node -e \"console.log('Откройте prisma/setup-tables.sql в Supabase → SQL Editor → Run')\"",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
     "deploy": "bash scripts/deploy.sh",
     "deploy:preview": "bash scripts/deploy-preview.sh"

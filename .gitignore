@@ -34,6 +34,8 @@ yarn-error.log*
 .env.local.save
 .env.local.rtf
 .env.vercel.*
+.npm-cache/
+.vercel-cli-home/
 
 # db dumps / local backups
 /backups/

@@ -47,7 +47,7 @@ export function BalanceQuickEdit({
 
   useEffect(() => {
     if (open) setInput(String(displayed));
-  }, [open]);
+  }, [displayed, open]);
 
   const closeDialog = () => {
     setOpen(false);

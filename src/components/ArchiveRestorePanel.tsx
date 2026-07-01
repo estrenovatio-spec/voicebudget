@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArchiveRestore, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -147,7 +147,7 @@ export function ArchiveRestorePanel() {
     serverBackups.length +
     householdBackups.length;
 
-  const loadServerBackups = async () => {
+  const loadServerBackups = useCallback(async () => {
     if (!token) {
       setServerBackups([]);
       setHouseholdBackups([]);
@@ -169,11 +169,11 @@ export function ArchiveRestorePanel() {
       setServerLoading(false);
       setHouseholdLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     void loadServerBackups();
-  }, [token]);
+  }, [loadServerBackups]);
 
   const restoreCategory = (id: string) => {
     const ok = restoreArchivedCategory(id);

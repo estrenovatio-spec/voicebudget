@@ -45,9 +45,7 @@ export function HouseholdCloudBootstrap() {
         if (cancelled) return;
       }
 
-      if (isCloudPaused() && (hasCloudAuth() || useCloudStore.getState().token)) {
-        setCloudPaused(false);
-      }
+      if (isCloudPaused()) return;
 
       if (!canRunCloudBootstrap()) return;
       await runHouseholdBootstrap();

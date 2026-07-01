@@ -130,6 +130,16 @@ export function applyHouseholdSync(
     // Имена в балансе (userName / partnerName) — только на этом телефоне, не из облака.
     // household.partnerLabel в БД общий для семьи и не подставляется в UI.
   });
+  useCloudStore.getState().setLastSyncedRemoteTxIds(remote.transactions.map((t) => t.id));
+  useCloudStore.getState().setLastSyncedRemoteCategoryIds(remote.categories.map((c) => c.id));
+  useCloudStore.getState().setLastSyncedRemoteGoalIds((remote.savingsGoals ?? []).map((g) => g.id));
+  useCloudStore.getState().setLastSyncedRemoteBudgetCategoryIds(
+    (remote.categoryBudgets ?? []).map((b) => b.categoryId),
+  );
+  useCloudStore.getState().setLastSyncedRemoteRecurringIds(
+    (remote.recurringTransactions ?? []).map((r) => r.id),
+  );
+  useCloudStore.getState().setLastSyncedRemoteDebtIds((remote.debts ?? []).map((d) => d.id));
 
   for (const id of merged.localOnlyTransactionIds) {
     const tx = merged.transactions.find((t) => t.id === id);

@@ -140,7 +140,7 @@ export async function createTransactionForHousehold(
       ${caps.txFuelLiters ? Prisma.sql`, "fuelLiters"` : Prisma.empty}
       ${caps.txVehicleId ? Prisma.sql`, "vehicleId"` : Prisma.empty}
     ) VALUES (
-      ${String(data.id)}, ${householdId}, ${Number(data.amount)}, ${String(data.type)},
+      ${String(data.id)}, ${householdId}, ${Number(data.amount)}, ${String(data.type)}::"TxType",
       ${String(data.categoryId)}, ${String(data.currency)}, ${String(data.note)}, ${String(data.date)},
       ${String(data.owner)}, ${data.goalId as string | null}, ${data.goalAmount as number | null},
       ${data.createdBy as string | null}, ${Boolean(data.confirmed)}, ${data.recurringId as string | null},
@@ -216,7 +216,7 @@ export async function updateTransactionForHousehold(
     Prisma.sql`amount = ${Number(data.amount)}`,
     Prisma.sql`"categoryId" = ${String(data.categoryId)}`,
     Prisma.sql`owner = ${String(data.owner)}`,
-    Prisma.sql`type = ${String(data.type)}`,
+    Prisma.sql`type = ${String(data.type)}::"TxType"`,
     Prisma.sql`"createdBy" = ${createdBy}`,
     Prisma.sql`"updatedAt" = NOW()`,
   ];

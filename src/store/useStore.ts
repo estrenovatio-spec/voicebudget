@@ -87,7 +87,6 @@ import { useCloudStore } from "@/store/useCloudStore";
 import { resolveTransactionAmount } from "@/lib/parse-amount";
 import {
   enrichCategoriesWithAiMemory,
-  getAiMemoryKeywordCandidates,
   recordAiCorrectionLearning,
   recordAiInputLearning,
 } from "@/lib/ai-memory";
@@ -272,6 +271,7 @@ interface StoreState {
     patch: { name?: string; targetAmount?: number; deadline?: string | null },
   ) => boolean;
   depositGoal: (id: string, amount: number) => boolean;
+  withdrawGoal: (id: string, amount: number) => boolean;
   /** Отменить последнее «в копилку» по цели (если ввели 0 при отложении) */
   revertLastGoalDeposit: (goalId: string) => boolean;
   removeGoal: (id: string) => boolean;
@@ -862,31 +862,6 @@ export const useStore = create<StoreState>()(
         const after = get().transactions.find((t) => t.id === id);
         if (after) {
           recordAiCorrectionLearning({ before: prev, after });
-          if (
-            prev &&
-            (prev.categoryId !== after.categoryId || prev.type !== after.type)
-          ) {
-            const learnedKeywords = getAiMemoryKeywordCandidates(after.note, 3);
-            if (learnedKeywords.length > 0) {
-              let learnedCategory: CategoryDefinition | null = null;
-              set((state) => ({
-                categories: state.categories.map((cat) => {
-                  if (cat.id !== after.categoryId || cat.type !== after.type) return cat;
-                  const keywords = [
-                    ...new Set([
-                      ...cat.keywords,
-                      ...learnedKeywords.filter(
-                        (kw) => !cat.keywords.some((existing) => existing.toLowerCase() === kw.toLowerCase()),
-                      ),
-                    ]),
-                  ].slice(0, 400);
-                  learnedCategory = { ...cat, keywords };
-                  return learnedCategory;
-                }),
-              }));
-              if (learnedCategory) void cloudPushCategory(learnedCategory);
-            }
-          }
           clearCachedMonthlyAnalysis();
           useCloudStore.getState().markTransactionUpdatePending(id, after.updatedAt);
           const goalIds = new Set<string>();
@@ -1211,6 +1186,33 @@ export const useStore = create<StoreState>()(
         const before = get().transactions.length;
         get().addTransaction(buildGoalDepositTransaction(goal, amt, get().entryOwner));
         return get().transactions.length > before;
+      },
+      withdrawGoal: (id, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return false;
+        const goal = get().savingsGoals.find((g) => g.id === id);
+        if (!goal || goal.savedAmount <= 0) return false;
+        const value = Math.min(amt, goal.savedAmount);
+        const categoryId = getFallbackCategoryId("income");
+        const before = get().transactions.length;
+        get().addTransaction({
+          amount: value,
+          type: "income",
+          categoryId,
+          currency: normalizeAppCurrency(),
+          note: `← ${goal.name}`,
+          date: new Date().toISOString().slice(0, 10),
+          owner: get().entryOwner,
+        });
+        if (get().transactions.length <= before) return false;
+        let updated: SavingsGoal | null = null;
+        set((state) => {
+          const savingsGoals = applyGoalDelta(state.savingsGoals, id, -value);
+          updated = savingsGoals.find((g) => g.id === id) ?? null;
+          return { savingsGoals };
+        });
+        if (updated) void cloudPushGoal(updated);
+        return true;
       },
       revertLastGoalDeposit: (goalId) => {
         const jar = get().transactions.filter(

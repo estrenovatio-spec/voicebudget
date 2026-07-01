@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BarChart3,
   ChevronDown,
   ChevronUp,
   CircleAlert,
@@ -209,6 +208,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const addGoal = useStore((s) => s.addGoal);
   const updateGoal = useStore((s) => s.updateGoal);
   const depositGoal = useStore((s) => s.depositGoal);
+  const withdrawGoal = useStore((s) => s.withdrawGoal);
   const revertLastGoalDeposit = useStore((s) => s.revertLastGoalDeposit);
   const removeGoal = useStore((s) => s.removeGoal);
   const enableEmergencyFund = useStore((s) => s.enableEmergencyFund);
@@ -249,10 +249,16 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const [goalTarget, setGoalTarget] = useState("");
   const [goalDeadline, setGoalDeadline] = useState("");
   const [depositGoalId, setDepositGoalId] = useState<string | null>(null);
+  const [depositGoalMode, setDepositGoalMode] = useState<"deposit" | "withdraw">("deposit");
   const [depositAmount, setDepositAmount] = useState("");
   const [editGoalId, setEditGoalId] = useState<string | null>(null);
+  const [editGoalName, setEditGoalName] = useState("");
   const [editGoalTarget, setEditGoalTarget] = useState("");
   const [editGoalDeadline, setEditGoalDeadline] = useState("");
+  const [fundName, setFundName] = useState("");
+  const [editFundId, setEditFundId] = useState<string | null>(null);
+  const [editFundName, setEditFundName] = useState("");
+  const [fundInfoOpen, setFundInfoOpen] = useState(false);
   const [limitCategoryId, setLimitCategoryId] = useState("");
   const [limitAmount, setLimitAmount] = useState("");
   const [recAmount, setRecAmount] = useState("");
@@ -282,10 +288,21 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const customGoals = useMemo(
     () =>
       sortGoalsByPriority(
-        savingsGoals.filter((g) => g.kind !== "emergency"),
+        savingsGoals.filter((g) => g.kind !== "emergency" && g.targetAmount > 0),
         transactions,
       ),
     [savingsGoals, transactions],
+  );
+  const funds = useMemo(
+    () =>
+      [...savingsGoals]
+        .filter((g) => g.kind !== "emergency" && g.targetAmount <= 0)
+        .sort(
+          (a, b) =>
+            b.savedAmount - a.savedAmount ||
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        ),
+    [savingsGoals],
   );
   const emergencyGoal = savingsGoals.find((g) => g.id === EMERGENCY_GOAL_ID || g.kind === "emergency");
   const expenseCategories = useMemo(
@@ -363,17 +380,28 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
     setGoalDeadline("");
   };
 
-  const handleDeposit = (id: string) => {
+  const handleAddFund = () => {
+    const name = fundName.trim();
+    if (!name) return;
+    addGoal(name, 0, null);
+    setFundName("");
+  };
+
+  const handleGoalTransfer = (id: string) => {
     const raw = depositAmount.replace(/\s/g, "");
     const amount = Number(raw);
     if (!raw.trim()) return;
-    if (!amount) {
+    if (!amount && depositGoalMode === "deposit") {
       revertLastGoalDeposit(id);
       setDepositAmount("");
       setDepositGoalId(null);
       return;
     }
-    depositGoal(id, amount);
+    if (depositGoalMode === "withdraw") {
+      withdrawGoal(id, amount);
+    } else {
+      depositGoal(id, amount);
+    }
     setDepositAmount("");
     setDepositGoalId(null);
   };
@@ -381,19 +409,36 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
   const handleSaveGoalEdit = (id: string) => {
     const target = editGoalTarget ? Number(editGoalTarget.replace(/\s/g, "")) : 0;
     updateGoal(id, {
+      name: editGoalName.trim(),
       targetAmount: target > 0 ? target : 0,
       deadline: editGoalDeadline.trim() || null,
     });
     setEditGoalId(null);
+    setEditGoalName("");
     setEditGoalTarget("");
     setEditGoalDeadline("");
   };
 
   const startEditGoal = (goal: SavingsGoal, displayTarget: number) => {
     setEditGoalId(goal.id);
+    setEditGoalName(goal.name);
     setEditGoalTarget(displayTarget > 0 ? String(displayTarget) : "");
     setEditGoalDeadline(goal.deadline ?? "");
     setDepositGoalId(null);
+  };
+
+  const startEditFund = (fund: SavingsGoal) => {
+    setEditFundId(fund.id);
+    setEditFundName(fund.name);
+    setDepositGoalId(null);
+  };
+
+  const handleSaveFundEdit = (id: string) => {
+    const name = editFundName.trim();
+    if (!name) return;
+    updateGoal(id, { name });
+    setEditFundId(null);
+    setEditFundName("");
   };
 
   const handleSetLimit = () => {
@@ -628,9 +673,12 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
       {open ? (
         <CardContent className={homeSectionContentClassName}>
           <Tabs defaultValue="goals">
-            <TabsList className="mb-3 grid h-auto w-full grid-cols-3 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
+            <TabsList className="mb-3 grid h-auto w-full grid-cols-4 gap-1 rounded-lg border border-primary/20 bg-primary/10 p-1 shadow-sm">
               <TabsTrigger value="goals" className={planningTabClass}>
                 {t(locale, "planningTabGoals")}
+              </TabsTrigger>
+              <TabsTrigger value="funds" className={planningTabClass}>
+                {t(locale, "planningTabFunds")}
               </TabsTrigger>
               <TabsTrigger value="limits" className={planningTabClass}>
                 {t(locale, "planningTabLimits")}
@@ -645,7 +693,6 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                 {t(locale, "planningTabRecurring")}
               </TabsTrigger>
               <TabsTrigger value="stats" className={planningTabClass}>
-                <BarChart3 className="mr-1 h-3.5 w-3.5" />
                 {locale === "ru" ? "Статистика" : "Stats"}
               </TabsTrigger>
             </TabsList>
@@ -720,6 +767,11 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                         <div className="flex flex-col gap-2">
                           <div className="flex flex-wrap gap-2">
                             <Input
+                              placeholder={t(locale, "planningGoalName")}
+                              value={editGoalName}
+                              onChange={(e) => setEditGoalName(e.target.value)}
+                            />
+                            <Input
                               type="number"
                               placeholder={t(locale, "planningGoalTarget")}
                               value={editGoalTarget}
@@ -764,7 +816,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                             value={depositAmount}
                             onChange={(e) => setDepositAmount(e.target.value)}
                           />
-                          <Button size="sm" onClick={() => handleDeposit(goal.id)}>
+                          <Button size="sm" onClick={() => handleGoalTransfer(goal.id)}>
                             OK
                           </Button>
                         </div>
@@ -775,13 +827,29 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                         </p>
                       ) : null}
                       {depositGoalId !== goal.id ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDepositGoalId(goal.id)}
-                        >
-                          {t(locale, "planningGoalDeposit")}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDepositGoalMode("deposit");
+                              setDepositGoalId(goal.id);
+                            }}
+                          >
+                            {t(locale, "planningGoalDeposit")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={goal.savedAmount <= 0}
+                            onClick={() => {
+                              setDepositGoalMode("withdraw");
+                              setDepositGoalId(goal.id);
+                            }}
+                          >
+                            {t(locale, "planningGoalWithdraw")}
+                          </Button>
+                        </div>
                       ) : null}
                     </div>
                   );
@@ -819,6 +887,139 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                 ) : null}
                 <Button className="sm:self-start" onClick={handleAddGoal}>
                   {t(locale, "planningGoalAdd")}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="funds" className="space-y-3">
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  onClick={() => setFundInfoOpen((open) => !open)}
+                  aria-expanded={fundInfoOpen}
+                  aria-label={t(locale, "planningFundInfoAria")}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{t(locale, "planningFundTitle")}</p>
+                    <p className="text-xs text-muted-foreground">{t(locale, "planningFundHint")}</p>
+                  </div>
+                  <CircleAlert className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+                {fundInfoOpen ? (
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                    {t(locale, "planningFundInfo")}
+                  </p>
+                ) : null}
+              </div>
+
+              {funds.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t(locale, "planningFundEmpty")}</p>
+              ) : (
+                funds.map((fund) => (
+                  <div key={fund.id} className="space-y-2 rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{fund.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {replaceTokens(t(locale, "planningFundSaved"), {
+                            saved: formatMoney(fund.savedAmount, locale),
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => startEditFund(fund)}
+                          aria-label={t(locale, "planningGoalEdit")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-destructive"
+                          onClick={() => removeGoal(fund.id)}
+                          aria-label={t(locale, "planningGoalDelete")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {editFundId === fund.id ? (
+                      <div className="flex flex-col gap-2">
+                        <Input
+                          placeholder={t(locale, "planningFundName")}
+                          value={editFundName}
+                          onChange={(e) => setEditFundName(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => handleSaveFundEdit(fund.id)}>
+                            {t(locale, "planningGoalEditSave")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditFundId(null)}
+                          >
+                            {t(locale, "cancel")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {depositGoalId === fund.id ? (
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder={t(locale, "planningGoalDepositAmount")}
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                        />
+                        <Button size="sm" onClick={() => handleGoalTransfer(fund.id)}>
+                          OK
+                        </Button>
+                      </div>
+                    ) : null}
+                    {depositGoalId !== fund.id ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDepositGoalMode("deposit");
+                            setDepositGoalId(fund.id);
+                          }}
+                        >
+                          {t(locale, "planningGoalDeposit")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={fund.savedAmount <= 0}
+                          onClick={() => {
+                            setDepositGoalMode("withdraw");
+                            setDepositGoalId(fund.id);
+                          }}
+                        >
+                          {t(locale, "planningGoalWithdraw")}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              )}
+
+              <div className="flex flex-col gap-2 border-t pt-3">
+                <Input
+                  placeholder={t(locale, "planningFundName")}
+                  value={fundName}
+                  onChange={(e) => setFundName(e.target.value)}
+                  className="sm:max-w-sm"
+                />
+                <Button className="sm:self-start" onClick={handleAddFund}>
+                  {t(locale, "planningFundAdd")}
                 </Button>
               </div>
             </TabsContent>
@@ -1291,11 +1492,23 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                     <Button
                       size="sm"
                       onClick={() => {
+                        setDepositGoalMode("deposit");
                         setDepositGoalId(EMERGENCY_GOAL_ID);
                         if (!depositAmount) setDepositGoalId(EMERGENCY_GOAL_ID);
                       }}
                     >
                       {t(locale, "planningGoalDeposit")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={emergencyGoal.savedAmount <= 0}
+                      onClick={() => {
+                        setDepositGoalMode("withdraw");
+                        setDepositGoalId(EMERGENCY_GOAL_ID);
+                      }}
+                    >
+                      {t(locale, "planningGoalWithdraw")}
                     </Button>
                   </div>
                   {depositGoalId === EMERGENCY_GOAL_ID ? (
@@ -1306,7 +1519,7 @@ export function PlanningPanel({ collapsible = true }: { collapsible?: boolean } 
                         value={depositAmount}
                         onChange={(e) => setDepositAmount(e.target.value)}
                       />
-                      <Button size="sm" onClick={() => handleDeposit(EMERGENCY_GOAL_ID)}>
+                      <Button size="sm" onClick={() => handleGoalTransfer(EMERGENCY_GOAL_ID)}>
                         OK
                       </Button>
                     </div>

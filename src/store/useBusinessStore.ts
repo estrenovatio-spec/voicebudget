@@ -20,7 +20,9 @@ import {
 } from "@/lib/business/types";
 import { normalizeAppCurrency } from "@/lib/app-currency";
 import {
+  familyIncomeNoteFromAssetSale,
   familyIncomeNoteFromBusiness,
+  familyIncomeNoteFromBusinessSale,
   familyIncomeNoteFromPassive,
 } from "@/lib/business/family-transfer-note";
 import {
@@ -81,6 +83,8 @@ type BusinessStore = {
   transferToCushion: (unitId: string, amount: number) => void;
   transferToTax: (unitId: string, amount: number) => void;
   transferToFamily: (unitId: string, amount: number) => boolean;
+  recordBusinessSaleToFamily: (unitId: string, amount: number) => boolean;
+  sellAssetToFamily: (assetId: string, amount: number) => boolean;
   /** Зачислить пассив с проекта в семью (сумма и дата — на выбор). */
   transferPassiveToFamily: (assetId: string, amount: number, date?: string) => boolean;
   removePassiveReceiptByFamilyTxId: (familyTxId: string) => void;
@@ -507,6 +511,79 @@ export const useBusinessStore = create<BusinessStore>()(
         set((s) => ({ transactions: [tx, ...s.transactions] }));
         return true;
       },
+      recordBusinessSaleToFamily: (unitId, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return false;
+        const unit = get().units.find((u) => u.id === unitId);
+        if (!unit) return false;
+        const locale = useStore.getState().locale;
+        const bizTxId = makeId("tx");
+        const note = familyIncomeNoteFromBusinessSale(unit.name, locale);
+        const familyTxId = useStore.getState().addTransaction({
+          amount: amt,
+          type: "income",
+          categoryId: getFallbackCategoryId("income"),
+          currency: normalizeAppCurrency(),
+          note,
+          date: new Date().toISOString().slice(0, 10),
+          owner: "me",
+          businessTxId: bizTxId,
+        });
+        const tx: BusinessTransaction = {
+          id: bizTxId,
+          unitId,
+          type: "income",
+          amount: amt,
+          kind: "operating_income",
+          note,
+          date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString(),
+          linkedFamilyTxId: familyTxId,
+        };
+        set((s) => ({ transactions: [tx, ...s.transactions] }));
+        void pushBusinessToCloud();
+        return true;
+      },
+      sellAssetToFamily: (assetId, amount) => {
+        const amt = roundMoneyUp(amount);
+        if (amt <= 0) return false;
+        const asset = get().assets.find((a) => a.id === assetId);
+        if (!asset) return false;
+        const unit = get().units.find((u) => u.id === asset.unitId);
+        const locale = useStore.getState().locale;
+        const txDate = new Date().toISOString().slice(0, 10);
+        const bizTxId = makeId("tx");
+        const note = familyIncomeNoteFromAssetSale(unit?.name ?? "", asset.name, locale);
+        const familyTxId = useStore.getState().addTransaction({
+          amount: amt,
+          type: "income",
+          categoryId: getFallbackCategoryId("income"),
+          currency: normalizeAppCurrency(),
+          note,
+          date: txDate,
+          owner: "me",
+          businessTxId: bizTxId,
+        });
+        const tx: BusinessTransaction = {
+          id: bizTxId,
+          unitId: asset.unitId,
+          type: "income",
+          amount: amt,
+          kind: "operating_income",
+          note,
+          date: txDate,
+          createdAt: new Date().toISOString(),
+          linkedFamilyTxId: familyTxId,
+        };
+        set((s) => ({
+          transactions: [tx, ...s.transactions],
+          assets: s.assets.filter((a) => a.id !== assetId),
+          deletedAssetIds: [...new Set([...s.deletedAssetIds, assetId])].slice(-500),
+          passiveReceipts: s.passiveReceipts.filter((r) => r.assetId !== assetId),
+        }));
+        void pushBusinessToCloud();
+        return true;
+      },
       transferPassiveToFamily: (assetId, amount, date) => {
         const amt = roundMoneyUp(amount);
         if (amt <= 0) return false;
@@ -520,7 +597,7 @@ export const useBusinessStore = create<BusinessStore>()(
           type: "income",
           categoryId: getFallbackCategoryId("income"),
           currency: normalizeAppCurrency(),
-          note: familyIncomeNoteFromPassive(unit?.name ?? "", asset.name, asset.type, locale),
+          note: familyIncomeNoteFromPassive(unit?.name ?? "", asset.name, locale),
           date: txDate,
           owner: "me",
         });
@@ -708,11 +785,7 @@ export const useBusinessStore = create<BusinessStore>()(
           date,
         };
 
-        if (
-          tx.kind === "family_withdrawal" &&
-          tx.linkedFamilyTxId &&
-          (patch.amount !== undefined || patch.date !== undefined)
-        ) {
+        if (tx.linkedFamilyTxId && (patch.amount !== undefined || patch.date !== undefined)) {
           useStore.getState().updateTransaction(tx.linkedFamilyTxId, {
             amount: amt,
             ...(patch.date !== undefined ? { date } : {}),
@@ -728,8 +801,7 @@ export const useBusinessStore = create<BusinessStore>()(
         const tx = get().transactions.find((t) => t.id === id);
         if (
           !opts?.skipFamilyLink &&
-          tx?.kind === "family_withdrawal" &&
-          tx.linkedFamilyTxId
+          tx?.linkedFamilyTxId
         ) {
           useStore.getState().deleteTransaction(tx.linkedFamilyTxId, {
             skipBusinessLink: true,

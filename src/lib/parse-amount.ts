@@ -156,7 +156,7 @@ export function parseAmountFromTranscript(transcript: string, locale: Locale): n
       ),
       mult: 1_000,
     },
-    { re: /(\d[\d\s.,]*)\s*k(?=\s|$|[^a-z0-9])/i, mult: 1_000 },
+    { re: /(\d[\d\s.,]*)\s*[kк](?=\s|$|[^a-zа-яё0-9])/i, mult: 1_000 },
   ];
 
   for (const { re, mult } of patterns) {
@@ -198,7 +198,7 @@ export function extractAllAmountsFromTranscript(transcript: string, locale: Loca
       ),
       mult: 1_000,
     },
-    { re: /(\d[\d\s.,]*)\s*k(?=\s|$|[^a-z0-9])/gi, mult: 1_000 },
+    { re: /(\d[\d\s.,]*)\s*[kк](?=\s|$|[^a-zа-яё0-9])/gi, mult: 1_000 },
   ];
 
   for (const { re, mult } of patterns) {
@@ -231,7 +231,7 @@ export function resolveTransactionAmount(
   if (aiAmount <= 0) return fromSpeech;
 
   const lower = transcript.toLowerCase();
-  const hasMultiplier = /тысяч|тыс\.?|тыщ|млн|миллион|thousand|million|\bk\b/i.test(
+  const hasMultiplier = /тысяч|тыс\.?|тыщ|млн|миллион|thousand|million|[kк](?=\s|$|[^a-zа-яё0-9])/i.test(
     lower,
   );
   const hasThousandSep = /\d{1,3}[.,]\d{3}\b/.test(transcript);

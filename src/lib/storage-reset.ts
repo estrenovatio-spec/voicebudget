@@ -76,6 +76,7 @@ export function clearAppStorage(): void {
     localStorage.removeItem(FAMILY_ONBOARDING_DONE_KEY);
     clearDismissibleHintKeys();
     localStorage.removeItem(CLOUD_KEY);
+    localStorage.removeItem(WEB_LOGIN_KEY);
     localStorage.setItem(CLOUD_PAUSE_KEY, "1");
     sessionStorage.removeItem(WEB_LOGIN_KEY);
     sessionStorage.removeItem("vb_app_tab_v1");

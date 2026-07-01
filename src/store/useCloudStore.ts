@@ -107,16 +107,20 @@ export const useCloudStore = create<CloudState>()(
       setReferralsEnabled: (referralsEnabled) => set({ referralsEnabled }),
       setReferralProfile: (referralProfile) => set({ referralProfile }),
       setSession: (token, household) =>
-        set({
-          token,
-          household,
-          cloudUserId: null,
-          householdMemberUserIds: [],
-          deletedRecurringIds: [],
-          deletedDebtIds: [],
-          deletedTransactionIds: [],
-          pendingTransactionUpdateIds: {},
-          lastWriteError: null,
+        set((state) => {
+          const sameSession =
+            state.token === token && state.household?.id === household.id;
+          return {
+            token,
+            household,
+            cloudUserId: sameSession ? state.cloudUserId : null,
+            householdMemberUserIds: sameSession ? state.householdMemberUserIds : [],
+            deletedRecurringIds: sameSession ? state.deletedRecurringIds : [],
+            deletedDebtIds: sameSession ? state.deletedDebtIds : [],
+            deletedTransactionIds: sameSession ? state.deletedTransactionIds : [],
+            pendingTransactionUpdateIds: sameSession ? state.pendingTransactionUpdateIds : {},
+            lastWriteError: null,
+          };
         }),
       setCloudUserId: (cloudUserId) => set({ cloudUserId }),
       setHouseholdMemberUserIds: (householdMemberUserIds) => set({ householdMemberUserIds }),

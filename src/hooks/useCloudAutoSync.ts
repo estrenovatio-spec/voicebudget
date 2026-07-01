@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { applyHouseholdSync } from "@/lib/cloud/apply-sync";
 import { hasCloudAuth } from "@/lib/cloud/auth-payload";
 import { refreshCloudSessionFromTelegram, runHouseholdBootstrap } from "@/lib/cloud/bootstrap";
-import { isCloudPaused, setCloudPaused } from "@/lib/cloud/cloud-pause";
+import { isCloudPaused } from "@/lib/cloud/cloud-pause";
 import { isCloudRestoreInProgress } from "@/lib/cloud/restore-lock";
 import { isAuthSyncError } from "@/lib/cloud/sync-errors";
 import { isTransientHttpError } from "@/lib/fetch-retry";
@@ -26,11 +26,7 @@ export function useCloudAutoSync() {
   useEffect(() => {
     const pull = () => {
       if (isCloudRestoreInProgress()) return;
-      if (isCloudPaused()) {
-        const token = useCloudStore.getState().token;
-        if (!token && !hasCloudAuth()) return;
-        setCloudPaused(false);
-      }
+      if (isCloudPaused()) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
 
       const now = Date.now();

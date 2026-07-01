@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, Loader2, Send } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getAdvisorConfig } from "@/lib/advisor-config";
 import { formatIsoDate } from "@/lib/format-date";
@@ -52,8 +52,6 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
   const [question, setQuestion] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
   const [chatLimitHit, setChatLimitHit] = useState(false);
-
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const summary = useMemo(
     () =>
@@ -206,12 +204,6 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
     if (!active) return;
     void loadAnalysis();
   }, [active, loadAnalysis]);
-
-  useEffect(() => {
-    if (active) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [active, chat, loadingChat]);
 
   const sendQuestion = useCallback(
     async (nextQuestion?: string) => {
@@ -370,7 +362,6 @@ export function WeeklyAnalysisTab({ active }: WeeklyAnalysisTabProps) {
                     {locale === "ru" ? "Финсоветник думает..." : "Advisor is thinking..."}
                   </p>
                 )}
-                <div ref={chatEndRef} />
               </div>
               {(chatLimitHit || userMessageCount >= WEEKLY_CHAT_MAX_USER_MESSAGES) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">

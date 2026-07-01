@@ -25,6 +25,53 @@ export type AiMemoryInsight = {
 const AI_MEMORY_KEY = "voicebudget-ai-memory-v1";
 const MAX_RULES = 120;
 const MAX_PHRASE_WORDS = 5;
+const MEMORY_STOP_WORDS = new Set([
+  "на",
+  "за",
+  "в",
+  "и",
+  "по",
+  "руб",
+  "рублей",
+  "рубля",
+  "рубль",
+  "деньги",
+  "карта",
+  "карты",
+  "магазин",
+  "заказ",
+  "заказа",
+  "заказал",
+  "заказала",
+  "еще",
+  "ещё",
+  "потратил",
+  "потратила",
+  "потратили",
+  "купил",
+  "купила",
+  "купили",
+  "оплатил",
+  "оплатила",
+  "оплатили",
+  "пришло",
+  "пришли",
+  "получил",
+  "получила",
+  "получили",
+  "доход",
+  "расход",
+  "spent",
+  "paid",
+  "bought",
+  "received",
+  "income",
+  "expense",
+  "money",
+  "card",
+  "store",
+  "order",
+]);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -73,29 +120,9 @@ function mergePhraseLabel(current: string, next: string): string {
 function phraseCandidates(input: string): string[] {
   const text = normalizeText(input);
   if (!text) return [];
-  const stop = new Set([
-    "на",
-    "за",
-    "в",
-    "и",
-    "по",
-    "руб",
-    "рублей",
-    "рубля",
-    "потратил",
-    "потратила",
-    "купил",
-    "купила",
-    "оплатил",
-    "оплатила",
-    "получил",
-    "получила",
-    "spent",
-    "paid",
-    "bought",
-    "received",
-  ]);
-  const words = text.split(" ").filter((w) => w.length >= 3 && !stop.has(w));
+  const words = text
+    .split(" ")
+    .filter((w) => w.length >= 3 && !MEMORY_STOP_WORDS.has(w));
   const candidates = new Set<string>();
   for (let size = Math.min(MAX_PHRASE_WORDS, words.length); size >= 1; size--) {
     for (let i = 0; i + size <= words.length; i++) {
@@ -258,7 +285,9 @@ export function recordAiCorrectionLearning(params: {
 }): void {
   const { before, after } = params;
   if (before?.categoryId === after.categoryId && before?.type === after.type) return;
-  for (const phrase of phraseCandidates(after.note).slice(0, 6)) {
+  const sourceText = `${before?.note ?? ""} ${after.note ?? ""}`.trim();
+  const learnedPhrases = phraseCandidates(sourceText).slice(0, 6);
+  for (const phrase of learnedPhrases) {
     rememberRule({
       phrase,
       categoryId: after.categoryId,

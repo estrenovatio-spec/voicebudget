@@ -408,8 +408,12 @@ async function createSpeechSession(locale: Locale): Promise<SpeechSession | null
     }
     speechSession.transcript = finalParts.join(" ");
     speechSession.interim = interimText.trim();
+    if (speechSession.transcript || speechSession.interim) {
+      console.warn("[voice] recognition result received");
+    }
   };
   recognition.onerror = (event) => {
+    console.warn("[voice] microphone permission error", event.error);
     speechSession.error =
       event.error === "no-speech" || event.error === "audio-capture"
         ? "no_speech"
@@ -559,6 +563,15 @@ export async function startVoiceRecording(
   if (!window.isSecureContext) return { ok: false, error: "insecure" };
 
   await cancelVoiceRecording();
+
+  if (canUseSpeechRecognition()) {
+    const speechSession = await createSpeechSession(locale);
+    if (speechSession) {
+      session = speechSession;
+      return { ok: true };
+    }
+    console.warn("[voice] SpeechRecognition unavailable");
+  }
 
   try {
     const stream = await openMicStream();

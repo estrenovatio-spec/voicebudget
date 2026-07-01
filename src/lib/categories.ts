@@ -1,6 +1,6 @@
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
 import { matchAiMemoryCategoryId } from "@/lib/ai-memory";
-import { isIncomeReceiptPhrase } from "@/lib/planning/parse-input";
+import { isIncomeReceiptPhrase, looksLikeGoalDeposit } from "@/lib/planning/parse-input";
 import { isGarbageTranscript } from "@/lib/transcript-guard";
 import type { CategoryDefinition, Locale, ParsedTransaction, TxType } from "@/types";
 
@@ -189,7 +189,74 @@ function keywordMatches(text: string, kw: string): boolean {
   return text.toLowerCase().includes(needle);
 }
 
-const EXPENSE_PHRASE_CATEGORY: { pattern: RegExp; categoryId: string }[] = [
+const DYNAMIC_PRIORITY_CATEGORY_IDS: Record<TxType, string[]> = {
+  expense: [
+    "groceries",
+    "dining_out",
+    "transport",
+    "kids_family",
+    "health",
+    "shopping",
+    "clothing",
+    "gifts",
+  ],
+  income: ["salary", "freelance", "refund"],
+};
+
+const PHRASE_CATEGORY_RULES: { pattern: RegExp; categoryId: string; type?: TxType }[] = [
+  {
+    pattern: /(?:зарплат|аванс|оклад|получк|преми|paycheck|payroll|salary|bonus|wage)/i,
+    categoryId: "salary",
+    type: "income",
+  },
+  {
+    pattern:
+      /(?:фриланс|заказчик|клиент\s+оплатил|оплатил\s+клиент|аренда\s+пришл|арендн(?:ая|ый)?\s+плат|сдача\s+квартир|сдали\s+квартиру|сдаю\s+квартиру|самозанят|подработк|проект|invoice|contract|gig|freelance|rental income|sublease)/i,
+    categoryId: "freelance",
+    type: "income",
+  },
+  {
+    pattern: /(?:возврат|вернул|кэшбэк|кешбэк|cashback|refund|chargeback|компенсац|перерасч)/i,
+    categoryId: "refund",
+    type: "income",
+  },
+  {
+    pattern:
+      /(?:авито|техник|гаджет|маркетплейс|яндекс\s*маркет|алиэкспресс|озон|wildberries|\bwb\b|м\.?\s?видео|dns|ситилинк|amazon|shopping|mall)/i,
+    categoryId: "shopping",
+    type: "expense",
+  },
+  {
+    pattern: /(?:одежд|куртк|кроссовк|обув|пальт|джинс|футболк|lamoda|zara|nike|adidas|uniqlo|shein|шмот)/i,
+    categoryId: "clothing",
+    type: "expense",
+  },
+  { pattern: /(?:подарок|подарки|букет|цветы)/i, categoryId: "gifts", type: "expense" },
+  {
+    pattern: /(?:врач|аптек|стоматолог|анализ|клиник|таблетк|лекарств|мрт|узи|поликлиник|больниц|доктор|оптик|очки|health|pharmacy|doctor)/i,
+    categoryId: "health",
+    type: "expense",
+  },
+  {
+    pattern: /(?:школ|садик|сад\b|марфа|арсений|кружок|репетитор|дет[а-яё]*|нян|секци|лагер|игрушк|подгуз|пеленк|смесь|педиатр|school fee|kindergarten|kids|toys)/i,
+    categoryId: "kids_family",
+    type: "expense",
+  },
+  {
+    pattern: /(?:такси|бензин|метро|автобус|парковк|заправк|каршеринг|электричк|тройк|ржд|аэроэкспресс|uber|taxi|whoosh|bus|train|fuel|parking|яндекс\s*(?:go|такси))/i,
+    categoryId: "transport",
+    type: "expense",
+  },
+  {
+    pattern: /(?:кофе|кафе|ресторан|обед|ужин|доставк|еда\s+вне\s+дома|кофейн|пицц|суши|бургер|шаверм|шаурм|столов|пекарн|шоколадниц|додо|теремок|ростикс|kfc|starbucks|delivery|takeaway|yandex eats)/i,
+    categoryId: "dining_out",
+    type: "expense",
+  },
+  {
+    pattern: /(?:продукт|пятерочк|пятёрочк|перекрестк|перекрёстк|магазин|еда\s+домой|вкусвилл|самокат|сбермаркет|ашан|лента|магнит|дикси|спар|spar|супермаркет|гипермаркет|рынок|лавка|купер|яндекс\s*лавка)/i,
+    categoryId: "groceries",
+    type: "expense",
+  },
   { pattern: /фестивал|festival/i, categoryId: "entertainment" },
   { pattern: /ретрит|retreat/i, categoryId: "entertainment" },
   { pattern: /аква[\s-]?парк|aquapark|water\s*park/i, categoryId: "entertainment" },
@@ -206,9 +273,38 @@ const EXPENSE_PHRASE_CATEGORY: { pattern: RegExp; categoryId: string }[] = [
   { pattern: /в\s+ресторан/u, categoryId: "dining_out" },
 ];
 
-function detectCategoryFromPhrases(text: string, type: TxType): string | null {
-  if (type !== "expense") return null;
-  for (const rule of EXPENSE_PHRASE_CATEGORY) {
+function detectCategoryFromPriorityCatalog(
+  text: string,
+  type: TxType,
+  categories: CategoryDefinition[],
+): string | null {
+  const priorityIds = DYNAMIC_PRIORITY_CATEGORY_IDS[type];
+  let bestId: string | null = null;
+  let bestScore = 0;
+
+  for (const categoryId of priorityIds) {
+    const category = categories.find((item) => item.id === categoryId && item.type === type);
+    if (!category) continue;
+    const score = scoreCategoryKeywords(text, category);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = category.id;
+    }
+  }
+
+  return bestScore > 0 ? bestId : null;
+}
+
+function detectCategoryFromPhrases(
+  text: string,
+  type: TxType,
+  categories: CategoryDefinition[],
+): string | null {
+  const fromCatalog = detectCategoryFromPriorityCatalog(text, type, categories);
+  if (fromCatalog) return fromCatalog;
+
+  for (const rule of PHRASE_CATEGORY_RULES) {
+    if (rule.type && rule.type !== type) continue;
     if (rule.pattern.test(text)) return rule.categoryId;
   }
   return null;
@@ -239,6 +335,8 @@ const RU_INCOME_TYPE_HINTS = [
   "получила",
   "получили",
   "зарплата",
+  "аванс",
+  "фриланс",
   "доход",
   "пришло",
   "пришли",
@@ -247,6 +345,11 @@ const RU_INCOME_TYPE_HINTS = [
   "поступили",
   "возврат",
   "вернули",
+  "клиент оплатил",
+  "оплатил клиент",
+  "заказчик оплатил",
+  "аренда пришла",
+  "арендная плата",
 ];
 const EN_EXPENSE_TYPE_HINTS = ["spent", "bought", "paid", "expense"];
 const EN_INCOME_TYPE_HINTS = ["received", "salary", "income", "earned", "got paid"];
@@ -339,15 +442,32 @@ export function detectCategoryId(
   categories: CategoryDefinition[],
 ): string {
   const merged = sanitizeCategories(categories);
+  const canUseGoalJar = looksLikeGoalDeposit(text, "ru") || looksLikeGoalDeposit(text, "en");
   const fromMemory = matchAiMemoryCategoryId(text, type, merged);
-  if (fromMemory) return fromMemory;
+  if (
+    fromMemory &&
+    !(
+      fromMemory === "goal_jar" &&
+      !canUseGoalJar
+    )
+  ) {
+    return fromMemory;
+  }
 
-  const fromPhrase = detectCategoryFromPhrases(text, type);
-  if (fromPhrase && merged.some((c) => c.id === fromPhrase && c.type === type)) {
+  const fromPhrase = detectCategoryFromPhrases(text, type, merged);
+  if (
+    fromPhrase &&
+    fromPhrase !== "goal_jar" &&
+    merged.some((c) => c.id === fromPhrase && c.type === type)
+  ) {
     return fromPhrase;
   }
 
-  const pool = getCategoriesByType(merged, type).filter((c) => c.id !== getFallbackCategoryId(type));
+  const pool = getCategoriesByType(merged, type).filter(
+    (c) =>
+      c.id !== getFallbackCategoryId(type) &&
+      (c.id !== "goal_jar" || canUseGoalJar),
+  );
   let bestId = getFallbackCategoryId(type);
   let bestScore = 0;
 

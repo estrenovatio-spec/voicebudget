@@ -306,7 +306,7 @@ export function BusinessProjectsSection() {
   const addAsset = useBusinessStore((s) => s.addAsset);
   const removeAsset = useBusinessStore((s) => s.removeAsset);
   const updateAsset = useBusinessStore((s) => s.updateAsset);
-  const addOperatingTx = useBusinessStore((s) => s.addOperatingTx);
+  const sellAssetToFamily = useBusinessStore((s) => s.sellAssetToFamily);
   const setAssetUtilitiesMonth = useBusinessStore((s) => s.setAssetUtilitiesMonth);
   const transferPassiveToFamily = useBusinessStore((s) => s.transferPassiveToFamily);
   const ensureProjectsUnitId = useBusinessStore((s) => s.ensureProjectsUnitId);
@@ -403,13 +403,10 @@ export function BusinessProjectsSection() {
       toast(locale === "ru" ? "Укажите сумму продажи" : "Enter sale amount", "error");
       return;
     }
-    addOperatingTx(
-      editAsset.unitId,
-      "income",
-      amount,
-      `${locale === "ru" ? "Продажа актива" : "Asset sale"}: ${editAsset.name}`,
-    );
-    removeAsset(editAsset.id);
+    if (!sellAssetToFamily(editAsset.id, amount)) {
+      toast(locale === "ru" ? "Не удалось записать продажу" : "Could not record sale", "error");
+      return;
+    }
     setEditAsset(null);
     setSaleAmount("");
     toast(

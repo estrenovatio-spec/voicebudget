@@ -12,6 +12,9 @@ const nextConfig = {
   },
   reactStrictMode: true,
   serverExternalPackages: ["ogg-opus-decoder"],
+  watchOptions: {
+    pollIntervalMs: 1000,
+  },
   async headers() {
     return [
       {

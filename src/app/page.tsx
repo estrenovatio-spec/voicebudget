@@ -1,16 +1,14 @@
 "use client";
 
-import { AppVersionBanner } from "@/components/AppVersionBanner";
 import { PreviewAppShell } from "@/components/app/PreviewAppShell";
 import { useRecurringProcessor } from "@/hooks/useRecurringProcessor";
 import { HouseholdCloudBootstrap } from "@/components/HouseholdCloudBootstrap";
 import { SettingsDialogHost } from "@/components/SettingsDialogHost";
-import { TMAHeader } from "@/components/TMAHeader";
 import { PaymentReturnRefresh } from "@/components/PaymentReturnRefresh";
 import { SubscriptionExpiredReminder } from "@/components/SubscriptionExpiredReminder";
 import { SubscriptionAccessBanner } from "@/components/SubscriptionAccessBanner";
 import { TrialBanner } from "@/components/TrialBanner";
-import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { TodayScreen } from "@/components/TodayScreen";
 import {
   bottomNavEnabled,
   readStoredAppTab,
@@ -24,22 +22,10 @@ import { useStore } from "@/store/useStore";
 import { useCallback, useEffect, useState } from "react";
 import { useTelegramBackHandler } from "@/hooks/useTelegramBackHandler";
 import { TipsPanel } from "@/components/TipsPanel";
-import { TransactionList } from "@/components/TransactionList";
 import { PlanningPanel } from "@/components/PlanningPanel";
 
-function HomeTabContent({
-  previewMode,
-}: {
-  previewMode: boolean;
-}) {
-  return (
-    <>
-      <AppVersionBanner />
-      <TMAHeader hideBusinessButton={previewMode} />
-      <VoiceRecorder />
-      <TransactionList />
-    </>
-  );
+function HomeTabContent() {
+  return <TodayScreen />;
 }
 
 function OperationsTabContent() {
@@ -96,7 +82,7 @@ export default function HomePage() {
 
   useTelegramBackHandler(handlePreviewTelegramBack, previewMode && appView !== "home");
 
-  const home = <HomeTabContent previewMode={previewMode} />;
+  const home = <HomeTabContent />;
   const operations = <OperationsTabContent />;
   const advisor = <AdvisorTabContent />;
 

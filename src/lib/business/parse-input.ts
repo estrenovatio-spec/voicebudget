@@ -52,6 +52,24 @@ function hasKeyword(text: string, keywords: string[]): boolean {
 
 /** Парсит сумму: 5000, 5 000, 5.000 (тыс.), 5,5 (копейки). */
 export function parseMoneyAmount(text: string): number | null {
+  const suffixMatch = text.match(/(\d[\d\s.,]*|\d)\s*([kк])(?=\s|$|[^a-zа-яё0-9])/i);
+  if (suffixMatch?.[1]) {
+    let raw = suffixMatch[1].replace(/\s/g, "");
+    const lastComma = raw.lastIndexOf(",");
+    const lastDot = raw.lastIndexOf(".");
+
+    if (lastComma >= 0 && lastDot >= 0) {
+      const decSep = lastComma > lastDot ? "," : ".";
+      const thouSep = decSep === "," ? "." : ",";
+      raw = raw.replace(new RegExp(`\\${thouSep}`, "g"), "").replace(decSep, ".");
+    } else if (lastComma >= 0) {
+      raw = raw.replace(",", ".");
+    }
+
+    const scaled = Number(raw);
+    if (Number.isFinite(scaled) && scaled > 0) return Math.round(scaled * 1000);
+  }
+
   const m = text.match(/(\d[\d\s.,]+|\d+)/);
   if (!m) return null;
   let raw = m[1].replace(/\s/g, "");
@@ -84,7 +102,7 @@ export function parseMoneyAmount(text: string): number | null {
 
 function stripAmount(text: string): string {
   return text
-    .replace(/(\d[\d\s.,]+|\d+)\s*(₽|руб\.?|rub)?/gi, " ")
+    .replace(/(\d[\d\s.,]+|\d+)\s*([kк]|₽|руб\.?|rub)?/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

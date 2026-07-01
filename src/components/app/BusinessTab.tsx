@@ -1345,6 +1345,7 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
   const transferToCushion = useBusinessStore((s) => s.transferToCushion);
   const transferToTax = useBusinessStore((s) => s.transferToTax);
   const transferToFamily = useBusinessStore((s) => s.transferToFamily);
+  const recordBusinessSaleToFamily = useBusinessStore((s) => s.recordBusinessSaleToFamily);
   const removeTransaction = useBusinessStore((s) => s.removeTransaction);
   const addDebt = useBusinessStore((s) => s.addDebt);
   const updateDebt = useBusinessStore((s) => s.updateDebt);
@@ -1689,12 +1690,11 @@ export function BusinessTab({ headerControls }: { headerControls?: ReactNode }) 
       toast(locale === "ru" ? "Укажите сумму продажи" : "Enter sale amount", "error");
       return;
     }
-    addOperatingTx(
-      unit.id,
-      "income",
-      amount,
-      `${locale === "ru" ? "Продажа бизнеса" : "Business sale"}: ${unit.name}`,
-    );
+    const ok = recordBusinessSaleToFamily(unit.id, amount);
+    if (!ok) {
+      toast(locale === "ru" ? "Не удалось записать продажу" : "Could not record sale", "error");
+      return;
+    }
     setBusinessSaleAmount("");
     toast(
       locale === "ru"

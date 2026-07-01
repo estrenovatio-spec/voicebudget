@@ -26,7 +26,8 @@ import { sanitizeTransactionNote } from "@/lib/transaction-note";
 import { extractSeparatedMoneyAmounts } from "@/lib/multiple-amounts";
 import type { CategoryDefinition, Locale, ParsedTransaction } from "@/types";
 
-const MAX_TRANSACTIONS = 10;
+const MAX_TRANSACTIONS = 200;
+const BULK_LIST_THRESHOLD = 12;
 
 const parsedItemSchema = z
   .object({
@@ -143,6 +144,10 @@ export async function parseTranscriptServerMany(
   }
 
   const clauses = splitTranscriptClauses(text);
+
+  if (clauses.length > BULK_LIST_THRESHOLD) {
+    return { items: withOwner(fallbackParseMany(text, locale, categories)), fallback: true };
+  }
 
   if (!isLlmConfigured()) {
     return { items: withOwner(fallbackParseMany(text, locale, categories)), fallback: true };

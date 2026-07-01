@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
     const guard = mapCloudGuardError(e);
     if (guard) return guard;
     if (e instanceof Error && e.message.includes("Unique constraint")) {
-      return NextResponse.json({ ok: true });
+      const sync = await buildSyncPayload(session.householdId, session.userId);
+      return NextResponse.json({ ok: true, sync });
     }
     throw e;
   }

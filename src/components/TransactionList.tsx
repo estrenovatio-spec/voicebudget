@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCategoryLabel } from "@/lib/categories";
 import { OwnerChip } from "@/components/OwnerChip";
 import {
+  formatTransactionDate,
   formatTransactionDateShort,
   todayIsoDate,
   yesterdayIsoDate,
@@ -161,8 +162,26 @@ type TransactionRowProps = {
   partnerChipColor: string;
   householdFilter: HouseholdFilter;
   compactAllTab: boolean;
+  showMeta?: boolean;
+  todayCompact?: boolean;
   onEdit: (tx: Transaction) => void;
 };
+
+function formatTransactionMoment(tx: Transaction, locale: "ru" | "en"): string {
+  const raw = tx.date?.trim();
+  if (!raw) return "";
+  if (!raw.includes("T")) return formatTransactionDate(raw, locale);
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return formatTransactionDate(raw, locale);
+  const day = raw.slice(0, 10);
+  if (day === todayIsoDate()) {
+    return date.toLocaleTimeString(locale === "ru" ? "ru-RU" : "en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return formatTransactionDate(raw, locale);
+}
 
 function TransactionRow({
   tx,
@@ -175,6 +194,8 @@ function TransactionRow({
   partnerChipColor,
   householdFilter,
   compactAllTab,
+  showMeta = false,
+  todayCompact = false,
   onEdit,
 }: TransactionRowProps) {
   const note = displayTransactionNote(tx.note, tx.amount);
@@ -199,26 +220,40 @@ function TransactionRow({
         ? partnerLabel
         : meLabel
       : null;
+  const metaLabel = showMeta ? formatTransactionMoment(tx, locale) : null;
 
   const leftExtra = [note, goalPart].filter(Boolean);
   const amountClass =
     tx.type === "income"
       ? "text-emerald-600 dark:text-emerald-400"
       : "text-rose-600 dark:text-rose-400";
+  const rowClass = todayCompact
+    ? "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/70 py-1 pl-1.5 pr-0.5 text-xs"
+    : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/80 py-1.5 pl-2 pr-1 text-sm";
+  const metaClass = todayCompact
+    ? "mt-0.5 text-[10px] leading-snug text-muted-foreground"
+    : "mt-0.5 text-[11px] leading-snug text-muted-foreground";
+  const extraClass = todayCompact
+    ? "mt-0.5 line-clamp-1 break-words text-[11px] leading-snug text-muted-foreground"
+    : "mt-0.5 line-clamp-1 break-words text-xs leading-snug text-muted-foreground";
+  const amountTextClass = todayCompact
+    ? "whitespace-nowrap text-xs font-semibold tabular-nums leading-none"
+    : "whitespace-nowrap text-sm font-semibold tabular-nums leading-none";
+  const editButtonClass = todayCompact ? "h-6 w-6 shrink-0" : "h-7 w-7 shrink-0";
+  const editIconClass = todayCompact ? "h-3 w-3" : "h-3 w-3";
 
   if (compactAllTab) {
     return (
-      <li
-        className={cn(
-          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/80 py-1.5 pl-2 pr-1 text-sm",
-        )}
-      >
+      <li className={cn(rowClass)}>
         <button type="button" className="min-w-0 text-left" onClick={() => onEdit(tx)}>
           <p className="truncate font-medium leading-tight">
             {getCategoryLabel(tx.categoryId, categories, locale)}
           </p>
+          {metaLabel ? (
+            <p className={metaClass}>{metaLabel}</p>
+          ) : null}
           {leftExtra.length > 0 ? (
-            <p className="mt-0.5 line-clamp-1 break-words text-xs leading-snug text-muted-foreground">
+            <p className={extraClass}>
               {leftExtra.join(" · ")}
             </p>
           ) : null}
@@ -232,7 +267,7 @@ function TransactionRow({
           ) : null}
           <span
             className={cn(
-              "whitespace-nowrap text-sm font-semibold tabular-nums leading-none",
+              amountTextClass,
               amountClass,
             )}
           >
@@ -243,11 +278,11 @@ function TransactionRow({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0"
+            className={editButtonClass}
             aria-label={t(locale, "txEdit")}
             onClick={() => onEdit(tx)}
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className={editIconClass} />
           </Button>
         </div>
       </li>
@@ -255,17 +290,20 @@ function TransactionRow({
   }
 
   return (
-    <li
-      className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-border/80 py-1.5 pl-2 pr-1 text-sm",
-      )}
-    >
+    <li className={cn(rowClass)}>
       <button type="button" className="min-w-0 text-left" onClick={() => onEdit(tx)}>
         <p className="truncate font-medium leading-tight">
           {getCategoryLabel(tx.categoryId, categories, locale)}
         </p>
+        {metaLabel ? (
+          <p className={metaClass}>{metaLabel}</p>
+        ) : null}
         {leftExtra.length > 0 ? (
-          <p className="mt-0.5 line-clamp-2 break-words text-xs leading-snug text-foreground/90">
+          <p
+            className={todayCompact
+              ? "mt-0.5 line-clamp-1 break-words text-[11px] leading-snug text-foreground/85"
+              : "mt-0.5 line-clamp-2 break-words text-xs leading-snug text-foreground/90"}
+          >
             {leftExtra.join(" · ")}
           </p>
         ) : null}
@@ -273,7 +311,7 @@ function TransactionRow({
       <div className="flex shrink-0 items-center gap-1 self-center">
         <span
           className={cn(
-            "whitespace-nowrap text-sm font-semibold tabular-nums leading-none",
+            amountTextClass,
             amountClass,
           )}
         >
@@ -284,18 +322,26 @@ function TransactionRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 shrink-0"
+          className={editButtonClass}
           aria-label={t(locale, "txEdit")}
           onClick={() => onEdit(tx)}
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className={editIconClass} />
         </Button>
       </div>
     </li>
   );
 }
 
-export function TransactionList({ collapsible = true }: { collapsible?: boolean } = {}) {
+export function TransactionList({
+  collapsible = true,
+  variant = "default",
+  limit,
+}: {
+  collapsible?: boolean;
+  variant?: "default" | "today";
+  limit?: number;
+} = {}) {
   const locale = useStore((s) => s.locale);
   const partnerName = useStore((s) => s.partnerName);
   const partnerKeywords = useStore((s) => s.partnerKeywords);
@@ -309,6 +355,7 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
   const transactions = useFilteredTransactions(filter);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [hidden, setHidden] = useState(false);
+  const todayVariant = variant === "today";
 
   const compactAllTab = householdFilter === "all";
   const normalizedQuery = query.trim().toLowerCase();
@@ -331,11 +378,20 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
     () => groupTransactionsByDay(searchedTransactions, locale),
     [locale, searchedTransactions],
   );
+  const todayItems = useMemo(
+    () => (limit ? searchedTransactions.slice(0, limit) : searchedTransactions),
+    [limit, searchedTransactions],
+  );
 
   useEffect(() => {
+    if (todayVariant) {
+      setHidden(false);
+      setFilter("all");
+      return;
+    }
     setHidden(collapsible ? readHidden() : false);
     setFilter(readTypeFilter());
-  }, [collapsible]);
+  }, [collapsible, todayVariant]);
 
   const onTypeFilterChange = useCallback((value: string) => {
     const next = value as "all" | TxType;
@@ -373,8 +429,48 @@ export function TransactionList({ collapsible = true }: { collapsible?: boolean 
     partnerChipColor,
     householdFilter,
     compactAllTab,
+    todayCompact: todayVariant,
     onEdit: setEditing,
   };
+
+  if (todayVariant) {
+    return (
+      <div data-onboarding="transactions">
+        <Card className="border-border/25 bg-card/90 shadow-none">
+          <HomeSectionCardHeader
+            icon={List}
+            title={locale === "ru" ? "Последние операции" : "Latest entries"}
+          />
+          <CardContent className={`space-y-1 ${homeSectionContentClassName}`}>
+            {todayItems.length === 0 ? (
+              <p className="py-1.5 text-center text-sm text-muted-foreground">
+                {locale === "ru" ? "Пока нет операций" : "No entries yet"}
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {todayItems.map((tx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    tx={tx}
+                    {...rowProps}
+                    showMeta
+                  />
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <TransactionEditDialog
+          transaction={editing}
+          open={editing !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   const groupedList = (
     <div className="max-h-72 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
